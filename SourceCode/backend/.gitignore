@@ -74,9 +74,8 @@ dump/
 *.sqlite
 *.sqlite3
 
-# Uploads (if storing locally)
-uploads/
-public/uploads/
+
+
 
 # Testing
 test-results/
