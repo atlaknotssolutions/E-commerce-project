@@ -1,10 +1,16 @@
 .custom-border {
-    border: 9px solid;
-    border-color: rgb(255, 58, 91) rgb(99, 99, 99);
-  }
-  
-  .custom-border img {
+    border: 5px solid;
+    border-color: var(--primary-color) #e9ecef;
+    box-shadow: 0 4px 20px rgba(0,146,124,0.12);
+    transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease;
+}
+
+.custom-border:hover {
+    box-shadow: 0 8px 32px rgba(0,146,124,0.22);
+    border-color: var(--primary-hover) #d1d5db;
+    transform: translateY(-2px);
+}
+
+.custom-border img {
     border-radius: 50%;
-  }
-  
- 
+}

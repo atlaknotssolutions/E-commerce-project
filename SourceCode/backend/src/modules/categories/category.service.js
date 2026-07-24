@@ -7,12 +7,114 @@ import { MAX_CATEGORY_DEPTH } from '../../constants/enums.js';
 export const createCategoryService = ({ categoryRepository, createApiError }) =>
 {
 
+    /**
+     * Transforms raw dynamic text inputs into clean, alphanumeric URL-friendly slugs.
+     * Removes special character vectors to prevent database script injection vulnerabilities.
+     * Example: 'Computers & Laptops' -> 'computers_laptops'
+     */
+    const buildCategoryId = (name) =>
+    {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+    };
+
+    /**
+     * Generates a unique attribute id from the attribute name.
+     * Example: 'Color' -> 'color', 'RAM Size' -> 'ram_size'
+     */
+    const buildAttributeId = (name) =>
+    {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+    };
+
+    /**
+     * Validates and normalizes an array of supportedAttributes.
+     * Auto-generates missing id/code fields, validates types and options.
+     * Returns the cleaned array ready for persistence.
+     */
+    const validateAndNormalizeAttributes = (attributes = []) =>
+    {
+        if (!Array.isArray(attributes) || attributes.length === 0) return [];
+
+        const validTypes = ['text', 'number', 'select', 'multi_select', 'boolean', 'color'];
+        const seenIds = new Set();
+        const seenCodes = new Set();
+
+        return attributes.map((attr, index) =>
+        {
+            const name = (attr.name || '').trim();
+            if (!name)
+            {
+                throw createApiError({
+                    statusCode: 400,
+                    code: 'INVALID_ATTRIBUTE',
+                    message: `Attribute at position ${index + 1} is missing a name.`,
+                });
+            }
+
+            const id = attr.id?.trim() || buildAttributeId(name);
+            const code = attr.code?.trim() || buildAttributeId(name);
+
+            // Enforce uniqueness within the category
+            if (seenIds.has(id))
+            {
+                throw createApiError({
+                    statusCode: 400,
+                    code: 'DUPLICATE_ATTRIBUTE_ID',
+                    message: `Duplicate attribute id '${id}' at position ${index + 1}.`,
+                });
+            }
+            if (seenCodes.has(code))
+            {
+                throw createApiError({
+                    statusCode: 400,
+                    code: 'DUPLICATE_ATTRIBUTE_CODE',
+                    message: `Duplicate attribute code '${code}' at position ${index + 1}.`,
+                });
+            }
+            seenIds.add(id);
+            seenCodes.add(code);
+
+            const type = validTypes.includes(attr.type) ? attr.type : 'text';
+
+            // Validate select/multi_select have options
+            if ((type === 'select' || type === 'multi_select') && (!Array.isArray(attr.options) || attr.options.length === 0))
+            {
+                throw createApiError({
+                    statusCode: 400,
+                    code: 'ATTRIBUTE_OPTIONS_REQUIRED',
+                    message: `Attribute '${name}' (type: ${type}) requires at least one option.`,
+                });
+            }
+
+            return {
+                id,
+                name,
+                code,
+                type,
+                required: Boolean(attr.required),
+                options: Array.isArray(attr.options) ? attr.options : [],
+                sortable: Boolean(attr.sortable),
+                filterable: Boolean(attr.filterable),
+                variantAttribute: Boolean(attr.variantAttribute),
+                displayOrder: typeof attr.displayOrder === 'number' ? attr.displayOrder : index,
+                active: attr.active !== undefined ? Boolean(attr.active) : true,
+            };
+        });
+    };
+
 
 
     const createCategory = async ({
         name,
         level,
         parentCategory = null,
+        supportedAttributes = [],
     }) =>
     {
 
@@ -126,23 +228,27 @@ export const createCategoryService = ({ categoryRepository, createApiError }) =>
             }
         }
 
+        const normalizedAttributes = validateAndNormalizeAttributes(supportedAttributes);
+
         return categoryRepository.createCategory({
             name: name.trim(),
             categoryId,
             parentCategory,
             level: numericLevel,
+            supportedAttributes: normalizedAttributes,
         });
     };
 
 
     /**
- * Updates category.
- */
+     * Updates category.
+     */
     const updateCategory = async (
         id,
         {
             name,
             parentCategory = null,
+            supportedAttributes = undefined,
         }
     ) =>
     {
@@ -204,13 +310,18 @@ export const createCategoryService = ({ categoryRepository, createApiError }) =>
             }
         }
 
+        if (supportedAttributes !== undefined)
+        {
+            updateData.supportedAttributes = validateAndNormalizeAttributes(supportedAttributes);
+        }
+
         return categoryRepository.updateById(id, updateData);
     };
 
 
     /**
- * Deletes category.
- */
+     * Deletes category.
+     */
     const deleteCategory = async (id) =>
     {
 
@@ -254,18 +365,6 @@ export const createCategoryService = ({ categoryRepository, createApiError }) =>
             success: true,
             message: "Category deleted successfully.",
         };
-    };
-    /**
-     * Transforms raw dynamic text inputs into clean, alphanumeric URL-friendly slugs.
-     * Removes special character vectors to prevent database script injection vulnerabilities.
-     * Example: 'Computers & Laptops' -> 'computers_laptops'
-     */
-    const buildCategoryId = (name) =>
-    {
-        return name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '_') // Isolates special symbols/spaces, substituting with underscores
-            .replace(/^_+|_+$/g, '');   // Erases residue trailing or leading underscore elements
     };
 
     /**

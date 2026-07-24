@@ -3,7 +3,6 @@ import {
     Paper,
     Table,
     TableBody,
-    TableCell,
     TableContainer,
     TableHead,
     TableRow,
@@ -13,6 +12,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Category } from "../../../types/categoryTypes";
+import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
 
 interface CategoryTableProps {
     categories: Category[];
@@ -26,41 +26,41 @@ const CategoryTable = ({
     onDelete,
 }: CategoryTableProps) => {
     return (
-        <TableContainer component={Paper}>
-            <Table>
+        <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+            <Table stickyHeader>
                 <TableHead>
                     <TableRow>
-                        <TableCell>Name</TableCell>
-                        <TableCell>Category ID</TableCell>
-                        <TableCell>Level</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell align="center">Actions</TableCell>
+                        <StyledTableCell>Name</StyledTableCell>
+                        <StyledTableCell>Category ID</StyledTableCell>
+                        <StyledTableCell>Level</StyledTableCell>
+                        <StyledTableCell>Status</StyledTableCell>
+                        <StyledTableCell align="center">Actions</StyledTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {categories.map((category) => (
-                        <TableRow key={category._id} hover>
-                            <TableCell>{category.name}</TableCell>
-                            <TableCell>{category.categoryId}</TableCell>
-                            <TableCell>
+                        <StyledTableRow key={category._id} hover>
+                            <StyledTableCell>{category.name}</StyledTableCell>
+                            <StyledTableCell>{category.categoryId}</StyledTableCell>
+                            <StyledTableCell>
                                 <Chip size="small" label={`Level ${category.level}`} />
-                            </TableCell>
-                            <TableCell>
+                            </StyledTableCell>
+                            <StyledTableCell>
                                 <Chip
                                     color={category.isActive ? "success" : "default"}
                                     size="small"
                                     label={category.isActive ? "Active" : "Inactive"}
                                 />
-                            </TableCell>
-                            <TableCell align="center">
+                            </StyledTableCell>
+                            <StyledTableCell align="center">
                                 <IconButton onClick={() => onEdit(category)}>
                                     <EditIcon />
                                 </IconButton>
                                 <IconButton color="error" onClick={() => onDelete(category)}>
                                     <DeleteIcon />
                                 </IconButton>
-                            </TableCell>
-                        </TableRow>
+                            </StyledTableCell>
+                        </StyledTableRow>
                     ))}
                 </TableBody>
             </Table>

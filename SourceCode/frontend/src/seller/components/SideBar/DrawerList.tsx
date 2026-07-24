@@ -1,8 +1,8 @@
 import * as React from "react";
 
-import MailIcon from "@mui/icons-material/Mail";
 import DrawerList from "../../../admin seller/components/drawerList/DrawerList";
 import { AccountBox, AddTask } from "@mui/icons-material";
+import BrandingWatermarkIcon from '@mui/icons-material/BrandingWatermark';
 import LogoutIcon from '@mui/icons-material/Logout';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ReceiptIcon from '@mui/icons-material/Receipt';
@@ -49,6 +49,12 @@ const menu = [
     path: "/seller/request-category",
     icon: <AddTask className="text-primary-color" />,
     activeIcon: <AddTask className="text-white" />,
+  },
+  {
+    name: "Request Brand",
+    path: "/seller/request-brand",
+    icon: <BrandingWatermarkIcon className="text-primary-color" />,
+    activeIcon: <BrandingWatermarkIcon className="text-white" />,
   },
   {
     name: "Payment",

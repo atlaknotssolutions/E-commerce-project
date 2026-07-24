@@ -19,6 +19,7 @@ import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { fetchTransactionsBySeller } from "../../../Redux Toolkit/Seller/transactionSlice";
 import { Transaction } from "../../../types/Transaction";
 import { redableDateTime } from "../../../util/redableDateTime";
+import { StyledTableCell, StyledTableRow, EmptyRow } from "../../../components/shared/Table";
 
 const statusColor: Record<
   string,
@@ -86,32 +87,25 @@ const TransactionTable = () => {
 
   return (
     <>
-      <TableContainer component={Paper} elevation={2}>
-        <Table sx={{ minWidth: 1100 }}>
+      <TableContainer component={Paper} elevation={2} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+        <Table stickyHeader sx={{ minWidth: 1100 }}>
           <TableHead>
             <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Transaction</TableCell>
-              <TableCell>Customer</TableCell>
-              <TableCell>Order</TableCell>
-              <TableCell align="center">Status</TableCell>
-              <TableCell align="right">Amount</TableCell>
+              <StyledTableCell>Date</StyledTableCell>
+              <StyledTableCell>Transaction</StyledTableCell>
+              <StyledTableCell>Customer</StyledTableCell>
+              <StyledTableCell>Order</StyledTableCell>
+              <StyledTableCell align="center">Status</StyledTableCell>
+              <StyledTableCell align="right">Amount</StyledTableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
             {paginatedTransactions.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  align="center"
-                  colSpan={6}
-                >
-                  No transactions found.
-                </TableCell>
-              </TableRow>
+              <EmptyRow colSpan={6} message="No transactions found." />
             ) : (
               paginatedTransactions.map((item: Transaction) => (
-                <TableRow key={item.id} hover>
+                <StyledTableRow key={item.id} hover>
                   {/* Date */}
                   <TableCell>
                     <div className="space-y-1">
@@ -199,7 +193,7 @@ const TransactionTable = () => {
                       "en-IN"
                     )}
                   </TableCell>
-                </TableRow>
+                </StyledTableRow>
               ))
             )}
           </TableBody>

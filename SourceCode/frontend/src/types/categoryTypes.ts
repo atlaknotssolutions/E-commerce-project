@@ -1,3 +1,19 @@
+export type AttributeType = 'text' | 'number' | 'select' | 'multi_select' | 'boolean' | 'color';
+
+export interface AttributeDefinition {
+    id: string;
+    name: string;
+    code: string;
+    type: AttributeType;
+    required?: boolean;
+    options?: string[];
+    sortable?: boolean;
+    filterable?: boolean;
+    variantAttribute?: boolean;
+    displayOrder?: number;
+    active?: boolean;
+}
+
 export interface Category {
     _id: string;
 
@@ -16,6 +32,8 @@ export interface Category {
     isActive?: boolean;
 
     children?: Category[];
+
+    supportedAttributes?: AttributeDefinition[];
 
     createdAt?: string;
 
@@ -42,6 +60,8 @@ export interface CreateCategoryPayload {
     description?: string;
 
     image?: string;
+
+    supportedAttributes?: AttributeDefinition[];
 }
 
 export interface UpdateCategoryPayload {
@@ -56,6 +76,8 @@ export interface UpdateCategoryPayload {
     image?: string;
 
     isActive?: boolean;
+
+    supportedAttributes?: AttributeDefinition[];
 }
 
 export interface AdminCategoryState {

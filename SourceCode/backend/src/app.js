@@ -42,6 +42,8 @@ import { Refund } from './modules/payments/refund.model.js';
 import { AdminNotification } from './modules/adminNotifications/adminNotification.model.js';
 import { SystemSettings } from './modules/systemSettings/systemSettings.model.js';
 import { Commission } from './modules/commissions/commission.model.js';
+import { Brand } from './modules/brands/brand.model.js';
+import { BrandRequest } from './modules/brandRequests/brandRequest.model.js';
 
 // Persistence Repositories Factories
 import { createUserRepository } from './modules/users/user.repository.js';
@@ -90,7 +92,11 @@ import { createSystemSettingsService } from './modules/systemSettings/systemSett
 import { createSystemSettingsController } from './modules/systemSettings/systemSettings.controller.js';
 import { createSystemSettingsRoutes } from './modules/systemSettings/systemSettings.routes.js';
 import { createCommissionRepository } from './modules/commissions/commission.repository.js';
+import { createBrandRepository } from './modules/brands/brand.repository.js';
+import { createBrandRequestRepository } from './modules/brandRequests/brandRequest.repository.js';
 import { mapCommission, mapCommissions } from './modules/commissions/commission.mapper.js';
+import { mapBrand, mapBrands } from './modules/brands/brand.mapper.js';
+import { mapBrandRequest, mapBrandRequests } from './modules/brandRequests/brandRequest.mapper.js';
 import { createCommissionService } from './modules/commissions/commission.service.js';
 import { createCommissionController } from './modules/commissions/commission.controller.js';
 import { createCommissionRoutes } from './modules/commissions/commission.routes.js';
@@ -132,6 +138,8 @@ import { createAdminDashboardService } from './modules/adminDashboard/adminDashb
 import { createAdminUserService } from './modules/adminUser/adminUser.service.js';
 import { createSellerVerificationService } from './modules/sellerVerification/sellerVerification.service.js';
 import { createProductModerationService } from './modules/productModeration/productModeration.service.js';
+import { createBrandService } from './modules/brands/brand.service.js';
+import { createBrandRequestService } from './modules/brandRequests/brandRequest.service.js';
 
 // HTTP Controllers Factories
 import { createAuthController } from './modules/auth/auth.controller.js';
@@ -164,6 +172,8 @@ import { createAdminDashboardController } from './modules/adminDashboard/adminDa
 import { createAdminUserController } from './modules/adminUser/adminUserController.js';
 import { createSellerVerificationController } from './modules/sellerVerification/sellerVerification.controller.js';
 import { createProductModerationController } from './modules/productModeration/productModeration.controller.js';
+import { createBrandController } from './modules/brands/brand.controller.js';
+import { createBrandRequestController } from './modules/brandRequests/brandRequest.controller.js';
 
 // Routing Gateway Compilers
 import { createAuthRoutes } from './modules/auth/auth.routes.js';
@@ -193,6 +203,8 @@ import { createAdminDashboardRoutes } from './modules/adminDashboard/adminDashbo
 import { createAdminUserRoutes } from './modules/adminUser/adminUser.routes.js';
 import { createSellerVerificationRoutes } from './modules/sellerVerification/sellerVerification.routes.js';
 import { createProductModerationRoutes } from './modules/productModeration/productModeration.routes.js';
+import { createBrandRoutes } from './modules/brands/brand.routes.js';
+import { createBrandRequestRoutes } from './modules/brandRequests/brandRequest.routes.js';
 
 
 // mapper import 
@@ -283,6 +295,9 @@ export const createApp = async ({ env, dbManager }) =>
     const adminUserRepository = createAdminUserRepository({ User, Seller });
     const sellerVerificationRepository = createSellerVerificationRepository({ Seller });
     const productModerationRepository = createProductModerationRepository({ Product, Seller });
+
+    const brandRepository = createBrandRepository({ Brand, Product });
+    const brandRequestRepository = createBrandRequestRepository({ BrandRequest });
 
     const adminReportsRepository = createAdminReportsRepository({
         Order, Product, User, Seller, PaymentOrder, ReturnRequest, Refund, Coupon,
@@ -546,6 +561,21 @@ export const createApp = async ({ env, dbManager }) =>
         createApiError,
     });
 
+    const brandService = createBrandService({
+        brandRepository,
+        productRepository,
+        cloudinaryClient,
+        createApiError,
+    });
+
+    const brandRequestService = createBrandRequestService({
+        brandRequestRepository,
+        brandRepository,
+        categoryRepository,
+        notificationService,
+        createApiError,
+    });
+
     const adminOrderService = createAdminOrderService({
         Order,
         orderRepository,
@@ -624,6 +654,13 @@ export const createApp = async ({ env, dbManager }) =>
     const sellerVerificationController = createSellerVerificationController({ sellerVerificationService });
 
     const productModerationController = createProductModerationController({ productModerationService });
+
+    const brandController = createBrandController({ brandService });
+
+    const brandRequestController = createBrandRequestController({
+        brandRequestService,
+        asyncHandler,
+    });
 
     const adminOrderController = createAdminOrderController({ adminOrderService });
 
@@ -888,6 +925,25 @@ export const createApp = async ({ env, dbManager }) =>
         asyncHandler,
     });
 
+    const rawBrandRouter = express.Router();
+    const brandRoutes = createBrandRoutes({
+        router: rawBrandRouter,
+        controller: brandController,
+        authenticate,
+        authorizeRoles,
+        upload,
+        asyncHandler,
+    });
+
+    const rawBrandRequestRouter = express.Router();
+    const brandRequestRoutes = createBrandRequestRoutes({
+        router: rawBrandRequestRouter,
+        brandRequestController,
+        authenticate,
+        authorizeRoles,
+        asyncHandler,
+    });
+
     const rawAdminOrderRouter = express.Router();
     const adminOrderRoutes = createAdminOrderRoutes({
         router: rawAdminOrderRouter,
@@ -1056,6 +1112,12 @@ export const createApp = async ({ env, dbManager }) =>
 
     // Mount product moderation management pathways
     app.use(productModerationRoutes);
+
+    // Mount brand management pathways
+    app.use(brandRoutes);
+
+    // Mount brand request management pathways
+    app.use(brandRequestRoutes);
 
     // Mount admin order management pathways
     app.use(adminOrderRoutes);

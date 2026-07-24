@@ -64,6 +64,11 @@ const CartItemCard: React.FC<CartItemProps> = ({ item }) =>
                         if (!matchedVariant) return null;
                         const attrs = matchedVariant.attributes;
                         const parts: string[] = [];
+                        if (attrs.dynamic?.length) {
+                            attrs.dynamic.forEach((d) => {
+                                if (d.value) parts.push(`${d.name}: ${d.value}`);
+                            });
+                        }
                         if (attrs.color) parts.push(`Color: ${attrs.color}`);
                         if (attrs.size) parts.push(`Size: ${attrs.size}`);
                         if (attrs.storage) parts.push(`Storage: ${attrs.storage}`);

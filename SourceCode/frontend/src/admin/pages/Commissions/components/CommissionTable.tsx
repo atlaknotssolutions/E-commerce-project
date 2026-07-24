@@ -51,8 +51,8 @@ const CommissionTable: React.FC<CommissionTableProps> = ({
 
     return (
         <Paper elevation={1}>
-            <TableContainer>
-                <Table>
+            <TableContainer sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                <Table stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell><strong>Order ID</strong></TableCell>

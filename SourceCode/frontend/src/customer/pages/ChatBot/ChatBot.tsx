@@ -75,8 +75,8 @@ const ChatBot = ({ handleClose, productId }: ChatBotProps) => {
         {/* Header */}
         <div className="h-[12%] flex justify-between items-center px-5 bg-slate-100 rounded-t-lg">
           <div className="flex items-center gap-3">
-            <h1 className="logo">{branding.appShortName}</h1>
-            <p>Assistant</p>
+            <img src={branding.logoUrlTransparent} alt={branding.appName} className="h-7 w-auto object-contain" />
+            <p className="text-gray-500 text-sm font-medium">Assistant</p>
           </div>
 
           <IconButton onClick={handleClose} color="primary">

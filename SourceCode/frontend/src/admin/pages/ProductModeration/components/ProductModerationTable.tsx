@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
@@ -16,7 +16,6 @@ import {
     Box,
     Avatar,
     TablePagination,
-    styled,
     CircularProgress,
     Alert,
 } from '@mui/material';
@@ -50,25 +49,7 @@ import {
     UnfeatureDialog,
     DeleteDialog,
 } from './ActionDialogs';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-    [`&.${tableCellClasses.head}`]: {
-        backgroundColor: theme.palette.common.black,
-        color: theme.palette.common.white,
-    },
-    [`&.${tableCellClasses.body}`]: {
-        fontSize: 14,
-    },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-    '&:nth-of-type(odd)': {
-        backgroundColor: theme.palette.action.hover,
-    },
-    '&:last-child td, &:last-child th': {
-        border: 0,
-    },
-}));
+import { StyledTableCell, StyledTableRow, LoadingRow, EmptyRow } from '../../../../components/shared/Table';
 
 const STATUS_TABS = [
     { label: 'Pending', value: 'pending' },
@@ -337,8 +318,8 @@ const ProductModerationTable: React.FC = () =>
             )}
 
             {/* Data Table */}
-            <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 1100 }} aria-label="product moderation table">
+            <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                <Table sx={{ minWidth: 1100 }} aria-label="product moderation table" stickyHeader>
                     <TableHead>
                         <TableRow>
                             <StyledTableCell>Product</StyledTableCell>
@@ -354,17 +335,9 @@ const ProductModerationTable: React.FC = () =>
                     </TableHead>
                     <TableBody>
                         {loading && currentProducts.length === 0 ? (
-                            <TableRow>
-                                <StyledTableCell colSpan={9} align="center" sx={{ py: 6 }}>
-                                    <CircularProgress />
-                                </StyledTableCell>
-                            </TableRow>
+                            <LoadingRow colSpan={9} />
                         ) : currentProducts.length === 0 ? (
-                            <TableRow>
-                                <StyledTableCell colSpan={9} align="center" sx={{ py: 6 }}>
-                                    No products found.
-                                </StyledTableCell>
-                            </TableRow>
+                            <EmptyRow colSpan={9} message="No products found." />
                         ) : (
                             currentProducts.map((product) => (
                                 <StyledTableRow key={product._id}>

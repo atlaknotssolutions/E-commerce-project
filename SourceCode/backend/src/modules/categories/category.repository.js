@@ -63,13 +63,14 @@ export const createCategoryRepository = ({ Category }) =>
      * Persists a new category node under database.
      * Supports array-wrap formats to execute flawlessly within atomic transaction sessions.
      */
-    const createCategory = async ({ name, categoryId, parentCategory = null, level }, options = {}) =>
+    const createCategory = async ({ name, categoryId, parentCategory = null, level, supportedAttributes = [] }, options = {}) =>
     {
         const [newCategory] = await Category.create([{
             name,
             categoryId: categoryId.toLowerCase().trim(),
             parentCategory,
             level,
+            supportedAttributes,
         }], options);
 
         return newCategory ? newCategory.toObject() : null;

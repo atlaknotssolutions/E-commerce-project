@@ -1,5 +1,5 @@
 import React from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import AdminDashboardPage from '../admin/pages/Dashboard/AdminDashboardPage'
 import SellersTable from '../admin/pages/sellers/SellersTable'
 import AdminCouponPage from '../admin/pages/Coupon/AdminCouponPage'
@@ -18,11 +18,12 @@ import Reports from '../admin/pages/Reports/Reports'
 import Notifications from '../admin/pages/Notifications/Notifications'
 import SystemSettings from '../admin/pages/SystemSettings/SystemSettings'
 import AdminCommissions from '../admin/pages/Commissions/Commissions'
+import AdminBrandPage from '../admin/pages/Brands/AdminBrandPage'
 
 const AdminRoutes = () => {
   return (
     <Routes>
-    <Route path='/' element={<SellersTable/>}/>
+    <Route path='/' element={<Navigate to="/admin/dashboard" replace />}/>
     <Route path='/dashboard' element={<AdminDashboardPage/>}/>
     <Route path='/coupon' element={<AdminCouponPage/>}/>
     <Route path='/home-grid' element={<GridTable/>}/>
@@ -38,9 +39,10 @@ const AdminRoutes = () => {
     <Route path='/reports' element={<Reports/>}/>
     <Route path='/notifications' element={<Notifications/>}/>
     <Route path='/settings' element={<SystemSettings/>}/>
-    <Route path='/commissions' element={<AdminCommissions/>}/>
-    <Route path='/account' element={<AdminAccount/>}/>
-  </Routes>
+      <Route path='/commissions' element={<AdminCommissions/>}/>
+      <Route path='/brands' element={<AdminBrandPage/>}/>
+      <Route path='/account' element={<AdminAccount/>}/>
+    </Routes>
   )
 }
 

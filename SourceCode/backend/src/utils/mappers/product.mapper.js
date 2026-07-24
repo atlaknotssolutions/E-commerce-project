@@ -8,6 +8,7 @@ export const mapCategory = (category) =>
         categoryId: category.categoryId,
         level: category.level,
         parentCategory: mapCategory(category.parentCategory),
+        supportedAttributes: category.supportedAttributes || [],
     };
 };
 
@@ -15,10 +16,19 @@ const mapVariant = (variant) =>
 {
     if (!variant) return null;
 
+    const attrs = variant.attributes || {};
+
     return {
         id: variant._id ? variant._id.toString() : variant.id,
         sku: variant.sku,
-        attributes: variant.attributes || {},
+        attributes: {
+            color: attrs.color,
+            size: attrs.size,
+            storage: attrs.storage,
+            ram: attrs.ram,
+            custom: attrs.custom || [],
+            dynamic: attrs.dynamic || [],
+        },
         price: variant.price,
         mrpPrice: variant.mrpPrice,
         discountPercent: variant.discountPercent || 0,
@@ -35,6 +45,15 @@ export const mapProduct = (product) =>
 {
     if (!product) return null;
 
+    const mappedVariants = product.variants
+        ? product.variants.map(mapVariant)
+        : [];
+
+    const activeVariants = mappedVariants.filter((v) => v && v.isActive);
+    const prices = activeVariants.length > 0
+        ? activeVariants.map((v) => v.price).filter((p) => typeof p === 'number' && p > 0)
+        : [];
+
     return {
         ...product,
 
@@ -49,9 +68,11 @@ export const mapProduct = (product) =>
             }
             : null,
 
-        variants: product.variants
-            ? product.variants.map(mapVariant)
-            : [],
+        variants: mappedVariants,
+
+        minPrice: prices.length > 0 ? Math.min(...prices) : product.sellingPrice || 0,
+        maxPrice: prices.length > 0 ? Math.max(...prices) : product.sellingPrice || 0,
+        variantCount: activeVariants.length,
     };
 };
 

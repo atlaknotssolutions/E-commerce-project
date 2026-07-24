@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
@@ -18,7 +18,6 @@ import {
     Box,
     Avatar,
     TablePagination,
-    styled,
     CircularProgress,
     Alert,
 } from '@mui/material';
@@ -33,25 +32,7 @@ import {
     clearSelectedUser,
 } from '../../../../Redux Toolkit/Admin/adminUserSlice';
 import UserDetailDialog from './UserDetailDialog';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-    [`&.${tableCellClasses.head}`]: {
-        backgroundColor: theme.palette.common.black,
-        color: theme.palette.common.white,
-    },
-    [`&.${tableCellClasses.body}`]: {
-        fontSize: 14,
-    },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-    '&:nth-of-type(odd)': {
-        backgroundColor: theme.palette.action.hover,
-    },
-    '&:last-child td, &:last-child th': {
-        border: 0,
-    },
-}));
+import { StyledTableCell, StyledTableRow, LoadingRow, EmptyRow } from '../../../../components/shared/Table';
 
 const ACCOUNT_STATUSES = [
     { status: 'PENDING_VERIFICATION', title: 'Pending Verification' },
@@ -248,8 +229,8 @@ const UsersTable: React.FC = () =>
             )}
 
             {/* Data Table */}
-            <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 900 }} aria-label="admin users table">
+            <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                <Table sx={{ minWidth: 900 }} aria-label="admin users table" stickyHeader>
                     <TableHead>
                         <TableRow>
                             <StyledTableCell>User</StyledTableCell>
@@ -263,17 +244,9 @@ const UsersTable: React.FC = () =>
                     </TableHead>
                     <TableBody>
                         {loading && users.length === 0 ? (
-                            <TableRow>
-                                <StyledTableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                                    <CircularProgress />
-                                </StyledTableCell>
-                            </TableRow>
+                            <LoadingRow colSpan={7} />
                         ) : users.length === 0 ? (
-                            <TableRow>
-                                <StyledTableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                                    No users found.
-                                </StyledTableCell>
-                            </TableRow>
+                            <EmptyRow colSpan={7} message="No users found." />
                         ) : (
                             users.map((user) => (
                                 <StyledTableRow key={user.id}>

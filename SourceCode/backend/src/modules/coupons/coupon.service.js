@@ -1,3 +1,5 @@
+import { toCartDto } from '../../utils/mappers/cart.mapper.js';
+
 /**
  * Pure function-based factory representing the Coupon Business Service layer.
  * Coordinates dynamic checkout discounts applying and administrative campaign assets controls.
@@ -119,11 +121,10 @@ export const createCouponService = ({
         const finalCart = await cartRepository.updateCart({ userId, cartData: updatedCartPayload });
 
         // 9. Update User schema: Lock coupon ID inside history array to prevent re-use
-        // (We will update the user's usedCoupons array using Mongoose direct operations or standard repo update if exists)
         user.usedCoupons.push(coupon._id);
-        await User.findByIdAndUpdate(userId, { usedCoupons: user.usedCoupons }); // Direct atomic updates
+        await userRepository.updateUsedCoupons({ userId, usedCoupons: user.usedCoupons });
 
-        return finalCart;
+        return toCartDto(finalCart);
     };
 
     /**
@@ -143,7 +144,7 @@ export const createCouponService = ({
 
         if (!cart.couponCode)
         {
-            return cart; // Returns untouched if no coupon is active
+            return toCartDto(cart); // Returns untouched if no coupon is active
         }
 
         // 1. Locate applied coupon ID using code string
@@ -158,7 +159,7 @@ export const createCouponService = ({
                 user.usedCoupons = user.usedCoupons.filter(
                     (id) => id.toString() !== coupon._id.toString()
                 );
-                await User.findByIdAndUpdate(userId, { usedCoupons: user.usedCoupons });
+                await userRepository.updateUsedCoupons({ userId, usedCoupons: user.usedCoupons });
             }
         }
 
@@ -177,7 +178,7 @@ export const createCouponService = ({
             discount: Math.round(((cart.totalMrpPrice - originalSellingPriceSum) / cart.totalMrpPrice) * 100),
         };
 
-        return cartRepository.updateCart({ userId, cartData: resetCartPayload });
+        return toCartDto(await cartRepository.updateCart({ userId, cartData: resetCartPayload }));
     };
 
     /**

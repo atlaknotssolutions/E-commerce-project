@@ -14,9 +14,10 @@ const DrawerList = ({toggleDrawer}:any) => {
     <List>
 
       <ListItem>
-        <ListItemButton>
-
-          <ListItemText primary={<h1 className='logo text-2xl text-[#00927c]'>{branding.appShortName}</h1>} />
+        <ListItemButton onClick={() => toggleDrawer(false)()}>
+          <ListItemText primary={
+            <img src={branding.logoUrlTransparent} alt={branding.appName} className="h-8 w-auto object-contain" />
+          } />
         </ListItemButton>
       </ListItem>
       <Divider />

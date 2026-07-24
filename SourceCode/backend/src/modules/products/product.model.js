@@ -21,14 +21,13 @@ const ProductImageSchema = new mongoose.Schema({
 });
 
 /**
- * Subdocument schema for a single product variant.
- * Each variant represents a purchasable combination of attributes (Color, Size, Storage, etc.)
- * with its own SKU, pricing, stock, images, and status.
+ * Subdocument schema for a single attribute key-value pair on a variant.
+ * Supports any category-specific attribute dynamically (Color, Size, Material, RAM, etc.)
  */
-const VariantAttributeSchema = new mongoose.Schema({
-    key: {
+const VariantAttributeEntrySchema = new mongoose.Schema({
+    name: {
         type: String,
-        required: [true, 'Attribute key is required'],
+        required: [true, 'Attribute name is required'],
         trim: true,
     },
     value: {
@@ -38,6 +37,11 @@ const VariantAttributeSchema = new mongoose.Schema({
     },
 }, { _id: false });
 
+/**
+ * Subdocument schema for a single product variant.
+ * Each variant represents a purchasable combination of attributes
+ * with its own SKU, pricing, stock, images, and status.
+ */
 const ProductVariantSchema = new mongoose.Schema({
     sku: {
         type: String,
@@ -50,7 +54,11 @@ const ProductVariantSchema = new mongoose.Schema({
         storage: { type: String, trim: true },
         ram: { type: String, trim: true },
         custom: {
-            type: [VariantAttributeSchema],
+            type: [VariantAttributeEntrySchema],
+            default: [],
+        },
+        dynamic: {
+            type: [VariantAttributeEntrySchema],
             default: [],
         },
     },
@@ -363,6 +371,7 @@ ProductSchema.pre('validate', function (next)
                     storage: undefined,
                     ram: undefined,
                     custom: [],
+                    dynamic: [],
                 },
                 price: this.sellingPrice || 0,
                 mrpPrice: this.mrpPrice || 0,

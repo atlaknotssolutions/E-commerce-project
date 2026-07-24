@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
@@ -15,7 +15,6 @@ import {
     Tab,
     Box,
     TablePagination,
-    styled,
     CircularProgress,
     Alert,
 } from '@mui/material';
@@ -33,27 +32,9 @@ import {
     clearSelectedOrder,
 } from '../../../../Redux Toolkit/Admin/adminOrderSlice';
 import { AdminOrder } from '../../../../types/adminOrderTypes';
+import { StyledTableCell, StyledTableRow, LoadingRow, EmptyRow } from '../../../../components/shared/Table';
 import OrderDetailDialog from './OrderDetailDialog';
 import UpdateStatusDialog from './UpdateStatusDialog';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-    [`&.${tableCellClasses.head}`]: {
-        backgroundColor: theme.palette.common.black,
-        color: theme.palette.common.white,
-    },
-    [`&.${tableCellClasses.body}`]: {
-        fontSize: 14,
-    },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-    '&:nth-of-type(odd)': {
-        backgroundColor: theme.palette.action.hover,
-    },
-    '&:last-child td, &:last-child th': {
-        border: 0,
-    },
-}));
 
 const STATUS_TABS = [
     { label: 'All', value: '' },
@@ -262,8 +243,8 @@ const OrderTable: React.FC = () =>
             )}
 
             {/* Data Table */}
-            <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 1100 }} aria-label="admin order table">
+            <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                <Table sx={{ minWidth: 1100 }} aria-label="admin order table" stickyHeader>
                     <TableHead>
                         <TableRow>
                             <StyledTableCell>Order ID</StyledTableCell>
@@ -279,17 +260,9 @@ const OrderTable: React.FC = () =>
                     </TableHead>
                     <TableBody>
                         {loading && orders.length === 0 ? (
-                            <TableRow>
-                                <StyledTableCell colSpan={9} align="center" sx={{ py: 6 }}>
-                                    <CircularProgress />
-                                </StyledTableCell>
-                            </TableRow>
+                            <LoadingRow colSpan={9} />
                         ) : orders.length === 0 ? (
-                            <TableRow>
-                                <StyledTableCell colSpan={9} align="center" sx={{ py: 6 }}>
-                                    No orders found.
-                                </StyledTableCell>
-                            </TableRow>
+                            <EmptyRow colSpan={9} message="No orders found." />
                         ) : (
                             orders.map((order) => (
                                 <StyledTableRow key={order._id}>

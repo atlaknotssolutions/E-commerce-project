@@ -111,35 +111,17 @@
 import * as React from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { Button, IconButton, styled } from '@mui/material';
+import { Button, IconButton } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
 import { fetchSellerProducts } from '../../../Redux Toolkit/Seller/sellerProductSlice';
 import EditIcon from '@mui/icons-material/Edit';
-import { useNavigate } from 'react-router-dom'; // 1. Router Navigation Import Kiya
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.common.black,
-    color: theme.palette.common.white,
-  },
-  [`&.${tableCellClasses.body}`]: {
-    fontSize: 14,
-  },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-  '&:nth-of-type(odd)': {
-    backgroundColor: theme.palette.action.hover,
-  },
-  '&:last-child td, &:last-child th': {
-    border: 0,
-  },
-}));
+import { useNavigate } from 'react-router-dom';
+import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
 
 export default function ProductTable() {
   const { sellerProduct } = useAppSelector(store => store);
@@ -155,8 +137,8 @@ export default function ProductTable() {
     <>
       <h1 className='pb-5 font-bold text-xl'>Products Catalog</h1>
 
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 700 }} aria-label="customized table">
+      <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+        <Table stickyHeader sx={{ minWidth: 700 }} aria-label="customized table">
           <TableHead>
             <TableRow>
               <StyledTableCell>Image</StyledTableCell>

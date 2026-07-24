@@ -7,6 +7,7 @@ import {
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { Commission, COMMISSION_STATUS_LABELS } from '../../../../types/adminCommissionTypes';
+import { StyledTableCell, StyledTableRow } from '../../../../components/shared/Table';
 
 interface CommissionTableProps {
     commissions: Commission[];
@@ -34,54 +35,54 @@ const CommissionTable: React.FC<CommissionTableProps> = ({
 
     return (
         <Paper elevation={1}>
-            <TableContainer>
-                <Table>
+            <TableContainer sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                <Table stickyHeader>
                     <TableHead>
                         <TableRow>
-                            <TableCell><strong>Order ID</strong></TableCell>
-                            <TableCell align="right"><strong>Order Amount</strong></TableCell>
-                            <TableCell align="right"><strong>Commission</strong></TableCell>
-                            <TableCell align="right"><strong>GST</strong></TableCell>
-                            <TableCell align="right"><strong>You Receive</strong></TableCell>
-                            <TableCell><strong>Status</strong></TableCell>
-                            <TableCell><strong>Date</strong></TableCell>
-                            <TableCell align="center"><strong>Actions</strong></TableCell>
+                            <StyledTableCell><strong>Order ID</strong></StyledTableCell>
+                            <StyledTableCell align="right"><strong>Order Amount</strong></StyledTableCell>
+                            <StyledTableCell align="right"><strong>Commission</strong></StyledTableCell>
+                            <StyledTableCell align="right"><strong>GST</strong></StyledTableCell>
+                            <StyledTableCell align="right"><strong>You Receive</strong></StyledTableCell>
+                            <StyledTableCell><strong>Status</strong></StyledTableCell>
+                            <StyledTableCell><strong>Date</strong></StyledTableCell>
+                            <StyledTableCell align="center"><strong>Actions</strong></StyledTableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {commissions.map((c) => (
-                            <TableRow key={c.id || c._id} hover>
-                                <TableCell>
+                            <StyledTableRow key={c.id || c._id} hover>
+                                <StyledTableCell>
                                     <Typography variant="body2" fontWeight={500}>{c.orderId}</Typography>
-                                </TableCell>
-                                <TableCell align="right">₹{c.orderAmount.toLocaleString()}</TableCell>
-                                <TableCell align="right">
+                                </StyledTableCell>
+                                <StyledTableCell align="right">₹{c.orderAmount.toLocaleString()}</StyledTableCell>
+                                <StyledTableCell align="right">
                                     <Typography variant="body2" color="error.main">
                                         ₹{c.commissionAmount.toLocaleString()}
                                     </Typography>
-                                </TableCell>
-                                <TableCell align="right">
+                                </StyledTableCell>
+                                <StyledTableCell align="right">
                                     <Typography variant="body2" color="warning.main">
                                         ₹{c.gstAmount.toLocaleString()}
                                     </Typography>
-                                </TableCell>
-                                <TableCell align="right">
+                                </StyledTableCell>
+                                <StyledTableCell align="right">
                                     <Typography variant="body2" color="success.main" fontWeight={600}>
                                         ₹{c.sellerAmount.toLocaleString()}
                                     </Typography>
-                                </TableCell>
-                                <TableCell>
+                                </StyledTableCell>
+                                <StyledTableCell>
                                     <Chip label={COMMISSION_STATUS_LABELS[c.status]} color={getStatusColor(c.status) as any} size="small" />
-                                </TableCell>
-                                <TableCell>
+                                </StyledTableCell>
+                                <StyledTableCell>
                                     <Typography variant="caption">{new Date(c.calculatedAt).toLocaleDateString()}</Typography>
-                                </TableCell>
-                                <TableCell align="center">
+                                </StyledTableCell>
+                                <StyledTableCell align="center">
                                     <IconButton size="small" onClick={(e) => { setAnchorEl(e.currentTarget); setSelected(c); }}>
                                         <MoreVertIcon />
                                     </IconButton>
-                                </TableCell>
-                            </TableRow>
+                                </StyledTableCell>
+                            </StyledTableRow>
                         ))}
                     </TableBody>
                 </Table>

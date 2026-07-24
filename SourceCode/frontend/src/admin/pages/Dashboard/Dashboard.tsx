@@ -1,14 +1,17 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import AdminRoutes from '../../../routes/AdminRoutes'
 // import DrawerList from './DrawerList'
 import Navbar from '../../../admin seller/components/navbar/Navbar'
 import AdminDrawerList from '../../components/DrawerList'
 import { Alert, Snackbar } from '@mui/material'
 import { useAppSelector } from '../../../Redux Toolkit/Store'
+import { useLocation } from 'react-router-dom'
 
 const AdminDashboard = () => {
   const { deal,admin } = useAppSelector(store => store)
   const [snackbarOpen, setOpenSnackbar] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
 
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
@@ -18,6 +21,13 @@ const AdminDashboard = () => {
       setOpenSnackbar(true)
     }
   }, [deal.dealCreated, deal.dealUpdated, deal.error,admin.categoryUpdated])
+
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
+
   return (
     <>
       <div className="min-h-screen">
@@ -26,7 +36,7 @@ const AdminDashboard = () => {
           <div className="hidden lg:block h-full">
             <AdminDrawerList />
           </div>
-          <div className="p-10 w-full lg:w-[80%]  overflow-y-auto">
+          <div ref={contentRef} className="p-10 w-full lg:w-[80%] overflow-y-auto max-h-[calc(100vh-10vh)]">
             <AdminRoutes />
           </div>
         </section>

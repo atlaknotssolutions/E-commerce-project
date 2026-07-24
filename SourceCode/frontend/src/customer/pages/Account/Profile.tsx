@@ -11,11 +11,10 @@ import { performLogout } from '../../../Redux Toolkit/Customer/AuthSlice'
 import Addresses from './Adresses'
 
 const menu = [
-    { name: "orders", path: "/account/orders" },
+    { name: "Orders", path: "/account/orders" },
     { name: "My Reviews", path: "/account/reviews" },
-    { name: "profile", path: "/account/profile" },
+    { name: "Profile", path: "/account/profile" },
     { name: "Saved Cards", path: "/account/saved-card" },
-
     { name: "Addresses", path: "/account/addresses" },
     { name: "Logout", path: "/" }
 ]
@@ -59,7 +58,7 @@ const Profile = () => {
 
                     {menu.map((item, index) => <div
                         onClick={() => handleClick(item)}
-                        className={`${menu.length - 1 !== index ? "border-b" : ""} ${item.path == location.pathname ? "bg-primary-color text-white" : ""} px-5 py-3 rounded-md hover:bg-teal-500 hover:text-white cursor-pointer `}>
+                        className={`${menu.length - 1 !== index ? "border-b" : ""} ${item.path !== "/" && location.pathname.startsWith(item.path) ? "bg-primary-color text-white" : item.path === "/" && location.pathname === "/" ? "bg-primary-color text-white" : ""} px-5 py-3 rounded-md hover:bg-teal-500 hover:text-white cursor-pointer `}>
                         <p>{item.name}</p>
                     </div>)}
 

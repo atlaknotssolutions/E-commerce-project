@@ -1,4 +1,4 @@
-import { Box, Button, IconButton, Modal, Paper, styled, Table, TableBody, TableCell, tableCellClasses, TableContainer, TableHead, TableRow } from '@mui/material'
+import { Box, Button, IconButton, Modal, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
 import React, { useEffect, useState } from 'react'
 // import {Deal} from '../../../types/dealTypes';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
@@ -8,26 +8,7 @@ import UpdateDealForm from './UpdateDealForm';
 import CreateDealForm from './CreateDealForm';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Delete } from '@mui/icons-material';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.common.black,
-    color: theme.palette.common.white,
-  },
-  [`&.${tableCellClasses.body}`]: {
-    fontSize: 14,
-  },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-  "&:nth-of-type(odd)": {
-    backgroundColor: theme.palette.action.hover,
-  },
-  // hide last border
-  "&:last-child td, &:last-child th": {
-    border: 0,
-  },
-}));
+import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
 
 const style = {
   position: "absolute",
@@ -62,8 +43,8 @@ const DealsTable = () => {
   return (
     <>
 
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 700 }} aria-label="customized table">
+      <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+        <Table stickyHeader sx={{ minWidth: 700 }} aria-label="customized table">
           <TableHead>
             <TableRow>
               <StyledTableCell>No</StyledTableCell>

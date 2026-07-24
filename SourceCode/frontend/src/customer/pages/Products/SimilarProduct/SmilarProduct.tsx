@@ -1,6 +1,4 @@
 import React from 'react'
-import ProductCard from '../ProductCard/ProductCard'
-import { images } from '../Products'
 import SimilarProductCard from './SimilarProductCard'
 import { useAppSelector } from '../../../../Redux Toolkit/Store'
 import { Product } from '../../../../types/productTypes'

@@ -40,6 +40,10 @@ import adminNotificationSlice from "./Admin/adminNotificationSlice";
 import adminSystemSettingsSlice from "./Admin/adminSystemSettingsSlice";
 import adminCommissionSlice from "./Admin/adminCommissionSlice";
 import sellerCommissionSlice from "./Seller/sellerCommissionSlice";
+import adminBrandSlice from "./Admin/adminBrandSlice";
+import adminBrandRequestSlice from "./Admin/adminBrandRequestSlice";
+import sellerBrandRequestSlice from "./Seller/sellerBrandRequestSlice";
+import publicBrandSlice from "./Customer/publicBrandSlice";
 
 const rootReducer = combineReducers({
   
@@ -54,6 +58,7 @@ const rootReducer = combineReducers({
   wishlist: WishlistSlice,
   aiChatBot: AiChatBotSlice,
   homePage:CustomerSlice,
+  publicBrand: publicBrandSlice,
 
   // seller
   sellers: sellerSlice,
@@ -64,6 +69,7 @@ const rootReducer = combineReducers({
   transaction: transactionSlice,
   revenueChart: revenueChartSlice,
   sellerDashboard: sellerDashboardSlice,
+  sellerBrandRequest: sellerBrandRequestSlice,
 
   // admin
   adminCoupon:AdminCouponSlice,
@@ -74,6 +80,8 @@ const rootReducer = combineReducers({
   sellerCategoryRequest: SellerCategoryRequestSlice,
   sellerReturn: sellerReturnSlice,
   deal:DealSlice,
+  adminBrand: adminBrandSlice,
+  adminBrandRequest: adminBrandRequestSlice,
 
   // admin dashboard
   adminDashboard: adminDashboardSlice,

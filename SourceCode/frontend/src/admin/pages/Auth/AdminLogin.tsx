@@ -7,6 +7,7 @@ import { sendLoginOtp, verifyLoginOtp } from '../../../Redux Toolkit/Seller/sell
 import { useNavigate } from 'react-router-dom';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { sendLoginSignupOtp, signin } from '../../../Redux Toolkit/Customer/AuthSlice';
+import { fetchUserProfile } from '../../../Redux Toolkit/Customer/UserSlice';
 import OTPInput from '../../../customer/components/OtpFild/OTPInput';
 
 const AdminLoginForm = () => {
@@ -25,10 +26,23 @@ const AdminLoginForm = () => {
             otp: ''
         },
 
-        onSubmit: (values: any) => {
-            // Handle form submission
-            dispatch(signin({ email: values.email, otp }))
-            console.log('Form data:', values);
+        onSubmit: async (values: any) => {
+            const loginResult = await dispatch(signin({ email: values.email, otp }));
+
+            if (!signin.fulfilled.match(loginResult)) return;
+
+            const jwt = localStorage.getItem("jwt");
+            if (!jwt) return;
+
+            const profileResult = await dispatch(fetchUserProfile({ jwt }));
+
+            if (fetchUserProfile.fulfilled.match(profileResult)) {
+                if (profileResult.payload.role === "ROLE_ADMIN") {
+                    navigate("/admin/dashboard");
+                } else {
+                    navigate("/");
+                }
+            }
         }
     });
 

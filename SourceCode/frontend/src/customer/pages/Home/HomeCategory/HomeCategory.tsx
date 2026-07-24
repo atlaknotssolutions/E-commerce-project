@@ -6,7 +6,7 @@ const HomeCategory = () => {
   const { homePage } = useAppSelector((store) => store);
 
   return (
-    <div className='flex justify-center gap-7 flex-wrap'>
+    <div className='flex justify-center gap-6 lg:gap-10 flex-wrap'>
       {homePage.homePageData?.shopByCategories.map((item) => (
         <HomeCategoryCard
           key={item.id ?? item.categoryId}

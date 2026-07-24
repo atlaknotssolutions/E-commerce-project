@@ -178,6 +178,7 @@ export const createProductController = ({ productService }) =>
 
     /**
      * Public Catalogue Listings Processor.
+     * Extracts standard filters plus dynamic attribute filters (attr_* prefix).
      */
     const getAllProducts = async (req, res) =>
     {
@@ -190,9 +191,20 @@ export const createProductController = ({ productService }) =>
             maxPrice,
             minDiscount,
             sort,
+            stock,
             pageNumber,
             sizeLimit
         } = req.query;
+
+        // Extract dynamic attribute filters (attr_color, attr_size, etc.)
+        const dynamicFilters = {};
+        for (const [key, value] of Object.entries(req.query))
+        {
+            if (key.startsWith('attr_') && value)
+            {
+                dynamicFilters[key.substring(5)] = value;
+            }
+        }
 
         const paginatedOutcome = await productService.getAllProducts({
             category: category || null,
@@ -203,11 +215,32 @@ export const createProductController = ({ productService }) =>
             maxPrice: maxPrice ? parseFloat(maxPrice) : Number.MAX_SAFE_INTEGER,
             minDiscount: minDiscount ? parseInt(minDiscount, 10) : 0,
             sort: sort || 'newest',
+            stock: stock || null,
             pageNumber: pageNumber ? parseInt(pageNumber, 10) : 0,
             sizeLimit: sizeLimit ? parseInt(sizeLimit, 10) : 10,
+            dynamicFilters,
         });
 
         res.status(200).json(paginatedOutcome);
+    };
+
+    /**
+     * Filter Metadata Controller.
+     * Returns available attribute values, price range, and brands for a given category.
+     * Maps exactly to: GET /products/filters?category=...
+     */
+    const getFilterMetadata = async (req, res) =>
+    {
+        const { category } = req.query;
+
+        if (!category)
+        {
+            return res.status(200).json({ attributes: [], priceRange: { min: 0, max: 0 }, brands: [] });
+        }
+
+        const metadata = await productService.getFilterMetadata(category);
+
+        res.status(200).json(metadata);
     };
 
     /**
@@ -414,8 +447,71 @@ export const createProductController = ({ productService }) =>
         res.status(200).json(updatedProduct);
     };
 
+    // ==========================================
+    // BULK VARIANT OPERATIONS
+    // ==========================================
+
+    /**
+     * Bulk update pricing for multiple variants.
+     */
+    const bulkUpdateVariantPricing = async (req, res) =>
+    {
+        const { id: productId } = req.params;
+        const sellerId = req.user.id;
+        const { variantIds, priceData } = req.body;
+
+        const updatedProduct = await productService.bulkUpdateVariantPricing({
+            productId,
+            variantIds,
+            priceData,
+            sellerId,
+        });
+
+        res.status(200).json(updatedProduct);
+    };
+
+    /**
+     * Bulk update stock for multiple variants.
+     */
+    const bulkUpdateVariantInventory = async (req, res) =>
+    {
+        const { id: productId } = req.params;
+        const sellerId = req.user.id;
+        const { variantIds, quantity, operation } = req.body;
+
+        const updatedProduct = await productService.bulkUpdateVariantInventory({
+            productId,
+            variantIds,
+            quantity,
+            operation,
+            sellerId,
+        });
+
+        res.status(200).json(updatedProduct);
+    };
+
+    /**
+     * Bulk update active/inactive status for multiple variants.
+     */
+    const bulkUpdateVariantStatus = async (req, res) =>
+    {
+        const { id: productId } = req.params;
+        const sellerId = req.user.id;
+        const { variantIds, isActive } = req.body;
+
+        const updatedProduct = await productService.bulkUpdateVariantStatus({
+            productId,
+            variantIds,
+            isActive,
+            sellerId,
+        });
+
+        res.status(200).json(updatedProduct);
+    };
+
     return Object.freeze({
         getAllProducts,
+        getFilterMetadata,
         searchProducts,
         getProductById,
         getSellerProducts,
@@ -426,5 +522,8 @@ export const createProductController = ({ productService }) =>
         updateVariant,
         removeVariant,
         updateVariantStock,
+        bulkUpdateVariantPricing,
+        bulkUpdateVariantInventory,
+        bulkUpdateVariantStatus,
     });
 };

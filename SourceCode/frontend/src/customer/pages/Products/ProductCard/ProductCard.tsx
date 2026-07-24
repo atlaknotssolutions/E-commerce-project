@@ -2,7 +2,7 @@ import React, { useState, useEffect, MouseEvent } from "react";
 import "./ProductCard.css";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import { teal } from "@mui/material/colors";
-import { Box, Button, IconButton, Modal } from "@mui/material";
+import { Box, Button, Chip, IconButton, Modal } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { Product } from "../../../../types/productTypes";
 import {
@@ -141,10 +141,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ item }) => {
                         <p className="">{item.title}</p>
                     </div>
                     <div className="price flex items-center gap-3 ">
-                        <span className="font-semibold text-gray-800">
-                            {" "}
-                            ₹{item.sellingPrice}
-                        </span>
+                        {item.variantCount && item.variantCount > 1 && item.minPrice != null && item.maxPrice != null ? (
+                            <span className="font-semibold text-gray-800">
+                                ₹{item.minPrice} - ₹{item.maxPrice}
+                            </span>
+                        ) : (
+                            <span className="font-semibold text-gray-800">
+                                ₹{item.sellingPrice}
+                            </span>
+                        )}
                         <span className="text thin-line-through text-gray-400 ">
                             ₹{item.mrpPrice}
                         </span>
@@ -152,6 +157,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ item }) => {
                             {item.discountPercent}% off
                         </span>
                     </div>
+                    {item.variantCount != null && item.variantCount > 1 && (
+                        <Chip size="small" label={`${item.variantCount} Variants`} variant="outlined" sx={{ fontSize: "0.7rem", height: "20px" }} />
+                    )}
                 </div>
 
             </div>

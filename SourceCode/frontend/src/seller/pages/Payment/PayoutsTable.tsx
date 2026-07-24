@@ -4,6 +4,7 @@ import { fetchSellerOrders } from '../../../Redux Toolkit/Seller/sellerOrderSlic
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
 import { Order, OrderItem } from '../../../types/orderTypes';
 import { fetchPayoutsBySeller } from '../../../Redux Toolkit/Seller/payoutSlice';
+import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
 
 const PayoutsTable = () => {
   const [page, setPage] = React.useState(0);
@@ -18,21 +19,21 @@ const PayoutsTable = () => {
 
   return (
     <div>
-          <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 700 }} aria-label="customized table">
+          <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+        <Table stickyHeader sx={{ minWidth: 700 }} aria-label="customized table">
           <TableHead>
             <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Amount</TableCell>
-              <TableCell align='right'>Status</TableCell>
+              <StyledTableCell>Date</StyledTableCell>
+              <StyledTableCell>Amount</StyledTableCell>
+              <StyledTableCell align='right'>Status</StyledTableCell>
               {/* <TableCell align="right">Amount</TableCell> */}
             </TableRow>
           </TableHead>
           <TableBody>
             {sellerOrder.orders.map((item: Order) => (
-              <TableRow key={item.id}>
-                <TableCell align="left">{item.id}</TableCell>
-                <TableCell component="th" scope="row">
+              <StyledTableRow key={item.id}>
+                <StyledTableCell align="left">{item.id}</StyledTableCell>
+                <StyledTableCell component="th" scope="row">
                   <div className='flex gap-1 flex-wrap'>
                     {item.orderItems.map((orderItem: OrderItem) =>
                       <div key={orderItem.id} className='flex gap-5'>
@@ -46,7 +47,7 @@ const PayoutsTable = () => {
                       </div>
                     )}
                   </div>
-                </TableCell>
+                </StyledTableCell>
                 {/* <TableCell>
                   <div className='flex flex-col gap-y-2'>
                     <h1>{item.shippingAddress.name}</h1>
@@ -85,7 +86,7 @@ const PayoutsTable = () => {
                     )}
                   </Menu>
                 </TableCell> */}
-              </TableRow>
+              </StyledTableRow>
             ))}
           </TableBody>
         </Table>

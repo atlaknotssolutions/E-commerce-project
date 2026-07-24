@@ -66,42 +66,42 @@ const Navbar = () =>
   return (
     <Box
       sx={{ zIndex: 2 }}
-      className="sticky top-0 left-0 right-0 bg-white blur-bg bg-opacity-80 "
+      className="sticky top-0 left-0 right-0 blur-bg border-b border-gray-100/80"
     >
-      <div className="flex items-center justify-between px-5 lg:px-20 h-[70px] border-b">
-        <div className="flex items-center gap-9">
-          <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-4 lg:px-16 h-[68px]">
+        <div className="flex items-center gap-8">
+          <div className="flex items-center gap-1">
             {!isLarge && (
-              <IconButton onClick={() => toggleDrawer(true)()}>
-                <MenuIcon className="text-gray-700" sx={{ fontSize: 29 }} />
+              <IconButton onClick={() => toggleDrawer(true)()} size="small" sx={{ mr: 0.5 }}>
+                <MenuIcon className="text-gray-600" sx={{ fontSize: 24 }} />
               </IconButton>
             )}
-            <h1
+            <div
               onClick={() => navigate("/")}
-              className="logo cursor-pointer text-lg md:text-2xl  text-[#00927c]"
+              className="cursor-pointer flex items-center"
             >
-              {branding.appShortName}
-            </h1>
+              <img
+                src={branding.logoUrlTransparent}
+                alt={branding.appName}
+                className="h-[38px] w-auto object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = branding.logoUrl;
+                }}
+              />
+            </div>
           </div>
 
           {isLarge && (
-            <ul
-              className="flex it
-          ems-center font-medium text-gray-800 "
-            >
+            <ul className="flex items-center gap-1">
               {mainCategory.map((item) => (
                 <li
-                  onMouseLeave={() =>
-                  {
-                    // setSelectedCategory("")
-                    setShowSheet(false);
-                  }}
-                  onMouseEnter={() =>
-                  {
+                  key={item.categoryId}
+                  onMouseLeave={() => setShowSheet(false)}
+                  onMouseEnter={() => {
                     setSelectedCategory(item.categoryId);
                     setShowSheet(true);
                   }}
-                  className="mainCategory hover:text-[#00927c] cursor-pointer hover:border-b-2 h-[70px] px-4 border-[#00927c] flex items-center"
+                  className="cursor-pointer h-[68px] px-3 flex items-center text-[13px] font-semibold text-gray-600 hover:text-[#00927c] border-b-2 border-transparent hover:border-[#00927c] transition-all duration-200 uppercase tracking-wide"
                 >
                   {item.name}
                 </li>
@@ -110,56 +110,77 @@ const Navbar = () =>
           )}
         </div>
 
-        <div className="flex gap-1 lg:gap-6 items-center">
-          <IconButton onClick={() => navigate("/search-products")}>
-            <SearchIcon className="text-gray-700" sx={{ fontSize: 29 }} />
+        <div className="flex items-center gap-1 lg:gap-2">
+          <IconButton onClick={() => navigate("/search-products")} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
+            <SearchIcon className="text-gray-500" sx={{ fontSize: 22 }} />
           </IconButton>
 
           {user.user ? (
             <Button
               onClick={() => navigate(getAccountRoute(user.user?.role))}
-              className="flex items-center gap-2"
+              className="normal-case"
+              sx={{ textTransform: 'none', px: 1.5, minWidth: 'unset' }}
             >
               <Avatar
-                sx={{ width: 29, height: 29 }}
+                sx={{ width: 32, height: 32, bgcolor: '#00927c', fontSize: 14 }}
                 src={user.user?.profileImage || undefined}
               >
                 {!user.user?.profileImage && user.user?.fullName?.charAt(0).toUpperCase()}
               </Avatar>
-              <h1 className="font-semibold hidden lg:block">
+              <span className="font-semibold text-gray-600 hidden lg:block text-[13px] ml-1.5">
                 {user.user?.fullName?.split(" ")[0]}
-              </h1>
+              </span>
             </Button>
           ) : (
             <Button
               variant="contained"
-              startIcon={<AccountCircleIcon sx={{ fontSize: "12px" }} />}
+              startIcon={<AccountCircleIcon sx={{ fontSize: "15px" }} />}
               onClick={() => navigate("/login")}
+              size="small"
+              sx={{
+                backgroundColor: '#00927c',
+                textTransform: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '13px',
+                px: 2.5,
+                py: 0.7,
+                boxShadow: 'none',
+                '&:hover': { backgroundColor: '#007a6a', boxShadow: '0 2px 8px rgba(0,146,124,0.3)' }
+              }}
             >
               Login
             </Button>
           )}
 
-          <IconButton onClick={() => navigate("/wishlist")}>
-            <FavoriteBorder sx={{ fontSize: 29 }}
-              className="text-gray-700" />
+          <IconButton onClick={() => navigate("/wishlist")} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
+            <FavoriteBorder sx={{ fontSize: 22 }} className="text-gray-500" />
           </IconButton>
 
-          <IconButton onClick={() => navigate("/cart")}>
-            <Badge badgeContent={cart.cart?.cartItems?.length ?? 0} color="primary">
-              {/* <Badge badgeContent={cart.cart?.cartItems.length} color="primary"> */}
-              <AddShoppingCartIcon
-                sx={{ fontSize: 29 }}
-                className="text-gray-700"
-              />
+          <IconButton onClick={() => navigate("/cart")} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
+            <Badge badgeContent={cart.cart?.cartItems?.length ?? 0} color="primary" sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 18, minWidth: 18 } }}>
+              <AddShoppingCartIcon sx={{ fontSize: 22 }} className="text-gray-500" />
             </Badge>
           </IconButton>
 
           {isLarge && user.user?.role !== "ROLE_ADMIN" && user.user?.role !== "ROLE_SELLER" && (
             <Button
               onClick={becomeSellerClick}
-              startIcon={<StorefrontIcon />}
+              startIcon={<StorefrontIcon sx={{ fontSize: 18 }} />}
               variant="outlined"
+              size="small"
+              sx={{
+                borderColor: '#00927c',
+                color: '#00927c',
+                textTransform: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '13px',
+                ml: 1,
+                px: 2.5,
+                py: 0.6,
+                '&:hover': { borderColor: '#007a6a', backgroundColor: 'rgba(0,146,124,0.04)' }
+              }}
             >
               Become Seller
             </Button>
@@ -173,7 +194,7 @@ const Navbar = () =>
         <div
           onMouseLeave={() => setShowSheet(false)}
           onMouseEnter={() => setShowSheet(true)}
-          className="categorySheet absolute top-[4.41rem] left-20 right-20 "
+          className="categorySheet absolute top-[68px] left-16 right-16"
         >
           <CategorySheet
             setShowSheet={setShowSheet}

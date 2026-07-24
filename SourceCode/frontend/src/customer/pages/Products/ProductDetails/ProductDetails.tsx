@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import StarIcon from '@mui/icons-material/Star';
 import { teal } from '@mui/material/colors';
-import { Box, Button, Divider, Grid, IconButton, LinearProgress, Modal, Rating } from '@mui/material';
+import { Box, Button, Chip, Divider, Grid, IconButton, LinearProgress, Modal, Rating, Typography } from '@mui/material';
 import ShieldIcon from '@mui/icons-material/Shield';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
@@ -22,7 +22,7 @@ import RatingCard from '../../Review/RatingCard';
 import { fetchReviewsByProductId } from '../../../../Redux Toolkit/Customer/ReviewSlice';
 import { computeReviewStatistics } from '../../../../util/reviewStatistics';
 import VariantSelector from '../../../components/VariantSelector';
-import { VariantAttributes, ProductImage } from '../../../../types/productTypes';
+import { ProductImage } from '../../../../types/productTypes';
 
 const style = {
     position: 'absolute' as 'absolute',
@@ -51,10 +51,15 @@ const ProductDetails = () =>
     }>();
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
-    const [selectedAttributes, setSelectedAttributes] = useState<Partial<VariantAttributes>>({});
+    const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
 
     const product = products.product;
     const variants = product?.variants || [];
+    const supportedAttributes = product?.category?.supportedAttributes || [];
+    const variantAttrs = supportedAttributes.filter(
+        (a) => a.active !== false && a.variantAttribute
+    );
+    const hasDynamicSystem = variantAttrs.length > 0;
 
     // Find the variant matching the selected attributes
     const selectedVariant = useMemo(() => {
@@ -62,6 +67,17 @@ const ProductDetails = () =>
         return variants.find((v) => {
             if (!v.isActive) return false;
             const attrs = v.attributes;
+
+            if (hasDynamicSystem) {
+                const dynamic = attrs.dynamic || [];
+                return variantAttrs.every((attrDef) => {
+                    const selectedVal = selectedAttributes[attrDef.code] || selectedAttributes[attrDef.name];
+                    if (!selectedVal) return true;
+                    const variantVal = dynamic.find((d) => d.name === attrDef.code)?.value;
+                    return variantVal === selectedVal;
+                });
+            }
+
             return (
                 (!selectedAttributes.color || attrs.color === selectedAttributes.color) &&
                 (!selectedAttributes.size || attrs.size === selectedAttributes.size) &&
@@ -69,7 +85,7 @@ const ProductDetails = () =>
                 (!selectedAttributes.ram || attrs.ram === selectedAttributes.ram)
             );
         }) || null;
-    }, [variants, selectedAttributes]);
+    }, [variants, selectedAttributes, hasDynamicSystem, variantAttrs]);
 
     // Compute effective pricing — use variant if selected, otherwise product-level
     const effectivePrice = selectedVariant
@@ -86,6 +102,23 @@ const ProductDetails = () =>
 
     // Compute effective stock
     const effectiveStock = selectedVariant ? selectedVariant.quantity : (product?.quantity || 0);
+
+    // Check if user has actively selected any attributes
+    const hasSelectedAttributes = Object.values(selectedAttributes).some((v) => v && v.length > 0);
+
+    // Derive a "size" string from variant attributes for the cart API
+    const deriveCartSize = (): string => {
+        if (!selectedVariant) return "FREE";
+        const attrs = selectedVariant.attributes;
+        if (hasDynamicSystem) {
+            const dynamic = attrs.dynamic || [];
+            if (dynamic.length > 0) {
+                return dynamic.map((d) => d.value).filter(Boolean).join(" / ") || "DEFAULT";
+            }
+            return "DEFAULT";
+        }
+        return attrs.size || attrs.color || "FREE";
+    };
 
     // Determine primary image — variant's primary or product's primary or first
     const primaryImageIndex = useMemo(() => {
@@ -113,7 +146,7 @@ const ProductDetails = () =>
     {
         setSelectedAttributes((prev) => ({
             ...prev,
-            [key]: prev[key as keyof VariantAttributes] === value ? "" : value,
+            [key]: prev[key] === value ? "" : value,
         }));
         setSelectedImage(primaryImageIndex);
     };
@@ -125,7 +158,7 @@ const ProductDetails = () =>
             request: {
                 productId,
                 variantId: selectedVariant?.id || undefined,
-                size: selectedVariant?.attributes?.size || "FREE",
+                size: deriveCartSize(),
                 quantity
             }
         }))
@@ -189,7 +222,32 @@ const ProductDetails = () =>
                             variants={variants}
                             selectedAttributes={selectedAttributes}
                             onAttributeSelect={handleAttributeSelect}
+                            supportedAttributes={supportedAttributes}
                         />
+
+                        {/* No matching variant warning */}
+                        {hasSelectedAttributes && !selectedVariant && (
+                            <Chip
+                                label="This combination is not available. Please try another."
+                                color="warning"
+                                variant="outlined"
+                                sx={{ mt: 1 }}
+                            />
+                        )}
+
+                        {/* Selected variant info */}
+                        {selectedVariant && (
+                            <Box className="flex flex-wrap items-center gap-2 mt-1">
+                                {selectedVariant.sku && (
+                                    <Chip size="small" label={`SKU: ${selectedVariant.sku}`} variant="outlined" sx={{ fontSize: "0.75rem" }} />
+                                )}
+                                {effectiveStock > 0 && effectiveStock <= 10 ? (
+                                    <Chip size="small" label={`Only ${effectiveStock} left`} color="warning" variant="outlined" />
+                                ) : effectiveStock > 10 ? (
+                                    <Chip size="small" label="In Stock" color="success" variant="outlined" />
+                                ) : null}
+                            </Box>
+                        )}
 
                         <div className='flex items-center gap-4'>
                             <ShieldIcon sx={{ color: teal[400] }} />
@@ -237,6 +295,7 @@ const ProductDetails = () =>
                     <div className="mt-12 flex items-center gap-5">
                         <Button
                             onClick={handleAddCart}
+                            disabled={hasSelectedAttributes && !selectedVariant}
                             sx={{ py: "1rem" }}
                             variant='contained' fullWidth startIcon={<AddShoppingCartIcon />}>
                             Add To Bag

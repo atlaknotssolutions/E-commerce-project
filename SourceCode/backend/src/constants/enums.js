@@ -159,3 +159,19 @@ export const COMMISSION_STATUS = Object.freeze({
   SETTLED: 'SETTLED',
   CANCELLED: 'CANCELLED',
 });
+
+// Brand request lifecycle states
+export const BRAND_REQUEST_STATUS = Object.freeze({
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+});
+
+// Brand sort options for listing
+export const BRAND_SORT_OPTIONS = Object.freeze({
+  NAME_ASC: 'name_asc',
+  NAME_DESC: 'name_desc',
+  CREATED_ASC: 'created_asc',
+  CREATED_DESC: 'created_desc',
+  DISPLAY_ORDER: 'display_order',
+});

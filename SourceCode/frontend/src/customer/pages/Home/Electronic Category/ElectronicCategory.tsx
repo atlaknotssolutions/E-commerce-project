@@ -67,11 +67,11 @@ const ElectronicCategory = () => {
   const {homePage}=useAppSelector(store=>store)
   const isSmallScreen = useMediaQuery("(max-width:600px)");
   return (
-    <div className="flex flex-wrap justify-between py-5 lg:px-20 border-b">
+    <div className="flex flex-wrap justify-between py-6 lg:px-16 border-b border-gray-100/80">
       {homePage.homePageData?.electricCategories
         .slice(0, isSmallScreen ? 5 : electronics.length)
         .map((item) => (
-          <ElectronicCategoryCard item={item} />
+          <ElectronicCategoryCard key={item.categoryId} item={item} />
         ))}
     </div>
   );

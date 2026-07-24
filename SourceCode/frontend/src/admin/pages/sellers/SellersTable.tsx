@@ -1,14 +1,15 @@
 import * as React from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { Button, FormControl, InputLabel, Menu, MenuItem, Select, styled, TableFooter, TablePagination } from '@mui/material';
+import { Button, FormControl, InputLabel, Menu, MenuItem, Select, TableFooter, TablePagination } from '@mui/material';
 import TablePaginationActions from '@mui/material/TablePagination/TablePaginationActions';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
+import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
 import { fetchSellers, selectSellers, updateSellerAccountStatus } from '../../../Redux Toolkit/Seller/sellerSlice';
 
 function createData(
@@ -23,26 +24,6 @@ function createData(
 }
 
 
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-    [`&.${tableCellClasses.head}`]: {
-        backgroundColor: theme.palette.common.black,
-        color: theme.palette.common.white,
-    },
-    [`&.${tableCellClasses.body}`]: {
-        fontSize: 14,
-    },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-    '&:nth-of-type(odd)': {
-        backgroundColor: theme.palette.action.hover,
-    },
-    // hide last border
-    '&:last-child td, &:last-child th': {
-        border: 0,
-    },
-}));
 
 const accountStatuses = [
     { status: 'PENDING_VERIFICATION', title: 'Pending Verification', description: 'Account is created but not yet verified' },
@@ -112,8 +93,8 @@ export default function SellersTable()
                 </FormControl>
             </div>
 
-            <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 700 }} aria-label="customized table">
+            <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                <Table stickyHeader sx={{ minWidth: 700 }} aria-label="customized table">
                     <TableHead>
                         <TableRow>
                             <StyledTableCell>Seller Name</StyledTableCell>

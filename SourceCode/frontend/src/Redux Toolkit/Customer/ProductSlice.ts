@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import axios from "axios";
-import { Product } from "../../types/productTypes";
+import { Product, FilterMetadata } from "../../types/productTypes";
 import { RootState } from "../Store";
 import { api } from "../../Config/Api";
 
@@ -12,10 +11,12 @@ interface ProductState {
   product: Product | null;
   products: Product[];
   paginatedProducts: any;
-  totalPages:number;
+  totalPages: number;
+  totalElements: number;
   loading: boolean;
   error: string | null;
-  searchProduct:Product[]
+  searchProduct: Product[];
+  filterMetadata: FilterMetadata | null;
 }
 
 // Define the initial state
@@ -23,10 +24,12 @@ const initialState: ProductState = {
   product: null,
   products: [],
   paginatedProducts: null,
-  totalPages:1,
+  totalPages: 1,
+  totalElements: 0,
   loading: false,
   error: null,
-  searchProduct: []
+  searchProduct: [],
+  filterMetadata: null,
 };
 
 // Create async thunks for API calls
@@ -51,10 +54,10 @@ export const searchProduct = createAsyncThunk<Product[], string>(
       const response = await api.get<Product[]>(`${API_URL}/search`, {
         params: { query },
       });
-      console.log("search products ",response.data)
+      console.log("search products ", response.data);
       return response.data;
     } catch (error: any) {
-      console.log("error ",error.response)
+      console.log("error ", error.response);
       return rejectWithValue(error.response.data);
     }
   }
@@ -64,7 +67,7 @@ export const getAllProducts = createAsyncThunk<
   any,
   {
     category?: string;
-    brand?:string;
+    brand?: string;
     color?: string;
     size?: string;
     minPrice?: number;
@@ -73,15 +76,40 @@ export const getAllProducts = createAsyncThunk<
     sort?: string;
     stock?: string;
     pageNumber?: number;
+    dynamicFilters?: Record<string, string>;
   }
 >("products/getAllProducts", async (params, { rejectWithValue }) => {
   try {
-    const response = await api.get<any>(API_URL, {
-      params: {
-        ...params,
-        pageNumber: params.pageNumber || 0,
-      },
+    // Build query params — expand dynamicFilters into attr_* keys
+    const queryParams: Record<string, any> = {
+      category: params.category,
+      brand: params.brand,
+      color: params.color,
+      size: params.size,
+      minPrice: params.minPrice,
+      maxPrice: params.maxPrice,
+      minDiscount: params.minDiscount,
+      sort: params.sort,
+      stock: params.stock,
+      pageNumber: params.pageNumber || 0,
+    };
+
+    if (params.dynamicFilters) {
+      for (const [key, value] of Object.entries(params.dynamicFilters)) {
+        if (value) {
+          queryParams[`attr_${key}`] = value;
+        }
+      }
+    }
+
+    // Remove undefined/null values
+    Object.keys(queryParams).forEach((key) => {
+      if (queryParams[key] === undefined || queryParams[key] === null || queryParams[key] === '') {
+        delete queryParams[key];
+      }
     });
+
+    const response = await api.get<any>(API_URL, { params: queryParams });
     console.log("all products ", response.data);
     return response.data;
   } catch (error: any) {
@@ -90,11 +118,30 @@ export const getAllProducts = createAsyncThunk<
   }
 });
 
+export const fetchFilterMetadata = createAsyncThunk<
+  FilterMetadata,
+  string
+>("products/fetchFilterMetadata", async (categoryId, { rejectWithValue }) => {
+  try {
+    const response = await api.get<FilterMetadata>(`${API_URL}/filters`, {
+      params: { category: categoryId },
+    });
+    return response.data;
+  } catch (error: any) {
+    console.log("error fetching filter metadata", error.response);
+    return rejectWithValue(error.response.data);
+  }
+});
+
 // Create the slice
 const productSlice = createSlice({
   name: "products",
   initialState,
-  reducers: {},
+  reducers: {
+    clearFilterMetadata: (state) => {
+      state.filterMetadata = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchProductById.pending, (state) => {
@@ -136,18 +183,22 @@ const productSlice = createSlice({
         (state, action: PayloadAction<any>) => {
           state.paginatedProducts = action.payload;
           state.products = action.payload.content;
-          state.totalPages=action.payload.totalPages
+          state.totalPages = action.payload.totalPages;
+          state.totalElements = action.payload.totalElements || 0;
           state.loading = false;
-          console.log("-----" ,  action.payload.totalPages)
         }
       )
       .addCase(getAllProducts.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to fetch products";
+      })
+      .addCase(fetchFilterMetadata.fulfilled, (state, action) => {
+        state.filterMetadata = action.payload;
       });
   },
 });
 
+export const { clearFilterMetadata } = productSlice.actions;
 export default productSlice.reducer;
 
 // Define selector functions
