@@ -108,7 +108,7 @@ const PayoutDetailDialog: React.FC<PayoutDetailDialogProps> = ({
                     <Grid container spacing={3}>
                         <Grid item xs={12} sm={6}>
                             <Typography variant="subtitle2" color="text.secondary">Approved By</Typography>
-                            <Typography>{payout.approvedBy || '—'}</Typography>
+                            <Typography>{payout.approvedBy?.fullName || payout.approvedBy?.email || '—'}</Typography>
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <Typography variant="subtitle2" color="text.secondary">Rejection Reason</Typography>

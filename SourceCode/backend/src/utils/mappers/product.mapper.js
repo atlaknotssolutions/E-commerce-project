@@ -61,7 +61,7 @@ export const mapProduct = (product) =>
 
         category: mapCategory(product.category),
 
-        seller: product.seller
+        seller: product.seller && typeof product.seller === 'object' && product.seller._id
             ? {
                 ...product.seller,
                 id: product.seller._id.toString(),

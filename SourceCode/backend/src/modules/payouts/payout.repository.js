@@ -4,13 +4,15 @@ export const createPayoutRepository = ({ Payout }) => {
     const create = async (data) => {
         const payout = await Payout.create(data);
         return Payout.findById(payout._id)
-            .populate('seller', 'companyName email')
+            .populate('seller', 'sellerName businessDetails email')
+            .populate('approvedBy', 'fullName email')
             .lean();
     };
 
     const findById = async (id) => {
         return Payout.findById(id)
-            .populate('seller', 'companyName email')
+            .populate('seller', 'sellerName businessDetails email')
+            .populate('approvedBy', 'fullName email')
             .lean();
     };
 
@@ -20,7 +22,8 @@ export const createPayoutRepository = ({ Payout }) => {
         const skip = (page - 1) * limit;
         const [payouts, total] = await Promise.all([
             Payout.find(match)
-                .populate('seller', 'companyName email')
+                .populate('seller', 'sellerName businessDetails email')
+                .populate('approvedBy', 'fullName email')
                 .sort({ requestedAt: -1 })
                 .skip(skip)
                 .limit(limit)
@@ -45,7 +48,8 @@ export const createPayoutRepository = ({ Payout }) => {
         const skip = (page - 1) * limit;
         const [payouts, total] = await Promise.all([
             Payout.find(match)
-                .populate('seller', 'companyName email')
+                .populate('seller', 'sellerName businessDetails email')
+                .populate('approvedBy', 'fullName email')
                 .sort({ requestedAt: -1 })
                 .skip(skip)
                 .limit(limit)
@@ -64,7 +68,8 @@ export const createPayoutRepository = ({ Payout }) => {
             { $set: { status, ...extra } },
             { ...options, new: true }
         )
-            .populate('seller', 'companyName email')
+            .populate('seller', 'sellerName businessDetails email')
+            .populate('approvedBy', 'fullName email')
             .lean();
     };
 
@@ -77,7 +82,8 @@ export const createPayoutRepository = ({ Payout }) => {
         if (gatewayEventId !== undefined) $set.gatewayEventId = gatewayEventId;
 
         return Payout.findByIdAndUpdate(id, { $set }, { ...options, new: true })
-            .populate('seller', 'companyName email')
+            .populate('seller', 'sellerName businessDetails email')
+            .populate('approvedBy', 'fullName email')
             .lean();
     };
 
@@ -187,7 +193,8 @@ export const createPayoutRepository = ({ Payout }) => {
             { $set: gatewayData },
             { new: true }
         )
-            .populate('seller', 'companyName email')
+            .populate('seller', 'sellerName businessDetails email')
+            .populate('approvedBy', 'fullName email')
             .lean();
     };
 

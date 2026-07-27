@@ -11,7 +11,7 @@ export interface AdminPayout {
     status: AdminPayoutStatus;
     requestedAt: string;
     processedAt?: string | null;
-    approvedBy?: string | null;
+    approvedBy?: { id: string; fullName?: string; email?: string } | null;
     rejectionReason?: string | null;
     transactions: string[];
     createdAt: string;

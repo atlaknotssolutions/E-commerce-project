@@ -138,7 +138,7 @@ export const markPayoutPaid = createAsyncThunk<
   { rejectValue: string }
 >("payouts/markPayoutPaid", async ({ id, jwt }, { rejectWithValue }) => {
   try {
-    const response = await api.patch(`/admin/payouts/${id}/pay`, null, {
+    const response = await api.patch(`/admin/payouts/${id}/disburse`, null, {
       headers: { Authorization: `Bearer ${jwt}` },
     });
     return response.data.data;

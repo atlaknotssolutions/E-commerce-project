@@ -115,7 +115,7 @@ export const markPayoutPaidAdmin = createAsyncThunk<
     'adminPayout/markPaid',
     async (id, { rejectWithValue }) => {
         try {
-            const response = await api.patch(`${API_URL}/${id}/pay`);
+            const response = await api.patch(`${API_URL}/${id}/disburse`);
             return response.data.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.message || 'Failed to mark payout as paid');

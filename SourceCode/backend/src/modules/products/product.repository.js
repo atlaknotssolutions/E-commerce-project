@@ -283,6 +283,10 @@ export const createProductRepository = ({ Product }) =>
         return Product.find({ seller: sellerId }, null, options)
             .sort({ createdAt: -1 })
             .populate('category')
+            .populate({
+                path: 'seller',
+                select: 'sellerName email mobile businessDetails.businessName pickupAddress'
+            })
             .lean();
     };
 
@@ -478,6 +482,10 @@ export const createProductRepository = ({ Product }) =>
         )
             .sort({ score: { $meta: 'textScore' } }) // Priority order matching highest search density
             .populate('category')
+            .populate({
+                path: 'seller',
+                select: 'sellerName email mobile businessDetails.businessName pickupAddress'
+            })
             .lean();
     };
 

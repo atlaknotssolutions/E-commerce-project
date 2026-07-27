@@ -124,7 +124,7 @@ const PayoutTable: React.FC<PayoutTableProps> = ({
                                     </TableCell>
                                     <TableCell>
                                         <Typography variant="body2">
-                                            {p.approvedBy || '—'}
+                                            {p.approvedBy?.fullName || p.approvedBy?.email || '—'}
                                         </Typography>
                                     </TableCell>
                                     <TableCell align="center">
