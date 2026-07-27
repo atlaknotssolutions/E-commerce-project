@@ -29,6 +29,7 @@ const initialState: SellerDashboardState = {
     notifications: [],
     recentActivities: [],
     loading: false,
+    pendingRequests: 0,
     error: null,
     loaded: false,
     refreshing: false,
@@ -230,6 +231,7 @@ const handlePending = (state: SellerDashboardState, isRefresh: boolean = false) 
     if (isRefresh) {
         state.refreshing = true;
     } else {
+        state.pendingRequests += 1;
         state.loading = true;
     }
     state.error = null;
@@ -242,7 +244,8 @@ const handleRejected = (state: SellerDashboardState, action: { payload?: string 
     if (isRefresh) {
         state.refreshing = false;
     } else {
-        state.loading = false;
+        state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+        state.loading = state.pendingRequests > 0;
     }
     state.error = action.payload || 'An error occurred';
 };
@@ -272,7 +275,8 @@ const sellerDashboardSlice = createSlice({
                 handlePending(state);
             })
             .addCase(fetchSellerDashboard.fulfilled, (state, action: PayloadAction<DashboardSummary>) => {
-                state.loading = false;
+                state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+                state.loading = state.pendingRequests > 0;
                 state.summary = action.payload;
                 state.loaded = true;
             })
@@ -285,7 +289,8 @@ const sellerDashboardSlice = createSlice({
                 handlePending(state);
             })
             .addCase(fetchRevenueAnalytics.fulfilled, (state, action: PayloadAction<RevenueAnalytics>) => {
-                state.loading = false;
+                state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+                state.loading = state.pendingRequests > 0;
                 state.revenue = action.payload;
                 state.loaded = true;
             })
@@ -298,7 +303,8 @@ const sellerDashboardSlice = createSlice({
                 handlePending(state);
             })
             .addCase(fetchProductAnalytics.fulfilled, (state, action: PayloadAction<ProductAnalytics>) => {
-                state.loading = false;
+                state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+                state.loading = state.pendingRequests > 0;
                 state.products = action.payload;
                 state.loaded = true;
             })
@@ -311,7 +317,8 @@ const sellerDashboardSlice = createSlice({
                 handlePending(state);
             })
             .addCase(fetchOrderAnalytics.fulfilled, (state, action: PayloadAction<OrderAnalytics>) => {
-                state.loading = false;
+                state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+                state.loading = state.pendingRequests > 0;
                 state.orders = action.payload;
                 state.loaded = true;
             })
@@ -324,7 +331,8 @@ const sellerDashboardSlice = createSlice({
                 handlePending(state);
             })
             .addCase(fetchCustomerAnalytics.fulfilled, (state, action: PayloadAction<CustomerAnalytics>) => {
-                state.loading = false;
+                state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+                state.loading = state.pendingRequests > 0;
                 state.customers = action.payload;
                 state.loaded = true;
             })
@@ -337,7 +345,8 @@ const sellerDashboardSlice = createSlice({
                 handlePending(state);
             })
             .addCase(fetchReturnAnalytics.fulfilled, (state, action: PayloadAction<ReturnRefundAnalytics>) => {
-                state.loading = false;
+                state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+                state.loading = state.pendingRequests > 0;
                 state.returns = action.payload;
                 state.loaded = true;
             })
@@ -350,7 +359,8 @@ const sellerDashboardSlice = createSlice({
                 handlePending(state);
             })
             .addCase(fetchSellerNotifications.fulfilled, (state, action: PayloadAction<SellerNotification[]>) => {
-                state.loading = false;
+                state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+                state.loading = state.pendingRequests > 0;
                 state.notifications = action.payload;
                 state.loaded = true;
             })
@@ -363,7 +373,8 @@ const sellerDashboardSlice = createSlice({
                 handlePending(state);
             })
             .addCase(fetchUnreadNotificationCount.fulfilled, (state, action: PayloadAction<UnreadCountResponse>) => {
-                state.loading = false;
+                state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+                state.loading = state.pendingRequests > 0;
                 if (state.summary) {
                     state.summary.notifications.unreadNotifications = action.payload.count;
                 }
@@ -377,7 +388,8 @@ const sellerDashboardSlice = createSlice({
                 handlePending(state);
             })
             .addCase(fetchRecentActivities.fulfilled, (state, action: PayloadAction<RecentActivity[]>) => {
-                state.loading = false;
+                state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+                state.loading = state.pendingRequests > 0;
                 state.recentActivities = action.payload;
                 state.loaded = true;
             })

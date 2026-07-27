@@ -11,6 +11,7 @@ import Invetory from '../seller/pages/Invetory/Invetory'
 import RequestCategory from '../seller/pages/CategoryRequest/RequestCategory'
 import Returns from '../seller/pages/Returns/Returns'
 import SellerCommissions from '../seller/pages/Commissions/Commissions'
+import SellerBrandRequestPage from '../seller/pages/BrandRequest/SellerBrandRequestPage'
 
 const SellerRoutes = () => {
   return (
@@ -27,6 +28,7 @@ const SellerRoutes = () => {
         <Route path='/request-category' element={<RequestCategory/>} />
         <Route path='/returns' element={<Returns/>} />
         <Route path='/commissions' element={<SellerCommissions/>} />
+        <Route path='/request-brand' element={<SellerBrandRequestPage/>} />
        </Routes>
   )
 }

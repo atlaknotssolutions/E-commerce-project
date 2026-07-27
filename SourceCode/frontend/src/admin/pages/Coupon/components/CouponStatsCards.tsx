@@ -84,7 +84,7 @@ const CouponStatsCards: React.FC<CouponStatsCardsProps> = ({ stats }) =>
             />
             <StatCard
                 title="Most Used"
-                value={stats.mostUsedCoupon ? `${stats.mostUsedCoupon.code} (${stats.mostUsedCoupon.usageCount})` : 'N/A'}
+                value={stats.mostUsedCoupon ? `${stats.mostUsedCoupon.code} (${stats.mostUsedCoupon.usageCount})` : '0'}
                 icon={<LocalOfferIcon sx={{ fontSize: 40 }} />}
                 color="#00838f"
             />

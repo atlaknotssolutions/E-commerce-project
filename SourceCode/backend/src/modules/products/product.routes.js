@@ -18,6 +18,9 @@ export const createProductRoutes = ({
     // Public Endpoint: Triggers dynamic query filters, ranges scans and page listings
     router.get('/products', asyncHandler(productController.getAllProducts));
 
+    // Public Endpoint: Returns filter metadata (attribute values, price range, brands) for a category
+    router.get('/products/filters', asyncHandler(productController.getFilterMetadata));
+
     // Public Endpoint: Runs full-text relevance keyword searching query maps
     router.get('/products/search', asyncHandler(productController.searchProducts));
 
@@ -49,6 +52,30 @@ export const createProductRoutes = ({
     // VARIANT MANAGEMENT ENDPOINTS
     // (Must be registered before /:productId routes)
     // ==========================================
+
+    // Seller Endpoint: Bulk update pricing for multiple variants
+    router.patch(
+        '/sellers/product/:id/variants/bulk-price',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(productController.bulkUpdateVariantPricing)
+    );
+
+    // Seller Endpoint: Bulk update stock for multiple variants
+    router.patch(
+        '/sellers/product/:id/variants/bulk-stock',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(productController.bulkUpdateVariantInventory)
+    );
+
+    // Seller Endpoint: Bulk update active/inactive status for multiple variants
+    router.patch(
+        '/sellers/product/:id/variants/bulk-status',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(productController.bulkUpdateVariantStatus)
+    );
 
     // Seller Endpoint: Add a variant to a product
     router.post(

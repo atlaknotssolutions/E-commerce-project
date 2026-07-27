@@ -97,8 +97,8 @@ const NotificationTable: React.FC<NotificationTableProps> = ({
 
     return (
         <Paper elevation={1}>
-            <TableContainer>
-                <Table>
+            <TableContainer sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                <Table stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell><strong>Title</strong></TableCell>

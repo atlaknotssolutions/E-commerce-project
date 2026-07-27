@@ -7,11 +7,12 @@
  */
 const branding = Object.freeze({
   appName: process.env.REACT_APP_NAME || 'AI Knots Marketplace',
-  appShortName: process.env.REACT_APP_SHORT_NAME || 'AI Knots',
+  appShortName: process.env.REACT_APP_SHORT_NAME || '',
   companyName: process.env.REACT_APP_COMPANY_NAME || 'AI Knots IT Solutions',
   supportEmail: process.env.REACT_APP_SUPPORT_EMAIL || 'support@aiknotsit.com',
   website: process.env.REACT_APP_WEBSITE || 'https://aiknotsit.com',
-  logoUrl: process.env.REACT_APP_LOGO_URL || '',
+  logoUrl: process.env.REACT_APP_LOGO_URL || '/Ai-kart-logo.png',
+  logoUrlTransparent: '/Ai-kart-logo-removebg-preview.png',
   copyright: process.env.REACT_APP_COPYRIGHT || '© AI Knots IT Solutions',
   tagline: process.env.REACT_APP_TAGLINE || '',
   supportPhone: process.env.REACT_APP_SUPPORT_PHONE || '',

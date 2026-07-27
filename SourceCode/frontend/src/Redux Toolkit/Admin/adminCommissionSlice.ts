@@ -92,6 +92,54 @@ export const fetchCommissionStatistics = createAsyncThunk<
     }
 );
 
+export const approveCommission = createAsyncThunk<
+    Commission,
+    string,
+    { rejectValue: string }
+>(
+    'adminCommission/approve',
+    async (id, { rejectWithValue }) => {
+        try {
+            const response = await api.patch(`${API_URL}/${id}/approve`);
+            return response.data.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to approve commission');
+        }
+    }
+);
+
+export const settleCommission = createAsyncThunk<
+    Commission,
+    string,
+    { rejectValue: string }
+>(
+    'adminCommission/settle',
+    async (id, { rejectWithValue }) => {
+        try {
+            const response = await api.patch(`${API_URL}/${id}/settle`);
+            return response.data.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to settle commission');
+        }
+    }
+);
+
+export const cancelCommission = createAsyncThunk<
+    Commission,
+    string,
+    { rejectValue: string }
+>(
+    'adminCommission/cancel',
+    async (id, { rejectWithValue }) => {
+        try {
+            const response = await api.patch(`${API_URL}/${id}/cancel`);
+            return response.data.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to cancel commission');
+        }
+    }
+);
+
 const handlePending = (state: AdminCommissionState) => {
     state.loading = true;
     state.error = null;
@@ -143,7 +191,34 @@ const adminCommissionSlice = createSlice({
                 state.loading = false;
                 state.statistics = action.payload;
             })
-            .addCase(fetchCommissionStatistics.rejected, handleRejected);
+            .addCase(fetchCommissionStatistics.rejected, handleRejected)
+            .addCase(approveCommission.pending, handlePending)
+            .addCase(approveCommission.fulfilled, (state, action) => {
+                state.loading = false;
+                state.actionSuccess = true;
+                state.commissions = state.commissions.map((c) =>
+                    (c.id || (c as any)._id) === (action.payload.id || (action.payload as any)._id) ? action.payload : c
+                );
+            })
+            .addCase(approveCommission.rejected, handleRejected)
+            .addCase(settleCommission.pending, handlePending)
+            .addCase(settleCommission.fulfilled, (state, action) => {
+                state.loading = false;
+                state.actionSuccess = true;
+                state.commissions = state.commissions.map((c) =>
+                    (c.id || (c as any)._id) === (action.payload.id || (action.payload as any)._id) ? action.payload : c
+                );
+            })
+            .addCase(settleCommission.rejected, handleRejected)
+            .addCase(cancelCommission.pending, handlePending)
+            .addCase(cancelCommission.fulfilled, (state, action) => {
+                state.loading = false;
+                state.actionSuccess = true;
+                state.commissions = state.commissions.map((c) =>
+                    (c.id || (c as any)._id) === (action.payload.id || (action.payload as any)._id) ? action.payload : c
+                );
+            })
+            .addCase(cancelCommission.rejected, handleRejected);
     },
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import
@@ -23,8 +23,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { createProduct, updateProduct } from "../../../Redux Toolkit/Seller/sellerProductSlice";
 import { fetchCategoryTree } from "../../../Redux Toolkit/Customer/Customer/AsyncThunk";
 import { fetchMyRequests } from "../../../Redux Toolkit/Seller/sellerCategoryRequestSlice";
+import { fetchActiveBrands } from "../../../Redux Toolkit/Customer/publicBrandSlice";
 import { Category } from "../../../types/categoryTypes";
-import { ProductImage } from "../../../types/productTypes";
+import { ProductImage, AttributeDefinition } from "../../../types/productTypes";
 import ProductImageUpload from "../../components/ProductImageUpload";
 import VariantManager from "../../components/VariantManager";
 
@@ -47,9 +48,9 @@ const validationSchema = Yup.object({
   quantity: Yup.number()
     .positive("Quantity should be greater than zero")
     .required("Quantity is required"),
-  color: Yup.string().required("Color is required"),
+  color: Yup.string(),
   category: Yup.string().required("Category is required"),
-  sizes: Yup.string().required("Sizes are required"),
+  sizes: Yup.string(),
 })
 
 const ProductForm = () =>
@@ -58,8 +59,9 @@ const ProductForm = () =>
   const navigate = useNavigate();
   const isEditMode = Boolean(id);
   const dispatch = useAppDispatch();
-  const { sellers, sellerProduct, homePage, sellerCategoryRequest } = useAppSelector(store => store);
+  const { sellers, sellerProduct, homePage, sellerCategoryRequest, publicBrand } = useAppSelector(store => store);
   const { categoryTree } = homePage;
+  const { brands: activeBrands } = publicBrand;
   const pendingRequests = sellerCategoryRequest?.requests?.filter(
     (r: any) => r.status === 'PENDING'
   ) || [];
@@ -77,6 +79,7 @@ const ProductForm = () =>
       dispatch(fetchCategoryTree());
     }
     dispatch(fetchMyRequests());
+    dispatch(fetchActiveBrands({ limit: 100 }));
   }, [dispatch, categoryTree.length]);
 
   const formik = useFormik({
@@ -89,6 +92,7 @@ const ProductForm = () =>
       color: productToEdit?.color || "",
       images: productToEdit?.images || [],
       sizes: productToEdit?.sizes || "",
+      brand: productToEdit?.brand || "",
 
       // Safe Extracting String IDs from Backend Nested Object
       category: productToEdit?.category?.parentCategory?.parentCategory?.categoryId || productToEdit?.category?.parentCategory?.categoryId || productToEdit?.category?.categoryId || "",
@@ -126,6 +130,19 @@ const ProductForm = () =>
   const selectedLevel2 = selectedLevel1?.children?.find(
     (c: Category) => c.categoryId === formik.values.category2
   );
+  const selectedLevel3 = selectedLevel2?.children?.find(
+    (c: Category) => c.categoryId === formik.values.category3
+  );
+
+  const leafCategory = selectedLevel3 || selectedLevel2 || selectedLevel1;
+  const supportedAttributes: AttributeDefinition[] = useMemo(() =>
+  {
+    if (!leafCategory) return [];
+    const attrs = (leafCategory as any).supportedAttributes || [];
+    return attrs.filter((a: AttributeDefinition) => a.active !== false);
+  }, [leafCategory]);
+
+  const hasDynamicAttributes = supportedAttributes.length > 0;
 
   const handleCategoryChange = (field: string, value: string) =>
   {
@@ -245,66 +262,135 @@ const ProductForm = () =>
             />
           </Grid>
 
-          <Grid item xs={12} sm={6} lg={3}>
-            <FormControl
-              fullWidth
-              error={formik.touched.color && Boolean(formik.errors.color)}
-              required
-            >
-              <InputLabel id="color-label">Color</InputLabel>
-              <Select
-                labelId="color-label"
-                id="color"
-                name="color"
-                value={formik.values.color}
-                onChange={formik.handleChange}
-                label="Color"
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
+          {/* Dynamic attribute fields based on category supportedAttributes */}
+          {hasDynamicAttributes
+            ? supportedAttributes.map((attr) =>
+              {
+                const fieldName = `attr_${attr.code}`;
+                const fieldValue = (formik.values as any)[fieldName] || "";
 
-                {colors.map((color, index) => <MenuItem value={color.name}>
-                  <div className="flex gap-3">
-                    <span style={{ backgroundColor: color.hex }} className={`h-5 w-5 rounded-full ${color.name === "White" ? "border" : ""}`}></span>
-                    <p>{color.name}</p>
-                  </div>
-                </MenuItem>)}
-              </Select>
-              {formik.touched.color && formik.errors.color && (
-                <FormHelperText>{formik.errors.color}</FormHelperText>
-              )}
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} lg={3}>
-            <FormControl
-              fullWidth
-              error={formik.touched.sizes && Boolean(formik.errors.sizes)}
-              required
-            >
-              <InputLabel id="sizes-label">Sizes</InputLabel>
-              <Select
-                labelId="sizes-label"
-                id="sizes"
-                name="sizes"
-                value={formik.values.sizes}
-                onChange={formik.handleChange}
-                label="Sizes"
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                <MenuItem value="FREE">FREE</MenuItem>
-                <MenuItem value="S">S</MenuItem>
-                <MenuItem value="M">M</MenuItem>
-                <MenuItem value="L">L</MenuItem>
-                <MenuItem value="XL">XL</MenuItem>
-              </Select>
-              {formik.touched.sizes && formik.errors.sizes && (
-                <FormHelperText>{formik.errors.sizes}</FormHelperText>
-              )}
-            </FormControl>
-          </Grid>
+                if (attr.type === "select" && attr.options && attr.options.length > 0)
+                {
+                  return (
+                    <Grid item xs={12} sm={6} lg={3} key={attr.code}>
+                      <FormControl fullWidth>
+                        <InputLabel id={`${fieldName}-label`}>{attr.name}</InputLabel>
+                        <Select
+                          labelId={`${fieldName}-label`}
+                          id={fieldName}
+                          value={fieldValue}
+                          onChange={(e) =>
+                          {
+                            formik.setFieldValue(fieldName, e.target.value);
+                            if (attr.code === "color")
+                            {
+                              formik.setFieldValue("color", e.target.value);
+                            } else if (attr.code === "size")
+                            {
+                              formik.setFieldValue("sizes", e.target.value);
+                            }
+                          }}
+                          label={attr.name}
+                        >
+                          <MenuItem value="">
+                            <em>None</em>
+                          </MenuItem>
+                          {attr.options.map((opt) => (
+                            <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  );
+                }
+
+                return (
+                  <Grid item xs={12} sm={6} lg={3} key={attr.code}>
+                    <TextField
+                      fullWidth
+                      id={fieldName}
+                      name={fieldName}
+                      label={attr.name}
+                      type={attr.type === "number" ? "number" : "text"}
+                      value={fieldValue}
+                      onChange={(e) =>
+                      {
+                        formik.setFieldValue(fieldName, e.target.value);
+                        if (attr.code === "color")
+                        {
+                          formik.setFieldValue("color", e.target.value);
+                        } else if (attr.code === "size")
+                        {
+                          formik.setFieldValue("sizes", e.target.value);
+                        }
+                      }}
+                    />
+                  </Grid>
+                );
+              })
+            : <>
+                {/* Legacy hardcoded Color dropdown */}
+                <Grid item xs={12} sm={6} lg={3}>
+                  <FormControl
+                    fullWidth
+                    error={formik.touched.color && Boolean(formik.errors.color)}
+                  >
+                    <InputLabel id="color-label">Color</InputLabel>
+                    <Select
+                      labelId="color-label"
+                      id="color"
+                      name="color"
+                      value={formik.values.color}
+                      onChange={formik.handleChange}
+                      label="Color"
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      {colors.map((color, index) => <MenuItem key={index} value={color.name}>
+                        <div className="flex gap-3">
+                          <span style={{ backgroundColor: color.hex }} className={`h-5 w-5 rounded-full ${color.name === "White" ? "border" : ""}`}></span>
+                          <p>{color.name}</p>
+                        </div>
+                      </MenuItem>)}
+                    </Select>
+                    {formik.touched.color && formik.errors.color && (
+                      <FormHelperText>{formik.errors.color}</FormHelperText>
+                    )}
+                  </FormControl>
+                </Grid>
+                {/* Legacy hardcoded Sizes dropdown */}
+                <Grid item xs={12} sm={6} lg={3}>
+                  <FormControl
+                    fullWidth
+                    error={formik.touched.sizes && Boolean(formik.errors.sizes)}
+                  >
+                    <InputLabel id="sizes-label">Sizes</InputLabel>
+                    <Select
+                      labelId="sizes-label"
+                      id="sizes"
+                      name="sizes"
+                      value={formik.values.sizes}
+                      onChange={formik.handleChange}
+                      label="Sizes"
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      <MenuItem value="FREE">FREE</MenuItem>
+                      <MenuItem value="S">S</MenuItem>
+                      <MenuItem value="M">M</MenuItem>
+                      <MenuItem value="L">L</MenuItem>
+                      <MenuItem value="XL">XL</MenuItem>
+                    </Select>
+                    {formik.touched.sizes && formik.errors.sizes && (
+                      <FormHelperText>{formik.errors.sizes}</FormHelperText>
+                    )}
+                  </FormControl>
+                </Grid>
+              </>
+          }
+
           <Grid item xs={12} sm={6} lg={4}>
             <FormControl
               fullWidth
@@ -423,6 +509,39 @@ const ProductForm = () =>
               }
             >
               Category not found? Request New Category
+            </Button>
+          </Grid>
+          <Grid item xs={12} sm={6} lg={4}>
+            <FormControl fullWidth>
+              <InputLabel id="brand-label">Brand</InputLabel>
+              <Select
+                labelId="brand-label"
+                id="brand"
+                name="brand"
+                value={formik.values.brand}
+                onChange={formik.handleChange}
+                label="Brand"
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {activeBrands.map((b) => (
+                  <MenuItem key={b._id} value={b.name}>
+                    {b.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>Select the brand for this product</FormHelperText>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12}>
+            <Button
+              variant="text"
+              color="secondary"
+              fullWidth
+              onClick={() => navigate("/seller/request-brand")}
+            >
+              Brand not found? Request New Brand
             </Button>
           </Grid>
           <Grid item xs={12}>

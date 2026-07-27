@@ -22,6 +22,13 @@ export const createCouponRoutes = ({
         asyncHandler(couponController.applyCoupon)
     );
 
+    // Customer Endpoint: Returns available, used, and expired coupons for the logged-in user
+    router.get(
+        '/api/coupons/customer',
+        authenticate,
+        asyncHandler(couponController.getCustomerCoupons)
+    );
+
 
     // =======================================================
     // SECURED ADMINISTRATIVE CAMPAIGNS GATEWAYS (Admin Locks)

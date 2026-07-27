@@ -1,7 +1,6 @@
 import {
   Alert,
   Button,
-  Divider,
   IconButton,
   Snackbar,
   TextField,
@@ -18,7 +17,6 @@ import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { fetchUserCart } from "../../../Redux Toolkit/Customer/CartSlice";
 import { CartItem } from "../../../types/cartTypes";
 import { applyCoupon } from "../../../Redux Toolkit/Customer/CouponSlice";
-import CloseIcon from "@mui/icons-material/Close";
 import { Close } from "@mui/icons-material";
 
 const Cart = () => {
@@ -30,7 +28,7 @@ const Cart = () => {
 
   useEffect(() => {
     dispatch(fetchUserCart(localStorage.getItem("jwt") || ""));
-  }, [auth.jwt]);
+  }, [auth.jwt, dispatch]);
 
   const handleChange = (e: any) => {
     setCouponCode(e.target.value);
@@ -41,7 +39,7 @@ const Cart = () => {
 
     var code = couponCode;
 
-    if (apply == "false") {
+    if (apply === "false") {
       code = cart.cart?.couponCode || "";
     }
 
@@ -49,7 +47,7 @@ const Cart = () => {
       applyCoupon({
         apply,
         code,
-        orderValue: cart.cart?.totalSellingPrice || 100,
+        orderValue: cart.cart?.totalSellingPrice || 0,
         jwt: localStorage.getItem("jwt") || "",
       })
     );
@@ -65,7 +63,6 @@ const Cart = () => {
     }
   }, [coupone.couponApplied, coupone.error]);
 
-  console.log("cart ", coupone);
   return (
     <>
       {cart.cart && cart.cart?.cartItems.length !== 0 ? (
@@ -84,7 +81,7 @@ const Cart = () => {
                     <LocalOfferIcon
                       sx={{ color: teal[600], fontSize: "17px" }}
                     />
-                    <span>Apply Coupens</span>
+                    <span>Apply Coupons</span>
                   </div>
                 </div>
                 {!cart.cart?.couponCode ? (
@@ -101,7 +98,7 @@ const Cart = () => {
                       disabled={couponCode ? false : true}
                       size="small"
                     >
-                      Aplly
+                      Apply
                     </Button>
                   </div>
                 ) : (
@@ -133,8 +130,8 @@ const Cart = () => {
                 </div>
               </section>
 
-              <div className="border rounded-md px-5 py-4 flex justify-between items-center cursor-pointer">
-                <span>Add From Whishlist</span>
+              <div onClick={() => navigate("/wishlist")} className="border rounded-md px-5 py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50">
+                <span>Add From Wishlist</span>
                 <FavoriteIcon sx={{ color: teal[600], fontSize: "21px" }} />
               </div>
             </div>
@@ -143,13 +140,13 @@ const Cart = () => {
       ) : (
         <div className="h-[85vh] flex justify-center items-center flex-col">
           <div className="text-center py-5">
-            <h1 className="text-lg font-medium">hay its feels so light!</h1>
+            <h1 className="text-lg font-medium">Your cart is empty</h1>
             <p className="text-gray-500 text-sm">
-              there is nothing in your bag, lets add some items
+              Looks like you haven't added anything yet. Start shopping to fill your bag!
             </p>
           </div>
-          <Button variant="outlined" sx={{ py: "11px" }}>
-            Add Item From Wishlist
+          <Button variant="outlined" sx={{ py: "11px" }} onClick={() => navigate("/wishlist")}>
+            Add From Wishlist
           </Button>
         </div>
       )}

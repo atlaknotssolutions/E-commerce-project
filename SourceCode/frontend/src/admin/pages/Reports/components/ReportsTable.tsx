@@ -18,6 +18,7 @@ import {
     ReturnStatusBreakdown,
     TopReturnedProduct,
 } from '../../../../types/adminReportsTypes';
+import { StyledTableCell, StyledTableRow } from '../../../../components/shared/Table';
 
 interface ReportTableProps {
     title: string;
@@ -35,26 +36,26 @@ const ReportTableWrapper: React.FC<ReportTableProps> = ({ title, children }) => 
 
 export const BestSellingProductsTable: React.FC<{ data: ProductReportItem[] }> = ({ data }) => (
     <ReportTableWrapper title="Best Selling Products">
-        <TableContainer>
-            <Table size="small">
+        <TableContainer sx={{ maxHeight: "calc(100vh - 290px)" }}>
+            <Table size="small" stickyHeader>
                 <TableHead>
                     <TableRow>
-                        <TableCell><strong>Product</strong></TableCell>
-                        <TableCell align="right"><strong>Qty Sold</strong></TableCell>
-                        <TableCell align="right"><strong>Revenue</strong></TableCell>
-                        <TableCell align="right"><strong>Orders</strong></TableCell>
-                        <TableCell align="right"><strong>Price</strong></TableCell>
+                        <StyledTableCell><strong>Product</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Qty Sold</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Revenue</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Orders</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Price</strong></StyledTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {data.map((row) => (
-                        <TableRow key={row._id}>
+                        <StyledTableRow key={row._id}>
                             <TableCell>{row.title}</TableCell>
                             <TableCell align="right">{row.totalQuantity}</TableCell>
                             <TableCell align="right">₹{row.totalRevenue.toLocaleString('en-IN')}</TableCell>
                             <TableCell align="right">{row.orderCount}</TableCell>
                             <TableCell align="right">₹{row.sellingPrice?.toLocaleString('en-IN') || '-'}</TableCell>
-                        </TableRow>
+                        </StyledTableRow>
                     ))}
                 </TableBody>
             </Table>
@@ -69,26 +70,26 @@ export const BestSellingProductsTable: React.FC<{ data: ProductReportItem[] }> =
 
 export const TopSellersTable: React.FC<{ data: SellerReportItem[] }> = ({ data }) => (
     <ReportTableWrapper title="Top Sellers">
-        <TableContainer>
-            <Table size="small">
+        <TableContainer sx={{ maxHeight: "calc(100vh - 290px)" }}>
+            <Table size="small" stickyHeader>
                 <TableHead>
                     <TableRow>
-                        <TableCell><strong>Seller</strong></TableCell>
-                        <TableCell><strong>Business</strong></TableCell>
-                        <TableCell align="right"><strong>Revenue</strong></TableCell>
-                        <TableCell align="right"><strong>Orders</strong></TableCell>
-                        <TableCell align="right"><strong>Avg Order</strong></TableCell>
+                        <StyledTableCell><strong>Seller</strong></StyledTableCell>
+                        <StyledTableCell><strong>Business</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Revenue</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Orders</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Avg Order</strong></StyledTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {data.map((row) => (
-                        <TableRow key={row._id}>
+                        <StyledTableRow key={row._id}>
                             <TableCell>{row.sellerName}</TableCell>
                             <TableCell>{row.businessName || '-'}</TableCell>
                             <TableCell align="right">₹{row.totalRevenue.toLocaleString('en-IN')}</TableCell>
                             <TableCell align="right">{row.totalOrders}</TableCell>
                             <TableCell align="right">₹{row.averageOrderValue.toLocaleString('en-IN')}</TableCell>
-                        </TableRow>
+                        </StyledTableRow>
                     ))}
                 </TableBody>
             </Table>
@@ -103,18 +104,18 @@ export const TopSellersTable: React.FC<{ data: SellerReportItem[] }> = ({ data }
 
 export const LowStockTable: React.FC<{ data: LowStockProduct[] }> = ({ data }) => (
     <ReportTableWrapper title="Low Stock Products">
-        <TableContainer>
-            <Table size="small">
+        <TableContainer sx={{ maxHeight: "calc(100vh - 290px)" }}>
+            <Table size="small" stickyHeader>
                 <TableHead>
                     <TableRow>
-                        <TableCell><strong>Product</strong></TableCell>
-                        <TableCell align="right"><strong>Stock</strong></TableCell>
-                        <TableCell align="right"><strong>Price</strong></TableCell>
+                        <StyledTableCell><strong>Product</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Stock</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Price</strong></StyledTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {data.map((row) => (
-                        <TableRow key={row._id}>
+                        <StyledTableRow key={row._id}>
                             <TableCell>{row.title}</TableCell>
                             <TableCell align="right">
                                 <Typography
@@ -125,7 +126,7 @@ export const LowStockTable: React.FC<{ data: LowStockProduct[] }> = ({ data }) =
                                 </Typography>
                             </TableCell>
                             <TableCell align="right">₹{row.sellingPrice.toLocaleString('en-IN')}</TableCell>
-                        </TableRow>
+                        </StyledTableRow>
                     ))}
                 </TableBody>
             </Table>
@@ -140,21 +141,21 @@ export const LowStockTable: React.FC<{ data: LowStockProduct[] }> = ({ data }) =
 
 export const CouponTable: React.FC<{ data: CouponUsageItem[] }> = ({ data }) => (
     <ReportTableWrapper title="Coupon Usage">
-        <TableContainer>
-            <Table size="small">
+        <TableContainer sx={{ maxHeight: "calc(100vh - 290px)" }}>
+            <Table size="small" stickyHeader>
                 <TableHead>
                     <TableRow>
-                        <TableCell><strong>Code</strong></TableCell>
-                        <TableCell><strong>Type</strong></TableCell>
-                        <TableCell align="right"><strong>Discount</strong></TableCell>
-                        <TableCell align="right"><strong>Usage</strong></TableCell>
-                        <TableCell align="right"><strong>Limit</strong></TableCell>
-                        <TableCell><strong>Active</strong></TableCell>
+                        <StyledTableCell><strong>Code</strong></StyledTableCell>
+                        <StyledTableCell><strong>Type</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Discount</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Usage</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Limit</strong></StyledTableCell>
+                        <StyledTableCell><strong>Active</strong></StyledTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {data.map((row) => (
-                        <TableRow key={row._id}>
+                        <StyledTableRow key={row._id}>
                             <TableCell><strong>{row.code}</strong></TableCell>
                             <TableCell>{row.discountType}</TableCell>
                             <TableCell align="right">
@@ -167,7 +168,7 @@ export const CouponTable: React.FC<{ data: CouponUsageItem[] }> = ({ data }) => 
                                     {row.isActive ? 'Yes' : 'No'}
                                 </Typography>
                             </TableCell>
-                        </TableRow>
+                        </StyledTableRow>
                     ))}
                 </TableBody>
             </Table>
@@ -182,22 +183,22 @@ export const CouponTable: React.FC<{ data: CouponUsageItem[] }> = ({ data }) => 
 
 export const ReturnStatusTable: React.FC<{ data: ReturnStatusBreakdown[] }> = ({ data }) => (
     <ReportTableWrapper title="Returns by Status">
-        <TableContainer>
-            <Table size="small">
+        <TableContainer sx={{ maxHeight: "calc(100vh - 290px)" }}>
+            <Table size="small" stickyHeader>
                 <TableHead>
                     <TableRow>
-                        <TableCell><strong>Status</strong></TableCell>
-                        <TableCell align="right"><strong>Count</strong></TableCell>
-                        <TableCell align="right"><strong>Refund Amount</strong></TableCell>
+                        <StyledTableCell><strong>Status</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Count</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Refund Amount</strong></StyledTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {data.map((row) => (
-                        <TableRow key={row._id}>
+                        <StyledTableRow key={row._id}>
                             <TableCell>{row._id}</TableCell>
                             <TableCell align="right">{row.count}</TableCell>
                             <TableCell align="right">₹{row.totalRefundAmount.toLocaleString('en-IN')}</TableCell>
-                        </TableRow>
+                        </StyledTableRow>
                     ))}
                 </TableBody>
             </Table>
@@ -207,22 +208,22 @@ export const ReturnStatusTable: React.FC<{ data: ReturnStatusBreakdown[] }> = ({
 
 export const TopReturnedProductsTable: React.FC<{ data: TopReturnedProduct[] }> = ({ data }) => (
     <ReportTableWrapper title="Top Returned Products">
-        <TableContainer>
-            <Table size="small">
+        <TableContainer sx={{ maxHeight: "calc(100vh - 290px)" }}>
+            <Table size="small" stickyHeader>
                 <TableHead>
                     <TableRow>
-                        <TableCell><strong>Product</strong></TableCell>
-                        <TableCell align="right"><strong>Returns</strong></TableCell>
-                        <TableCell align="right"><strong>Refund Amount</strong></TableCell>
+                        <StyledTableCell><strong>Product</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Returns</strong></StyledTableCell>
+                        <StyledTableCell align="right"><strong>Refund Amount</strong></StyledTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {data.map((row) => (
-                        <TableRow key={row._id}>
+                        <StyledTableRow key={row._id}>
                             <TableCell>{row.title}</TableCell>
                             <TableCell align="right">{row.returnCount}</TableCell>
                             <TableCell align="right">₹{row.totalRefundAmount.toLocaleString('en-IN')}</TableCell>
-                        </TableRow>
+                        </StyledTableRow>
                     ))}
                 </TableBody>
             </Table>

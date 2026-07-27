@@ -9,6 +9,9 @@ import {
     fetchAllCommissions,
     fetchCommissionStatistics,
     calculateCommission,
+    approveCommission,
+    settleCommission,
+    cancelCommission,
     clearAdminCommissionError,
     clearAdminCommissionActionSuccess,
 } from '../../../Redux Toolkit/Admin/adminCommissionSlice';
@@ -77,6 +80,39 @@ const AdminCommissions: React.FC = () => {
                 setSnackbar({ open: true, message: err || 'Failed to calculate commission', severity: 'error' });
             });
     }, [dispatch, orderIdInput]);
+
+    const handleApprove = useCallback((commission: Commission) => {
+        dispatch(approveCommission(commission.id || (commission as any)._id))
+            .unwrap()
+            .then(() => {
+                setSnackbar({ open: true, message: 'Commission approved successfully', severity: 'success' });
+            })
+            .catch((err: any) => {
+                setSnackbar({ open: true, message: err || 'Failed to approve commission', severity: 'error' });
+            });
+    }, [dispatch]);
+
+    const handleSettle = useCallback((commission: Commission) => {
+        dispatch(settleCommission(commission.id || (commission as any)._id))
+            .unwrap()
+            .then(() => {
+                setSnackbar({ open: true, message: 'Commission settled successfully', severity: 'success' });
+            })
+            .catch((err: any) => {
+                setSnackbar({ open: true, message: err || 'Failed to settle commission', severity: 'error' });
+            });
+    }, [dispatch]);
+
+    const handleCancel = useCallback((commission: Commission) => {
+        dispatch(cancelCommission(commission.id || (commission as any)._id))
+            .unwrap()
+            .then(() => {
+                setSnackbar({ open: true, message: 'Commission cancelled successfully', severity: 'success' });
+            })
+            .catch((err: any) => {
+                setSnackbar({ open: true, message: err || 'Failed to cancel commission', severity: 'error' });
+            });
+    }, [dispatch]);
 
     return (
         <Container maxWidth="lg">
@@ -187,6 +223,9 @@ const AdminCommissions: React.FC = () => {
                 commissions={commissions}
                 pagination={pagination}
                 onView={handleView}
+                onApprove={handleApprove}
+                onSettle={handleSettle}
+                onCancel={handleCancel}
                 onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))}
                 onRowsPerPageChange={(limit) => setFilters((prev) => ({ ...prev, limit, page: 1 }))}
             />

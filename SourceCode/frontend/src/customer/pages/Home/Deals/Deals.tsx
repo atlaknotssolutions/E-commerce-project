@@ -41,23 +41,14 @@ const settings = {
     ],
 };
 
-    console.log("Deals:", homePage.homePageData?.deals);
-console.log("Deals Length:", homePage.homePageData?.deals?.length);
     return (
-        <div className=" py-5 lg:px-20">
-            <div className="slide-container  ">
-                {/* <Slider {...settings}>
-                    {homePage.homePageData?.deals?.map((item:Deal) => <div className="border flex flex-col items-center justify-center">
-                        <DealCard deal={item}/>
-                    </div>)}
-
-                </Slider> */}
-
+        <div className="py-2">
+            <div className="slide-container">
                 <Slider {...settings}>
     {homePage.homePageData?.deals?.map((item: Deal, index) => (
         <div
             key={item.id || item.id || item.category?.id || index}
-            className="border flex flex-col items-center justify-center"
+            className="px-2.5 deal-card-fixed"
         >
             <DealCard deal={item} />
         </div>

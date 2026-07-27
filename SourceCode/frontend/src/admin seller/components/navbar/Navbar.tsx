@@ -20,7 +20,9 @@ const Navbar = ({DrawerList}:any) => {
           <MenuIcon color='primary' />
         </IconButton>
 
-        <h1 onClick={() => navigate("/")} className='logo text-xl cursor-pointer'>{branding.appName}</h1>
+        <div onClick={() => navigate("/")} className='flex items-center gap-2 cursor-pointer'>
+          <img src={branding.logoUrlTransparent} alt={branding.appName} className="h-7 w-auto object-contain" />
+        </div>
       </div>
 
       <Drawer open={open} onClose={toggleDrawer(false)}>

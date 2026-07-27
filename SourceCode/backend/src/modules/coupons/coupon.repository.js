@@ -168,6 +168,32 @@ export const createCouponRepository = ({ Coupon }) =>
             .lean();
     };
 
+    /**
+     * Returns active, valid coupons available to customers (not yet used by the given user).
+     */
+    const findAvailableForCustomer = async (userId, options = {}) =>
+    {
+        const now = new Date();
+        return Coupon.find({
+            isActive: true,
+            validityStartDate: { $lte: now },
+            validityEndDate: { $gte: now },
+            usedByUsers: { $ne: userId },
+        })
+            .sort({ discountPercentage: -1 })
+            .lean();
+    };
+
+    /**
+     * Returns coupons already used by a customer.
+     */
+    const findUsedByCustomer = async (userId, options = {}) =>
+    {
+        return Coupon.find({ usedByUsers: userId })
+            .sort({ updatedAt: -1 })
+            .lean();
+    };
+
     return Object.freeze({
         findByCode,
         createCoupon,
@@ -180,5 +206,7 @@ export const createCouponRepository = ({ Coupon }) =>
         findMostUsedCoupon,
         getUsageStats,
         findUsageById,
+        findAvailableForCustomer,
+        findUsedByCustomer,
     });
 };

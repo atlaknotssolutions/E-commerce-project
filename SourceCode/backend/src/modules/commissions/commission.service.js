@@ -1,3 +1,5 @@
+import { COMMISSION_STATUS } from '../../constants/enums.js';
+
 export const createCommissionService = ({
     commissionRepository,
     orderRepository,
@@ -6,6 +8,13 @@ export const createCommissionService = ({
     mapCommission,
     mapCommissions,
 }) => {
+    const VALID_TRANSITIONS = {
+        [COMMISSION_STATUS.CALCULATED]: [COMMISSION_STATUS.APPROVED, COMMISSION_STATUS.CANCELLED],
+        [COMMISSION_STATUS.APPROVED]: [COMMISSION_STATUS.SETTLED, COMMISSION_STATUS.CANCELLED],
+        [COMMISSION_STATUS.SETTLED]: [],
+        [COMMISSION_STATUS.CANCELLED]: [],
+    };
+
     const getCommissionConfig = async () => {
         const settings = await systemSettingsRepository.getSettings();
         const marketplace = settings.marketplace || {};
@@ -19,12 +28,12 @@ export const createCommissionService = ({
     const calculateCommission = async ({ orderId }) => {
         const existing = await commissionRepository.findByOrder(orderId);
         if (existing) {
-            createApiError('Commission already calculated for this order', 409);
+            throw createApiError({ statusCode: 409, message: 'Commission already calculated for this order' });
         }
 
         const order = await orderRepository.findById(orderId);
         if (!order) {
-            createApiError('Order not found', 404);
+            throw createApiError({ statusCode: 404, message: 'Order not found' });
         }
 
         const config = await getCommissionConfig();
@@ -46,7 +55,7 @@ export const createCommissionService = ({
             gstAmount,
             sellerAmount,
             currency: config.currency,
-            status: 'CALCULATED',
+            status: COMMISSION_STATUS.CALCULATED,
             calculatedAt: new Date(),
         };
 
@@ -57,9 +66,49 @@ export const createCommissionService = ({
     const getCommission = async (id) => {
         const commission = await commissionRepository.findById(id);
         if (!commission) {
-            createApiError('Commission record not found', 404);
+            throw createApiError({ statusCode: 404, message: 'Commission record not found' });
         }
         return mapCommission(commission);
+    };
+
+    const validateTransition = (id, currentStatus, targetStatus) => {
+        const allowed = VALID_TRANSITIONS[currentStatus] || [];
+        if (!allowed.includes(targetStatus)) {
+            throw createApiError({
+                statusCode: 400,
+                message: `Cannot transition commission from ${currentStatus} to ${targetStatus}`,
+            });
+        }
+    };
+
+    const approveCommission = async (id) => {
+        const commission = await commissionRepository.findById(id);
+        if (!commission) {
+            throw createApiError({ statusCode: 404, message: 'Commission record not found' });
+        }
+        validateTransition(id, commission.status, COMMISSION_STATUS.APPROVED);
+        const updated = await commissionRepository.updateStatus(id, COMMISSION_STATUS.APPROVED);
+        return mapCommission(updated);
+    };
+
+    const settleCommission = async (id) => {
+        const commission = await commissionRepository.findById(id);
+        if (!commission) {
+            throw createApiError({ statusCode: 404, message: 'Commission record not found' });
+        }
+        validateTransition(id, commission.status, COMMISSION_STATUS.SETTLED);
+        const updated = await commissionRepository.updateStatus(id, COMMISSION_STATUS.SETTLED);
+        return mapCommission(updated);
+    };
+
+    const cancelCommission = async (id) => {
+        const commission = await commissionRepository.findById(id);
+        if (!commission) {
+            throw createApiError({ statusCode: 404, message: 'Commission record not found' });
+        }
+        validateTransition(id, commission.status, COMMISSION_STATUS.CANCELLED);
+        const updated = await commissionRepository.updateStatus(id, COMMISSION_STATUS.CANCELLED);
+        return mapCommission(updated);
     };
 
     const getSellerCommissions = async (sellerId, filters) => {
@@ -86,9 +135,23 @@ export const createCommissionService = ({
         return await commissionRepository.getSellerCommissionStats(sellerId);
     };
 
+    const cancelCommissionForRefund = async (orderId, options = {}) => {
+        const commission = await commissionRepository.findByOrder(orderId);
+        if (!commission) return null;
+        if (commission.status === COMMISSION_STATUS.CANCELLED) return mapCommission(commission);
+        const allowed = VALID_TRANSITIONS[commission.status] || [];
+        if (!allowed.includes(COMMISSION_STATUS.CANCELLED)) return mapCommission(commission);
+        const updated = await commissionRepository.updateStatus(commission.id || commission._id, COMMISSION_STATUS.CANCELLED, options);
+        return mapCommission(updated);
+    };
+
     return Object.freeze({
         calculateCommission,
         getCommission,
+        approveCommission,
+        settleCommission,
+        cancelCommission,
+        cancelCommissionForRefund,
         getSellerCommissions,
         getAllCommissions,
         getCommissionStats,

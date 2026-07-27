@@ -19,19 +19,19 @@ const HomeCategoryCard = ({ item }: Props) => {
     return (
         <div
             onClick={() => navigate(`/products/${item.categoryId}`)}
-            className="flex flex-col items-center gap-3 cursor-pointer group"
+            className="flex flex-col items-center gap-4 cursor-pointer group"
         >
-            <div className="custom-border w-[150px] lg:w-[249px] h-[150px] lg:h-[249px] rounded-full bg-teal-400 overflow-hidden">
+            <div className="custom-border w-[140px] lg:w-[220px] h-[140px] lg:h-[220px] rounded-full bg-gray-100 overflow-hidden">
                 <img
                     src={item.image || FALLBACK_IMAGE}
                     alt={item.name}
-                    className="object-cover object-top w-full h-full transition-transform duration-700 group-hover:scale-95"
+                    className="object-cover object-top w-full h-full transition-transform duration-500 group-hover:scale-110"
                 />
             </div>
 
-            <h1 className="font-medium text-center">
+            <h2 className="font-semibold text-[13px] lg:text-sm text-gray-600 text-center group-hover:text-[#00927c] transition-colors duration-200 tracking-wide">
                 {item.name}
-            </h1>
+            </h2>
         </div>
     );
 };

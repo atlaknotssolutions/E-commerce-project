@@ -64,6 +64,11 @@ const CartItemCard: React.FC<CartItemProps> = ({ item }) =>
                         if (!matchedVariant) return null;
                         const attrs = matchedVariant.attributes;
                         const parts: string[] = [];
+                        if (attrs.dynamic?.length) {
+                            attrs.dynamic.forEach((d) => {
+                                if (d.value) parts.push(`${d.name}: ${d.value}`);
+                            });
+                        }
                         if (attrs.color) parts.push(`Color: ${attrs.color}`);
                         if (attrs.size) parts.push(`Size: ${attrs.size}`);
                         if (attrs.storage) parts.push(`Storage: ${attrs.storage}`);
@@ -100,8 +105,11 @@ const CartItemCard: React.FC<CartItemProps> = ({ item }) =>
                     </Button>
 
                 </div>
-                <div>
-                    <p className='text-gray-700 font-medium'>₹{item.sellingPrice}</p>
+                <div className="text-right">
+                    <p className='text-gray-700 font-medium'>₹{item.sellingPrice.toFixed(2)}</p>
+                    {item.mrpPrice > item.sellingPrice && (
+                        <p className="text-gray-400 text-xs line-through">₹{item.mrpPrice.toFixed(2)}</p>
+                    )}
                 </div>
 
 

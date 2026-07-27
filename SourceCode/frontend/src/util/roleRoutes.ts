@@ -19,7 +19,7 @@ export const getHomeRoute = (role?: string | null): string => {
     case ROLE_SELLER:
       return "/seller";
     case ROLE_ADMIN:
-      return "/admin";
+      return "/admin/dashboard";
     case ROLE_CUSTOMER:
     default:
       return "/";

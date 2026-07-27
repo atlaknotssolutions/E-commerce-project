@@ -3,7 +3,6 @@ import {
   combineReducers,
 } from "@reduxjs/toolkit";
 
-// import { thunk } from "redux-thunk";
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
 import sellerSlice from "./Seller/sellerSlice";
 import sellerAuthenticationSlice from "./Seller/sellerAuthenticationSlice";
@@ -39,7 +38,12 @@ import adminReportsSlice from "./Admin/adminReportsSlice";
 import adminNotificationSlice from "./Admin/adminNotificationSlice";
 import adminSystemSettingsSlice from "./Admin/adminSystemSettingsSlice";
 import adminCommissionSlice from "./Admin/adminCommissionSlice";
+import adminPayoutSlice from "./Admin/adminPayoutSlice";
 import sellerCommissionSlice from "./Seller/sellerCommissionSlice";
+import adminBrandSlice from "./Admin/adminBrandSlice";
+import adminBrandRequestSlice from "./Admin/adminBrandRequestSlice";
+import sellerBrandRequestSlice from "./Seller/sellerBrandRequestSlice";
+import publicBrandSlice from "./Customer/publicBrandSlice";
 
 const rootReducer = combineReducers({
   
@@ -54,6 +58,7 @@ const rootReducer = combineReducers({
   wishlist: WishlistSlice,
   aiChatBot: AiChatBotSlice,
   homePage:CustomerSlice,
+  publicBrand: publicBrandSlice,
 
   // seller
   sellers: sellerSlice,
@@ -64,6 +69,7 @@ const rootReducer = combineReducers({
   transaction: transactionSlice,
   revenueChart: revenueChartSlice,
   sellerDashboard: sellerDashboardSlice,
+  sellerBrandRequest: sellerBrandRequestSlice,
 
   // admin
   adminCoupon:AdminCouponSlice,
@@ -73,7 +79,8 @@ const rootReducer = combineReducers({
   adminCategoryRequest: AdminCategoryRequestSlice,
   sellerCategoryRequest: SellerCategoryRequestSlice,
   sellerReturn: sellerReturnSlice,
-  deal:DealSlice,
+  adminBrand: adminBrandSlice,
+  adminBrandRequest: adminBrandRequestSlice,
 
   // admin dashboard
   adminDashboard: adminDashboardSlice,
@@ -85,18 +92,13 @@ const rootReducer = combineReducers({
   adminNotification: adminNotificationSlice,
   adminSystemSettings: adminSystemSettingsSlice,
   adminCommission: adminCommissionSlice,
+  adminPayout: adminPayoutSlice,
   sellerCommission: sellerCommissionSlice,
 });
 
-// const store = configureStore({
-//   reducer: rootReducer,
-//   middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(thunk),
-// });
-
-//New Code Add
 const store = configureStore({
   reducer: rootReducer,
-}); //
+});
 
 export type AppDispatch = typeof store.dispatch;
 export type RootState = ReturnType<typeof rootReducer>;

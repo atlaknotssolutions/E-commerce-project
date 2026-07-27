@@ -206,6 +206,19 @@ export const createUserRepository = ({ User }) =>
         );
     };
 
+    /**
+     * Replaces the user's usedCoupons array atomically.
+     * Used by coupon service to track redemption history.
+     */
+    const updateUsedCoupons = async ({ userId, usedCoupons }, options = {}) =>
+    {
+        return User.findByIdAndUpdate(
+            userId,
+            { $set: { usedCoupons } },
+            { new: true, runValidators: true, ...options }
+        );
+    };
+
     return Object.freeze({
         findByEmail,
         findById,
@@ -215,5 +228,6 @@ export const createUserRepository = ({ User }) =>
         deleteAddress,
         setDefaultAddress,
         updateProfileImage,
+        updateUsedCoupons,
     });
 };

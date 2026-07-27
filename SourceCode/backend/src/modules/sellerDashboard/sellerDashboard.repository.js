@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 /**
  * Pure function-based factory representing the Seller Dashboard Analytics Persistence database interface.
  * Queries existing collections (Order, Product, ReturnRequest, Review, Notification) for aggregated dashboard data.
@@ -5,6 +7,12 @@
  */
 export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest, Review, Notification, User, PaymentOrder, Refund }) =>
 {
+    const toObjectId = (id) =>
+    {
+        if (!id) return id;
+        if (id instanceof mongoose.Types.ObjectId) return id;
+        return new mongoose.Types.ObjectId(id);
+    };
 
     /**
      * Aggregates sales revenue data for a seller using MongoDB aggregation pipeline.
@@ -22,7 +30,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -61,7 +69,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $group: {
@@ -123,7 +131,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $addFields: {
@@ -190,7 +198,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $group: {
@@ -242,7 +250,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
      */
     const getReviewSummary = async ({ sellerId }) =>
     {
-        const sellerProductIds = await Product.find({ seller: sellerId }, { _id: 1 }).lean();
+        const sellerProductIds = await Product.find({ seller: toObjectId(sellerId) }, { _id: 1 }).lean();
         const productIds = sellerProductIds.map((p) => p._id);
 
         if (productIds.length === 0)
@@ -309,7 +317,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                     orderDate: { $gte: startOfDay },
                 },
@@ -359,7 +367,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                     orderDate: { $gte: startOfWeek },
                 },
@@ -406,7 +414,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                     orderDate: { $gte: startOfMonth, $lte: endOfMonth },
                 },
@@ -456,7 +464,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                     orderDate: { $gte: startOfYear, $lte: endOfYear },
                 },
@@ -499,7 +507,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -560,7 +568,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $addFields: {
@@ -628,7 +636,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const salesPipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -688,7 +696,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const salesPipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -709,7 +717,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
             salesMap[entry._id.toString()] = entry.totalSold;
         }
 
-        const products = await Product.find({ seller: sellerId })
+        const products = await Product.find({ seller: toObjectId(sellerId) })
             .select('title images quantity variants')
             .lean();
 
@@ -735,7 +743,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $addFields: {
@@ -778,7 +786,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $addFields: {
@@ -830,7 +838,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $addFields: {
@@ -881,7 +889,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
 
         const orderPipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $group: {
@@ -918,7 +926,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
 
         const [orderResult] = await Order.aggregate(orderPipeline).allowDiskUse(true);
 
-        const returnedCount = await ReturnRequest.countDocuments({ seller: sellerId });
+        const returnedCount = await ReturnRequest.countDocuments({ seller: toObjectId(sellerId) });
 
         if (!orderResult)
         {
@@ -957,7 +965,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -1000,7 +1008,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $group: {
@@ -1030,7 +1038,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             { $sort: { orderDate: -1 } },
             { $limit: 10 },
@@ -1102,7 +1110,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -1164,7 +1172,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -1224,7 +1232,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -1273,7 +1281,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -1323,7 +1331,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -1382,7 +1390,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -1444,7 +1452,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
         const pipeline = [
             {
                 $match: {
-                    seller: sellerId,
+                    seller: toObjectId(sellerId),
                     paymentStatus: 'COMPLETED',
                 },
             },
@@ -1496,7 +1504,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const returnPipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $group: {
@@ -1541,7 +1549,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
             }
         }
 
-        const sellerReturnIds = await ReturnRequest.find({ seller: sellerId }, { _id: 1 }).lean();
+        const sellerReturnIds = await ReturnRequest.find({ seller: toObjectId(sellerId) }, { _id: 1 }).lean();
         const returnIds = sellerReturnIds.map((r) => r._id);
 
         let pendingRefunds = 0;
@@ -1564,7 +1572,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $group: {
@@ -1592,7 +1600,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
      */
     const getRefundAnalytics = async ({ sellerId }) =>
     {
-        const sellerReturnIds = await ReturnRequest.find({ seller: sellerId }, { _id: 1 }).lean();
+        const sellerReturnIds = await ReturnRequest.find({ seller: toObjectId(sellerId) }, { _id: 1 }).lean();
         const returnIds = sellerReturnIds.map((r) => r._id);
 
         if (returnIds.length === 0)
@@ -1651,7 +1659,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             { $sort: { requestedAt: -1 } },
             { $limit: 10 },
@@ -1704,7 +1712,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $group: {
@@ -1750,7 +1758,7 @@ export const createSellerDashboardRepository = ({ Order, Product, ReturnRequest,
     {
         const pipeline = [
             {
-                $match: { seller: sellerId },
+                $match: { seller: toObjectId(sellerId) },
             },
             {
                 $group: {

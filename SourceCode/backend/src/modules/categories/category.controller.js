@@ -74,12 +74,13 @@ export const createCategoryController = ({
      */
     const createCategory = async (req, res) =>
     {
-        const { name, parentCategory, level } = req.body;
+        const { name, parentCategory, level, supportedAttributes } = req.body;
 
         const category = await categoryService.createCategory({
             name,
             parentCategory,
             level,
+            supportedAttributes,
         });
 
         return res.status(201).json({

@@ -1,33 +1,11 @@
-import { Box, Button, IconButton, Modal, Paper, styled, Table, TableBody, TableCell, tableCellClasses, TableContainer, TableHead, TableRow } from '@mui/material'
+import { Box, IconButton, Modal, Paper, Table, TableBody, TableContainer, TableHead, TableRow } from '@mui/material'
 import React, { useEffect, useState } from 'react'
-// import {Deal} from '../../../types/dealTypes';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
 import EditIcon from '@mui/icons-material/Edit';
 import { deleteDeal, getAllDeals } from '../../../Redux Toolkit/Admin/DealSlice';
 import UpdateDealForm from './UpdateDealForm';
-import CreateDealForm from './CreateDealForm';
-import DeleteIcon from '@mui/icons-material/Delete';
 import { Delete } from '@mui/icons-material';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.common.black,
-    color: theme.palette.common.white,
-  },
-  [`&.${tableCellClasses.body}`]: {
-    fontSize: 14,
-  },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-  "&:nth-of-type(odd)": {
-    backgroundColor: theme.palette.action.hover,
-  },
-  // hide last border
-  "&:last-child td, &:last-child th": {
-    border: 0,
-  },
-}));
+import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
 
 const style = {
   position: "absolute",
@@ -41,10 +19,9 @@ const style = {
   p: 4,
 };
 const DealsTable = () => {
-  const { homePage,deal } = useAppSelector(store => store)
+  const { adminDeals: deal } = useAppSelector(store => store)
   const [selectedDealId, setSelectedDealId] = useState<number>();
   const [open, setOpen] = React.useState(false);
-  // const [openCreateDealForm, setOpenCreateDealForm] = React.useState(false);
   const dispatch = useAppDispatch()
 
 
@@ -58,12 +35,12 @@ const DealsTable = () => {
   }
   useEffect(() => {
     dispatch(getAllDeals())
-  }, [])
+  }, [dispatch])
   return (
     <>
 
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 700 }} aria-label="customized table">
+      <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+        <Table stickyHeader sx={{ minWidth: 700 }} aria-label="customized table">
           <TableHead>
             <TableRow>
               <StyledTableCell>No</StyledTableCell>
@@ -76,33 +53,33 @@ const DealsTable = () => {
           </TableHead>
           <TableBody>
             {deal.deals.map(
-              (deal: any, index) => (
-                <StyledTableRow key={deal.id}>
+              (item: any, index: number) => (
+                <StyledTableRow key={item.id}>
                   <StyledTableCell component="th" scope="row">
                     {index + 1}
                   </StyledTableCell>
                   <StyledTableCell component="th" scope="row">
                     <img
                       className="w-20 rounded-md"
-                      src={deal.category.image}
+                      src={item.category.image}
                       alt=""
                     />
                   </StyledTableCell>
 
                   <StyledTableCell component="th" scope="row">
-                    {deal.category.categoryId}
+                    {item.category.categoryId}
                   </StyledTableCell>
                   <StyledTableCell component="th" scope="row">
-                    {deal.discount}%
+                    {item.discount}%
                   </StyledTableCell>
 
                   <StyledTableCell align="right">
-                    <IconButton onClick={handleOpen(deal.id)}>
+                    <IconButton onClick={handleOpen(item.id)}>
                       <EditIcon className="text-orange-400 cursor-pointer" />
                     </IconButton>
                   </StyledTableCell>
                   <StyledTableCell align="right">
-                    <IconButton onClick={handleDelete(deal.id)}>
+                    <IconButton onClick={handleDelete(item.id)}>
                       
                       <Delete className="text-red-600 cursor-pointer" />
                     </IconButton>

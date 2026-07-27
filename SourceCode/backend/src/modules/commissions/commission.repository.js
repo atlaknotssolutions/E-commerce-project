@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 export const createCommissionRepository = ({ Commission }) => {
     const create = async (data) => {
         const commission = await Commission.create(data);
@@ -82,11 +84,11 @@ export const createCommissionRepository = ({ Commission }) => {
         };
     };
 
-    const updateStatus = async (id, status) => {
+    const updateStatus = async (id, status, options = {}) => {
         return Commission.findByIdAndUpdate(
             id,
             { $set: { status } },
-            { new: true }
+            { ...options, new: true }
         )
             .populate('order', 'orderId totalSellingPrice')
             .populate('seller', 'companyName email')
@@ -95,20 +97,19 @@ export const createCommissionRepository = ({ Commission }) => {
     };
 
     const getSellerCommissionStats = async (sellerId) => {
-        const [stats] = await Promise.all([
-            Commission.aggregate([
-                { $match: { seller: sellerId } },
-                {
-                    $group: {
-                        _id: null,
-                        totalCommissions: { $sum: 1 },
-                        totalOrderAmount: { $sum: '$orderAmount' },
-                        totalCommissionAmount: { $sum: '$commissionAmount' },
-                        totalGstAmount: { $sum: '$gstAmount' },
-                        totalSellerAmount: { $sum: '$sellerAmount' },
-                    },
+        const sellerObjectId = new mongoose.Types.ObjectId(sellerId);
+        const stats = await Commission.aggregate([
+            { $match: { seller: sellerObjectId } },
+            {
+                $group: {
+                    _id: null,
+                    totalCommissions: { $sum: 1 },
+                    totalOrderAmount: { $sum: '$orderAmount' },
+                    totalCommissionAmount: { $sum: '$commissionAmount' },
+                    totalGstAmount: { $sum: '$gstAmount' },
+                    totalSellerAmount: { $sum: '$sellerAmount' },
                 },
-            ]),
+            },
         ]);
         const result = stats.length > 0 ? stats[0] : {
             totalCommissions: 0,
@@ -159,6 +160,15 @@ export const createCommissionRepository = ({ Commission }) => {
         return { ...result, statusCounts };
     };
 
+    const getActiveCommissionTotal = async (sellerId, statuses) => {
+        const sellerObjectId = new mongoose.Types.ObjectId(sellerId);
+        const result = await Commission.aggregate([
+            { $match: { seller: sellerObjectId, status: { $in: statuses } } },
+            { $group: { _id: null, total: { $sum: { $add: ['$commissionAmount', '$gstAmount'] } } } },
+        ]);
+        return result.length > 0 ? result[0].total : 0;
+    };
+
     return Object.freeze({
         create,
         findById,
@@ -168,5 +178,6 @@ export const createCommissionRepository = ({ Commission }) => {
         updateStatus,
         getSellerCommissionStats,
         getAdminCommissionStats,
+        getActiveCommissionTotal,
     });
 };

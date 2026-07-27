@@ -1,12 +1,12 @@
 import * as React from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Menu, MenuItem, styled, TextField } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Menu, MenuItem, TextField } from '@mui/material';
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 
 import
@@ -17,25 +17,7 @@ import
 } from "../../../Redux Toolkit/Seller/sellerOrderSlice";
 
 import { Order, OrderItem } from "../../../types/orderTypes";
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.common.black,
-    color: theme.palette.common.white,
-  },
-  [`&.${tableCellClasses.body}`]: {
-    fontSize: 14,
-  },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-  '&:nth-of-type(odd)': {
-    backgroundColor: theme.palette.action.hover,
-  },
-  '&:last-child td, &:last-child th': {
-    border: 0,
-  },
-}));
+import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
 
 const orderStatus = [
   { color: '#FFA500', label: 'PENDING' },
@@ -116,8 +98,8 @@ export default function OrderTable()
     <>
       <h1 className='pb-5 font-bold text-xl'>All Orders</h1>
 
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 700 }} aria-label="customized table">
+      <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+        <Table stickyHeader sx={{ minWidth: 700 }} aria-label="customized table">
           <TableHead>
             <TableRow>
               <StyledTableCell>Order Id</StyledTableCell>

@@ -750,6 +750,10 @@ export const createOrderService = ({
             await session.endSession();
         }
 
+        if (commissionService && cancelledOrder) {
+            await commissionService.cancelCommissionForRefund(orderId);
+        }
+
         return mapOrder(cancelledOrder);
     };
 

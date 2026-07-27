@@ -2,12 +2,12 @@ import * as React from "react";
 import { useEffect, useState, useCallback } from "react";
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Box, IconButton, Modal, styled, Button, TextField, MenuItem,
+  Paper, Box, IconButton, Modal, Button, TextField, MenuItem,
   Autocomplete,
   Chip, Switch, Typography, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Alert, Snackbar, TablePagination, Skeleton,
 } from "@mui/material";
-import { tableCellClasses } from "@mui/material/TableCell";
+
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -26,23 +26,9 @@ import {
   toggleHomeCategoryStatus, reorderHomeCategories,
 } from "../../../Redux Toolkit/Admin/AdminSlice";
 import { fetchCategoryTree } from "../../../Redux Toolkit/Customer/Customer/AsyncThunk";
+import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
 import UpdateHomeCategoryForm from "./UpdateHomeCategoryForm";
 import ImageUpload from "../../components/ImageUpload";
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.common.black,
-    color: theme.palette.common.white,
-  },
-  [`&.${tableCellClasses.body}`]: {
-    fontSize: 14,
-  },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-  "&:nth-of-type(odd)": { backgroundColor: theme.palette.action.hover },
-  "&:last-child td, &:last-child th": { border: 0 },
-}));
 
 const style = {
   position: "absolute",
@@ -318,9 +304,9 @@ function HomeCategoryTable({ section }: Props) {
         </Paper>
       ) : (
         <>
-          <TableContainer component={Paper}>
+          <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
             <DragDropContext onDragEnd={handleDragEnd}>
-              <Table sx={{ minWidth: 700 }}>
+              <Table stickyHeader sx={{ minWidth: 700 }}>
                 <TableHead>
                   <TableRow>
                     <StyledTableCell sx={{ width: 40 }}></StyledTableCell>

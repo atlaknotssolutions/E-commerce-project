@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import PricingCard from '../Cart/PricingCard'
-import { Box, Button, FormControl, FormControlLabel, FormLabel, Modal, Radio, RadioGroup } from '@mui/material'
+import { Alert, Box, Button, FormControl, FormControlLabel, FormLabel, IconButton, Modal, Radio, RadioGroup, Snackbar, TextField, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import AddressForm from './AddresssForm'
 import AddressCard from './AddressCard'
 import AddIcon from '@mui/icons-material/Add';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import CloseIcon from '@mui/icons-material/Close';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { createOrder } from '../../../Redux Toolkit/Customer/OrderSlice'
 import { Address } from '../../../types/userTypes'
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store'
+import { applyCoupon, fetchCustomerCoupons, resetCouponApplied } from '../../../Redux Toolkit/Customer/CouponSlice'
 
 const style = {
     position: 'absolute' as 'absolute',
@@ -24,7 +28,7 @@ const paymentGatwayList = [
     {
         value: "RAZORPAY",
         image: "https://razorpay.com/newsroom-content/uploads/2020/12/output-onlinepngtools-1-1.png",
-        label: "Razarpay"
+        label: "Razorpay"
     },
     {
         value: "STRIPE",
@@ -37,10 +41,12 @@ const AddressPage = () =>
     const navigate = useNavigate()
     const dispatch = useAppDispatch();
     const [value, setValue] = useState(0);
-    const { user } = useAppSelector(store => store)
+    const { user, cart, coupone } = useAppSelector(store => store)
     const [paymentGateway, setPaymentGateway] = useState(paymentGatwayList[0].value);
 
     const [open, setOpen] = React.useState(false);
+    const [couponCode, setCouponCode] = useState('');
+    const [couponSnackbar, setCouponSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
 
     useEffect(() =>
     {
@@ -58,6 +64,57 @@ const AddressPage = () =>
             setValue(defaultIndex);
         }
     }, [user.user]);
+
+    useEffect(() => {
+        if (!coupone.customerCouponsLoaded) {
+            dispatch(fetchCustomerCoupons());
+        }
+    }, [dispatch, coupone.customerCouponsLoaded]);
+
+    useEffect(() => {
+        if (coupone.couponApplied || coupone.error) {
+            setCouponSnackbar({
+                open: true,
+                message: coupone.error || 'Coupon applied successfully!',
+                severity: coupone.error ? 'error' : 'success',
+            });
+        }
+    }, [coupone.couponApplied, coupone.error]);
+
+    const handleApplyCoupon = () => {
+        if (!couponCode.trim()) return;
+        dispatch(
+            applyCoupon({
+                apply: 'true',
+                code: couponCode.trim(),
+                orderValue: cart.cart?.totalSellingPrice || 0,
+                jwt: localStorage.getItem('jwt') || '',
+            })
+        );
+    };
+
+    const handleRemoveCoupon = () => {
+        const currentCode = cart.cart?.couponCode || couponCode;
+        dispatch(
+            applyCoupon({
+                apply: 'false',
+                code: currentCode,
+                orderValue: cart.cart?.totalSellingPrice || 0,
+                jwt: localStorage.getItem('jwt') || '',
+            })
+        );
+        setCouponCode('');
+        dispatch(resetCouponApplied());
+    };
+
+    const handleAutoFillCoupon = (code: string) => {
+        setCouponCode(code);
+    };
+
+    const handleCopyCoupon = (code: string) => {
+        navigator.clipboard.writeText(code);
+        setCouponCode(code);
+    };
 
 
 
@@ -100,12 +157,12 @@ const AddressPage = () =>
                 <div className="col-span-2 space-y-5">
 
                     <div className='flex justify-between items-center'>
-                        <span className='font-semibold'>Select Dilivery Address</span>
+                        <span className='font-semibold'>Select Delivery Address</span>
                         <Button onClick={handleOpen} variant='outlined'>Add New Address</Button>
 
                     </div>
                     <div className='text-xs font-medium space-y-5'>
-                        <p>Saved Addreses</p>
+                        <p>Saved Addresses</p>
                         <div className='space-y-3'>
                             {user.user?.addresses?.map((item, index) => <AddressCard
                                 key={item.id}
@@ -122,7 +179,74 @@ const AddressPage = () =>
                 </div>
                 <div className="col-span-1 text-sm space-y-3 ">
                     <section className='space-y-3 border p-5 rounded-md'>
-                        <h1 className='text-primary-color font-medium pb-2 text-center'>Chose Payment Gatway</h1>
+                        <div className='flex gap-2 items-center'>
+                            <LocalOfferIcon sx={{ color: '#00927c', fontSize: 18 }} />
+                            <h1 className='text-primary-color font-medium text-sm'>Apply Coupons</h1>
+                        </div>
+
+                        {!cart.cart?.couponCode ? (
+                            <>
+                                <div className='flex justify-between items-center gap-2'>
+                                    <TextField
+                                        value={couponCode}
+                                        onChange={(e) => setCouponCode(e.target.value)}
+                                        placeholder="Enter coupon code"
+                                        size="small"
+                                        fullWidth
+                                    />
+                                    <Button
+                                        onClick={handleApplyCoupon}
+                                        disabled={!couponCode.trim()}
+                                        variant="contained"
+                                        size="small"
+                                        sx={{ backgroundColor: '#00927c', minWidth: 70, '&:hover': { backgroundColor: '#007a6a' } }}
+                                    >
+                                        Apply
+                                    </Button>
+                                </div>
+
+                                {coupone.availableCoupons && coupone.availableCoupons.length > 0 && (
+                                    <div className='space-y-2 mt-2'>
+                                        <p className='text-xs text-gray-500'>Available coupons:</p>
+                                        <div className='space-y-2 max-h-40 overflow-y-auto'>
+                                            {coupone.availableCoupons.map((coupon) => (
+                                                <div
+                                                    key={coupon._id}
+                                                    className='flex items-center justify-between border border-dashed border-teal-300 bg-teal-50 rounded-md px-3 py-2 cursor-pointer hover:bg-teal-100 transition-colors'
+                                                    onClick={() => handleAutoFillCoupon(coupon.code)}
+                                                >
+                                                    <div className='flex-1 min-w-0'>
+                                                        <div className='flex items-center gap-2'>
+                                                            <span className='font-mono font-bold text-teal-700 text-xs'>{coupon.code}</span>
+                                                            <span className='text-xs font-medium text-teal-600'>
+                                                                {coupon.discountType === 'PERCENTAGE'
+                                                                    ? `${coupon.discountPercentage}% OFF`
+                                                                    : `₹${coupon.discountValue} OFF`}
+                                                            </span>
+                                                        </div>
+                                                        <p className='text-[11px] text-gray-400'>Min. ₹{coupon.minimumOrderValue}</p>
+                                                    </div>
+                                                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleCopyCoupon(coupon.code); }}>
+                                                        <ContentCopyIcon sx={{ fontSize: 14, color: '#00927c' }} />
+                                                    </IconButton>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div className='flex items-center gap-2 bg-green-50 border border-green-200 rounded-md px-3 py-2'>
+                                <LocalOfferIcon sx={{ color: '#00927c', fontSize: 16 }} />
+                                <span className='text-sm font-medium text-green-700 flex-1'>{cart.cart.couponCode} Applied</span>
+                                <IconButton onClick={handleRemoveCoupon} size="small">
+                                    <CloseIcon sx={{ fontSize: 16, color: '#ef4444' }} />
+                                </IconButton>
+                            </div>
+                        )}
+                    </section>
+                    <section className='space-y-3 border p-5 rounded-md'>
+                        <h1 className='text-primary-color font-medium pb-2 text-center'>Choose Payment Gateway</h1>
 
                         <RadioGroup
                             row
@@ -190,6 +314,22 @@ const AddressPage = () =>
                     <AddressForm paymentGateway={paymentGateway} handleClose={handleClose} />
                 </Box>
             </Modal>
+
+            <Snackbar
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                open={couponSnackbar.open}
+                autoHideDuration={4000}
+                onClose={() => setCouponSnackbar(prev => ({ ...prev, open: false }))}
+            >
+                <Alert
+                    onClose={() => setCouponSnackbar(prev => ({ ...prev, open: false }))}
+                    severity={couponSnackbar.severity}
+                    variant="filled"
+                    sx={{ width: '100%' }}
+                >
+                    {couponSnackbar.message}
+                </Alert>
+            </Snackbar>
         </div>
     )
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
@@ -16,7 +16,6 @@ import {
     Box,
     Avatar,
     TablePagination,
-    styled,
     CircularProgress,
     Alert,
 } from '@mui/material';
@@ -36,27 +35,9 @@ import {
     restoreSellerAction,
     clearSelectedSeller,
 } from '../../../../Redux Toolkit/Admin/sellerVerificationSlice';
+import { StyledTableCell, StyledTableRow, LoadingRow, EmptyRow } from '../../../../components/shared/Table';
 import SellerDetailDialog from './SellerDetailDialog';
 import { ApproveDialog, RejectDialog, SuspendDialog, RestoreDialog } from './ActionDialogs';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-    [`&.${tableCellClasses.head}`]: {
-        backgroundColor: theme.palette.common.black,
-        color: theme.palette.common.white,
-    },
-    [`&.${tableCellClasses.body}`]: {
-        fontSize: 14,
-    },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-    '&:nth-of-type(odd)': {
-        backgroundColor: theme.palette.action.hover,
-    },
-    '&:last-child td, &:last-child th': {
-        border: 0,
-    },
-}));
 
 const STATUS_TABS = [
     { label: 'Pending', value: 'pending' },
@@ -273,8 +254,8 @@ const SellerVerificationTable: React.FC = () =>
             )}
 
             {/* Data Table */}
-            <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 1000 }} aria-label="seller verification table">
+            <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                <Table sx={{ minWidth: 1000 }} aria-label="seller verification table" stickyHeader>
                     <TableHead>
                         <TableRow>
                             <StyledTableCell>Seller Name</StyledTableCell>
@@ -289,17 +270,9 @@ const SellerVerificationTable: React.FC = () =>
                     </TableHead>
                     <TableBody>
                         {loading && currentSellers.length === 0 ? (
-                            <TableRow>
-                                <StyledTableCell colSpan={8} align="center" sx={{ py: 6 }}>
-                                    <CircularProgress />
-                                </StyledTableCell>
-                            </TableRow>
+                            <LoadingRow colSpan={8} />
                         ) : currentSellers.length === 0 ? (
-                            <TableRow>
-                                <StyledTableCell colSpan={8} align="center" sx={{ py: 6 }}>
-                                    No sellers found.
-                                </StyledTableCell>
-                            </TableRow>
+                            <EmptyRow colSpan={8} message="No sellers found." />
                         ) : (
                             currentSellers.map((seller) => (
                                 <StyledTableRow key={seller.id}>

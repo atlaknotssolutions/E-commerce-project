@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
@@ -15,7 +15,6 @@ import {
     Tab,
     Box,
     TablePagination,
-    styled,
     CircularProgress,
     Alert,
     IconButton,
@@ -48,25 +47,7 @@ import CouponFormDialog from './components/CouponFormDialog';
 import CouponDeleteDialog from './components/CouponDeleteDialog';
 import CouponToggleDialog from './components/CouponToggleDialog';
 import CouponUsageDialog from './components/CouponUsageDialog';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-    [`&.${tableCellClasses.head}`]: {
-        backgroundColor: theme.palette.common.black,
-        color: theme.palette.common.white,
-    },
-    [`&.${tableCellClasses.body}`]: {
-        fontSize: 14,
-    },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-    '&:nth-of-type(odd)': {
-        backgroundColor: theme.palette.action.hover,
-    },
-    '&:last-child td, &:last-child th': {
-        border: 0,
-    },
-}));
+import { StyledTableCell, StyledTableRow, LoadingRow, EmptyRow } from '../../../components/shared/Table';
 
 const STATUS_TABS = [
     { label: 'All', value: '' },
@@ -301,8 +282,8 @@ const CouponTable: React.FC = () =>
             )}
 
             {/* Data Table */}
-            <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 1000 }} aria-label="admin coupon table">
+            <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                <Table stickyHeader sx={{ minWidth: 1000 }} aria-label="admin coupon table">
                     <TableHead>
                         <TableRow>
                             <StyledTableCell>Code</StyledTableCell>
@@ -318,19 +299,8 @@ const CouponTable: React.FC = () =>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {loading && coupons.length === 0 ? (
-                            <TableRow>
-                                <StyledTableCell colSpan={10} align="center" sx={{ py: 6 }}>
-                                    <CircularProgress />
-                                </StyledTableCell>
-                            </TableRow>
-                        ) : coupons.length === 0 ? (
-                            <TableRow>
-                                <StyledTableCell colSpan={10} align="center" sx={{ py: 6 }}>
-                                    No coupons found.
-                                </StyledTableCell>
-                            </TableRow>
-                        ) : (
+                        {loading && coupons.length === 0 ? (<LoadingRow colSpan={10} />) :
+                         coupons.length === 0 ? (<EmptyRow colSpan={10} message="No coupons found." />) : (
                             coupons.map((coupon) => (
                                 <StyledTableRow key={coupon._id}>
                                     <StyledTableCell>

@@ -1,24 +1,15 @@
 import mongoose from 'mongoose';
-
-// Available payout statuses
-const PAYOUT_STATUS = Object.freeze([
-    'PENDING',
-    'SUCCESS',
-    'FAILED'
-]);
+import { PAYOUT_STATUS, GATEWAY, GATEWAY_PAYOUT_STATUS } from '../../constants/enums.js';
 
 /**
  * Payout schema for storing seller payout details.
+ * Gateway-level data lives in GatewayEvent (append-only log).
+ * This model stores lightweight pointers for fast queries.
  */
 const PayoutSchema = new mongoose.Schema({
-    transactions: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Transaction', // Transactions included in this payout.
-        required: [true, 'Payout batch must refer to at least one accounting transaction record'],
-    }],
     seller: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Seller', // Reference to the seller receiving the payout.
+        ref: 'Seller',
         required: [true, 'Payout must connect to a valid active merchant seller'],
     },
     amount: {
@@ -28,25 +19,68 @@ const PayoutSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: {
-            values: PAYOUT_STATUS,
-            message: '{VALUE} is not a valid bank settlement status'
-        },
-        default: 'PENDING', // New payouts start with a pending status.
+        enum: Object.values(PAYOUT_STATUS),
+        default: PAYOUT_STATUS.PENDING,
         required: true,
     },
-    date: {
+    requestedAt: {
         type: Date,
         default: Date.now,
         required: true,
     },
+    processedAt: {
+        type: Date,
+    },
+    approvedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+    },
+    rejectionReason: {
+        type: String,
+        trim: true,
+    },
+    transactions: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Transaction',
+    }],
+
+    // Gateway integration fields (lightweight pointers)
+    gateway: {
+        type: String,
+        enum: Object.values(GATEWAY),
+        default: null,
+    },
+    gatewayPayoutId: {
+        type: String,
+        trim: true,
+        default: null,
+    },
+    referenceId: {
+        type: String,
+        trim: true,
+        default: null,
+    },
+    gatewayStatus: {
+        type: String,
+        enum: Object.values(GATEWAY_PAYOUT_STATUS),
+        default: null,
+    },
+    gatewayEventId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'GatewayEvent',
+        default: null,
+    },
 }, {
-    // Automatically adds createdAt and updatedAt fields.
     timestamps: true,
 });
 
-// Indexes to improve query performance.
-PayoutSchema.index({ seller: 1, date: -1 }); // For seller payout history.
-PayoutSchema.index({ status: 1 }); // For filtering payouts by status.
+PayoutSchema.index({ seller: 1, requestedAt: -1 });
+PayoutSchema.index({ status: 1 });
+PayoutSchema.index({ gatewayPayoutId: 1 }, { sparse: true });
+PayoutSchema.index({ gatewayStatus: 1 });
+PayoutSchema.index(
+    { seller: 1 },
+    { unique: true, partialFilterExpression: { status: PAYOUT_STATUS.PENDING } }
+);
 
 export const Payout = mongoose.model('Payout', PayoutSchema);

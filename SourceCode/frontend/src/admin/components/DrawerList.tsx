@@ -4,11 +4,11 @@ import * as React from "react";
 import DrawerList from "../../admin seller/components/drawerList/DrawerList";
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
-import AddIcon from '@mui/icons-material/Add';
 import HomeIcon from '@mui/icons-material/Home';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import IntegrationInstructionsIcon from '@mui/icons-material/IntegrationInstructions';
 import { Category, AddTask } from "@mui/icons-material";
+import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
 import PeopleIcon from '@mui/icons-material/People';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
@@ -18,6 +18,8 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import PaymentIcon from '@mui/icons-material/Payment';
+import StorefrontIcon from '@mui/icons-material/Storefront';
 import LogoutIcon from '@mui/icons-material/Logout';
 const menu = [
     {
@@ -25,12 +27,6 @@ const menu = [
         path: "/admin/dashboard",
         icon: <DashboardIcon className="text-primary-color" />,
         activeIcon: <DashboardIcon className="text-white" />,
-    },
-    {
-        name: "Coupons",
-        path: "/admin/coupon",
-        icon: <IntegrationInstructionsIcon className="text-primary-color" />,
-        activeIcon: <IntegrationInstructionsIcon className="text-white" />,
     },
     {
         name: "Home Page",
@@ -47,14 +43,8 @@ const menu = [
     {
         name: "Shop By Category",
         path: "/admin/shop-by-category",
-        icon: <Category className="text-primary-color" />,
-        activeIcon: <Category className="text-white" />,
-    },
-    {
-        name: "Deals",
-        path: "/admin/deals",
-        icon: <LocalOfferIcon className="text-primary-color" />,
-        activeIcon: <LocalOfferIcon className="text-white" />,
+        icon: <ViewModuleIcon className="text-primary-color" />,
+        activeIcon: <ViewModuleIcon className="text-white" />,
     },
     {
         name: "Categories",
@@ -67,6 +57,18 @@ const menu = [
         path: "/admin/category-requests",
         icon: <AddTask className="text-primary-color" />,
         activeIcon: <AddTask className="text-white" />,
+    },
+    {
+        name: "Deals",
+        path: "/admin/deals",
+        icon: <LocalOfferIcon className="text-primary-color" />,
+        activeIcon: <LocalOfferIcon className="text-white" />,
+    },
+    {
+        name: "Coupons",
+        path: "/admin/coupon",
+        icon: <IntegrationInstructionsIcon className="text-primary-color" />,
+        activeIcon: <IntegrationInstructionsIcon className="text-white" />,
     },
     {
         name: "Users",
@@ -93,6 +95,12 @@ const menu = [
         activeIcon: <ShoppingCartIcon className="text-white" />,
     },
     {
+        name: "Brands",
+        path: "/admin/brands",
+        icon: <StorefrontIcon className="text-primary-color" />,
+        activeIcon: <StorefrontIcon className="text-white" />,
+    },
+    {
         name: "Reports & Analytics",
         path: "/admin/reports",
         icon: <AssessmentIcon className="text-primary-color" />,
@@ -105,16 +113,22 @@ const menu = [
         activeIcon: <NotificationsIcon className="text-white" />,
     },
     {
-        name: "System Settings",
-        path: "/admin/settings",
-        icon: <SettingsIcon className="text-primary-color" />,
-        activeIcon: <SettingsIcon className="text-white" />,
-    },
-    {
         name: "Commissions",
         path: "/admin/commissions",
         icon: <AccountBalanceIcon className="text-primary-color" />,
         activeIcon: <AccountBalanceIcon className="text-white" />,
+    },
+    {
+        name: "Payouts",
+        path: "/admin/payouts",
+        icon: <PaymentIcon className="text-primary-color" />,
+        activeIcon: <PaymentIcon className="text-white" />,
+    },
+    {
+        name: "System Settings",
+        path: "/admin/settings",
+        icon: <SettingsIcon className="text-primary-color" />,
+        activeIcon: <SettingsIcon className="text-white" />,
     },
 ];
 

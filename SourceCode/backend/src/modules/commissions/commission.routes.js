@@ -27,6 +27,27 @@ export const createCommissionRoutes = ({
         asyncHandler(controller.getCommission)
     );
 
+    router.patch(
+        '/admin/commissions/:id/approve',
+        authenticate,
+        authorizeRoles('ROLE_ADMIN'),
+        asyncHandler(controller.approveCommission)
+    );
+
+    router.patch(
+        '/admin/commissions/:id/settle',
+        authenticate,
+        authorizeRoles('ROLE_ADMIN'),
+        asyncHandler(controller.settleCommission)
+    );
+
+    router.patch(
+        '/admin/commissions/:id/cancel',
+        authenticate,
+        authorizeRoles('ROLE_ADMIN'),
+        asyncHandler(controller.cancelCommission)
+    );
+
     router.post(
         '/admin/commissions/calculate/:orderId',
         authenticate,

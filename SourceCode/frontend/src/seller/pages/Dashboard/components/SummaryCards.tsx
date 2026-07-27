@@ -85,7 +85,7 @@ const SummaryCards: React.FC = () => {
             },
             {
                 icon: <PeopleIcon />,
-                title: 'Customers',
+                title: 'Reviews',
                 value: summary.reviews.totalReviews,
                 subtitle: `${summary.reviews.averageRating}★ avg rating`,
                 color: '#06B6D4',

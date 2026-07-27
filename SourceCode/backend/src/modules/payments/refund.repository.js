@@ -20,7 +20,14 @@ export const createRefundRepository = ({ Refund }) =>
     const findById = async (id, options = {}) =>
     {
         return Refund.findById(id, null, options)
-            .populate('returnRequestId', 'returnId returnStatus')
+            .populate({
+                path: 'returnRequestId',
+                select: 'returnId returnStatus seller order customer refundAmount',
+                populate: [
+                    { path: 'seller', select: '_id' },
+                    { path: 'customer', select: '_id' },
+                ],
+            })
             .populate('orderId', 'orderId')
             .lean();
     };
@@ -39,6 +46,22 @@ export const createRefundRepository = ({ Refund }) =>
     const findByOrderId = async ({ orderId }, options = {}) =>
     {
         return Refund.findOne({ orderId }, null, options).lean();
+    };
+
+    /**
+     * Updates gateway-related fields on a refund document.
+     */
+    const updateGatewayStatus = async (refundId, { gateway, providerRefundId, gatewayStatus, gatewayEventId, processedAt, status }, options = {}) =>
+    {
+        const $set = {};
+        if (gateway !== undefined) $set.gateway = gateway;
+        if (providerRefundId !== undefined) $set.providerRefundId = providerRefundId;
+        if (gatewayStatus !== undefined) $set.gatewayStatus = gatewayStatus;
+        if (gatewayEventId !== undefined) $set.gatewayEventId = gatewayEventId;
+        if (processedAt !== undefined) $set.processedAt = processedAt;
+        if (status !== undefined) $set.status = status;
+
+        return Refund.findByIdAndUpdate(refundId, { $set }, { ...options, new: true }).lean();
     };
 
     // ==========================================
@@ -150,13 +173,19 @@ export const createRefundRepository = ({ Refund }) =>
         return stats[0] || { totalRefundAmount: 0, avgRefundAmount: 0, maxRefundAmount: 0, minRefundAmount: 0 };
     };
 
+    const countByGatewayStatus = async (gatewayStatus) => {
+        return Refund.countDocuments({ gatewayStatus });
+    };
+
     return Object.freeze({
         create,
         findById,
         findByReturnRequestId,
         findByOrderId,
+        updateGatewayStatus,
         findAllRefunds,
         countRefundsByStatus,
         getRefundAggregateStats,
+        countByGatewayStatus,
     });
 };

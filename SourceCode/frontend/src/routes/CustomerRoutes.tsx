@@ -1,12 +1,11 @@
-import React, { useEffect } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import React, { useEffect, Suspense, lazy } from 'react'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import Home from '../customer/pages/Home/Home'
 import Products from '../customer/pages/Products/Products'
 import ProductDetails from '../customer/pages/Products/ProductDetails/ProductDetails'
 import Cart from '../customer/pages/Cart/Cart'
 import Address from '../customer/pages/Checkout/AddressPage'
 import Profile from '../customer/pages/Account/Profile'
-import BecomeSeller from '../customer/pages/BecomeSeller/BecomeSeller'
 import Footer from '../customer/components/Footer/Footer'
 import Navbar from '../customer/components/Navbar/Navbar'
 import NotFound from '../customer/pages/NotFound/NotFound'
@@ -19,18 +18,36 @@ import WriteReviews from '../customer/pages/Review/WriteReview'
 import EditReview from '../customer/pages/Review/EditReview'
 import Wishlist from '../customer/pages/Wishlist/Wishlist'
 import { getWishlistByUserId } from '../Redux Toolkit/Customer/WishlistSlice'
-import ChatBot from '../customer/pages/ChatBot/ChatBot'
+import PublicBrandList from '../customer/pages/Brands/PublicBrandList'
+import PublicBrandDetail from '../customer/pages/Brands/PublicBrandDetail'
 import SearchProducts from '../customer/pages/Search/SearchProducts'
+import CookieBanner from '../customer/components/Cookie/CookieBanner'
+
+const AboutUs = lazy(() => import('../customer/pages/Legal/AboutUs'))
+const PrivacyPolicy = lazy(() => import('../customer/pages/Legal/PrivacyPolicy'))
+const CookiePolicy = lazy(() => import('../customer/pages/Legal/CookiePolicy'))
+const TermsConditions = lazy(() => import('../customer/pages/Legal/TermsConditions'))
+const RefundPolicy = lazy(() => import('../customer/pages/Legal/RefundPolicy'))
+const ShippingPolicy = lazy(() => import('../customer/pages/Legal/ShippingPolicy'))
+const ContactUs = lazy(() => import('../customer/pages/Legal/ContactUs'))
+
+const LegalFallback = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+    <div style={{ textAlign: 'center' }}>
+      <div style={{
+        width: 40, height: 40, border: '3px solid #e9ecef', borderTopColor: '#00927c',
+        borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px'
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+    </div>
+  </div>
+)
 
 
 const CustomerRoutes = () => {
   const dispatch = useAppDispatch()
     const { cart, auth, user } = useAppSelector(store => store);
-
-    // useEffect(() => {
-    //     dispatch(fetchUserCart(localStorage.getItem("jwt") || ""))
-    //     dispatch(getWishlistByUserId())
-    // }, [auth.jwt])
+    const location = useLocation();
 
 useEffect(() => {
     if (user.user?.role !== "ROLE_CUSTOMER") return;
@@ -38,12 +55,13 @@ useEffect(() => {
     dispatch(fetchUserCart(localStorage.getItem("jwt") || ""));
     dispatch(getWishlistByUserId());
 }, [auth.jwt, user.user]);
+  const hideFooter = location.pathname === '/login' || location.pathname === '/become-seller';
   return (
     <>
       <Navbar />
+      <Suspense fallback={<LegalFallback />}>
       <Routes>
         <Route path='/' element={<Home />} />
-        {/* <Route path='/chat-bot' element={<ChatBot />} /> */}
         <Route path='/products/:categoryId' element={<Products />} />
         <Route path='/search-products' element={<SearchProducts />} />
         <Route path='/reviews/:productId' element={<Reviews />} />
@@ -56,11 +74,21 @@ useEffect(() => {
         <Route path='/account/*' element={<Profile />} />
         <Route path='/login' element={<Auth/>} />
         <Route path='/payment-success' element={<PaymentSuccessHandler/>} />
+        <Route path='/about' element={<AboutUs />} />
+        <Route path='/privacy-policy' element={<PrivacyPolicy />} />
+        <Route path='/cookie-policy' element={<CookiePolicy />} />
+        <Route path='/terms' element={<TermsConditions />} />
+        <Route path='/refund-policy' element={<RefundPolicy />} />
+        <Route path='/shipping-policy' element={<ShippingPolicy />} />
+        <Route path='/contact' element={<ContactUs />} />
+        <Route path='/brands' element={<PublicBrandList />} />
+        <Route path='/brands/:slug' element={<PublicBrandDetail />} />
         <Route path='*' element={<NotFound />} />
       </Routes>
-      <Footer />
+      </Suspense>
+      {!hideFooter && <Footer />}
+      <CookieBanner />
     </>
-
   )
 }
 

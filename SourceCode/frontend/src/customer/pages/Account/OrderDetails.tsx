@@ -1,6 +1,5 @@
 import { Box, Button, Divider } from '@mui/material'
 import React, { useEffect, useState } from 'react'
-import PaymentsIcon from '@mui/icons-material/Payments';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import OrderStepper from './OrderStepper';
 import ReturnRequestDialog from './ReturnRequestDialog';
@@ -197,73 +196,104 @@ const OrderDetails = () =>
         </div>
       </div>
 
-      <div className='border  space-y-4'>
+      <div className='border space-y-4'>
 
-        <div className='flex justify-between text-sm pt-5 px-5'>
-          <div className='space-y-1'>
-            <p className='font-bold'>Total Item Price</p>
-            {/* <p>You saved <span className='text-green-500 font-medium text-xs'>₹
-              {orders.orderItem?.mrpPrice - orders.orderItem?.sellingPrice}.00</span> on this item</p> */}
-            <p>You saved <span className='text-green-500 font-medium text-xs'>
-              ₹ {orders.currentOrder?.discount}.00</span> on this item</p>
+        <div className='px-5 pt-5 pb-3 space-y-2 text-sm'>
+          <div className='flex justify-between'>
+            <span>MRP</span>
+            <span>₹ {(orders.currentOrder?.totalMrpPrice ?? 0).toFixed(2)}</span>
+          </div>
+          <div className='flex justify-between'>
+            <span>Product Discount</span>
+            <span className='text-green-600'>
+              - ₹ {((orders.orderItem?.mrpPrice ?? 0) - (orders.orderItem?.sellingPrice ?? 0)).toFixed(2)}
+            </span>
+          </div>
+          <div className='border-b pb-2' />
+          <div className='flex justify-between font-medium'>
+            <span>Selling Price</span>
+            <span>₹ {(orders.orderItem?.sellingPrice ?? 0).toFixed(2)}</span>
           </div>
 
-          <p className='font-medium'>
-            ₹ {orders.currentOrder?.totalSellingPrice}.00
-          </p>
+          {(orders.currentOrder?.discount ?? 0) > 0 && (
+            <div className='flex justify-between'>
+              <span>Coupon Discount</span>
+              <span className='text-green-600'>
+                - ₹ {(orders.currentOrder?.discount ?? 0).toFixed(2)}
+              </span>
+            </div>
+          )}
+
+          <div className='flex justify-between'>
+            <span>Shipping Charges</span>
+            <span className='text-green-600'>₹ 0 (Free)</span>
+          </div>
+          <div className='flex justify-between'>
+            <span>Tax</span>
+            <span>₹ 0 (Included)</span>
+          </div>
+          <div className='border-b-2 border-dashed pb-2' />
+          <div className='flex justify-between font-bold text-base'>
+            <span>Amount Paid</span>
+            <span>₹ {(orders.currentOrder?.totalSellingPrice ?? 0).toFixed(2)}</span>
+          </div>
         </div>
 
-        <div className='px-5 '>
-          <div className='bg-teal-50 px-5 py-2 text-xs font-medium flex items-center gap-3 '>
-            <PaymentsIcon />
-            <p>
+        <Divider />
+
+        <div className='px-5 py-3 space-y-2 text-sm'>
+          <div className='flex justify-between'>
+            <span className='text-gray-500'>Payment Method</span>
+            <span className='font-medium'>
               {orders.currentOrder?.payment?.method === "RAZORPAY"
                 ? "Razorpay"
                 : orders.currentOrder?.payment?.method === "STRIPE"
                   ? "Stripe"
                   : "Cash On Delivery"}
-            </p>
-
-
+            </span>
           </div>
+          <div className='flex justify-between'>
+            <span className='text-gray-500'>Payment Status</span>
+            <span className={`font-medium px-2 py-0.5 rounded text-xs ${
+              orders.currentOrder?.payment?.status === "COMPLETED"
+                ? 'bg-green-50 text-green-700'
+                : orders.currentOrder?.payment?.status === "PENDING"
+                  ? 'bg-amber-50 text-amber-700'
+                  : 'bg-gray-100 text-gray-600'
+            }`}>
+              {orders.currentOrder?.payment?.status || "-"}
+            </span>
+          </div>
+          {orders.currentOrder?.payment?.transactionId && (
+            <div className='flex justify-between'>
+              <span className='text-gray-500'>Transaction ID</span>
+              <span
+                className='font-medium text-xs truncate max-w-[220px]'
+                title={orders.currentOrder.payment.transactionId}
+              >
+                {orders.currentOrder.payment.transactionId}
+              </span>
+            </div>
+          )}
         </div>
 
-
         <Divider />
+
         <div className='px-5 pb-3 space-y-2 text-sm'>
           <p className='text-xs'><strong>Sold by : </strong>{orders.orderItem.product.seller?.businessDetails.businessName}</p>
         </div>
+
         <Divider />
 
-        <div className="px-5 py-4 space-y-2 text-sm">
-          <h2 className="font-bold">Payment Details</h2>
-
-          <div className="flex justify-between">
-            <span>Method</span>
-            <span>{orders.currentOrder?.payment?.method || "-"}</span>
-          </div>
-
-          <div className="flex justify-between">
-            <span>Status</span>
-            <span>{orders.currentOrder?.payment?.status || "-"}</span>
-          </div>
-
-          <div className="flex justify-between">
-            <span>Amount</span>
-            <span>
-              ₹ {orders.currentOrder?.payment?.amount ?? orders.currentOrder?.totalSellingPrice}
-            </span>
-          </div>
-
-          <div className="flex justify-between">
-            <span>Transaction ID</span>
-            <span
-              className="text-xs truncate max-w-[220px]"
-              title={orders.currentOrder?.payment?.transactionId ?? undefined}
-            >
-              {orders.currentOrder?.payment?.transactionId ?? "-"}
-            </span>
-          </div>
+        <div className='px-5 py-4'>
+          <Button
+            fullWidth
+            variant="outlined"
+            sx={{ py: "0.6rem" }}
+            disabled
+          >
+            Download Invoice
+          </Button>
         </div>
 
         <Divider />

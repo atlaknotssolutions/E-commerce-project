@@ -28,6 +28,7 @@ import {
 import { fetchCategoryTree } from "../../../Redux Toolkit/Admin/AdminCategorySlice";
 import { Category } from "../../../types/categoryTypes";
 import SendIcon from "@mui/icons-material/Send";
+import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
 
 interface LocationState {
     parentCategoryId?: string;
@@ -193,41 +194,41 @@ const RequestCategory = () => {
                     <CircularProgress />
                 </Box>
             ) : (
-                <TableContainer component={Paper}>
-                    <Table>
+                <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                    <Table stickyHeader>
                         <TableHead>
                             <TableRow>
-                                <TableCell>Requested Name</TableCell>
-                                <TableCell>Parent Category</TableCell>
-                                <TableCell>Level</TableCell>
-                                <TableCell>Status</TableCell>
-                                <TableCell>Reason</TableCell>
-                                <TableCell>Date</TableCell>
+                                <StyledTableCell>Requested Name</StyledTableCell>
+                                <StyledTableCell>Parent Category</StyledTableCell>
+                                <StyledTableCell>Level</StyledTableCell>
+                                <StyledTableCell>Status</StyledTableCell>
+                                <StyledTableCell>Reason</StyledTableCell>
+                                <StyledTableCell>Date</StyledTableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {requests.map((req) => (
-                                <TableRow key={req._id} hover>
-                                    <TableCell>{req.requestedName}</TableCell>
-                                    <TableCell>{req.parentCategory?.name || "—"}</TableCell>
-                                    <TableCell>
+                                <StyledTableRow key={req._id} hover>
+                                    <StyledTableCell>{req.requestedName}</StyledTableCell>
+                                    <StyledTableCell>{req.parentCategory?.name || "—"}</StyledTableCell>
+                                    <StyledTableCell>
                                         <Chip size="small" label={`Level ${req.requestedLevel}`} />
-                                    </TableCell>
-                                    <TableCell>
+                                    </StyledTableCell>
+                                    <StyledTableCell>
                                         <Chip size="small" color={statusColors[req.status]} label={req.status} />
-                                    </TableCell>
-                                    <TableCell sx={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    </StyledTableCell>
+                                    <StyledTableCell sx={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
                                         {req.reason || "—"}
-                                    </TableCell>
-                                    <TableCell>{new Date(req.createdAt).toLocaleDateString()}</TableCell>
-                                </TableRow>
+                                    </StyledTableCell>
+                                    <StyledTableCell>{new Date(req.createdAt).toLocaleDateString()}</StyledTableCell>
+                                </StyledTableRow>
                             ))}
                             {requests.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={6} align="center">
+                                <StyledTableRow>
+                                    <StyledTableCell colSpan={6} align="center">
                                         <Typography py={2} color="text.secondary">No requests yet.</Typography>
-                                    </TableCell>
-                                </TableRow>
+                                    </StyledTableCell>
+                                </StyledTableRow>
                             )}
                         </TableBody>
                     </Table>

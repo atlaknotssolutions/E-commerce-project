@@ -141,17 +141,26 @@ const ProductCard: React.FC<ProductCardProps> = ({ item }) => {
                         </h1>
                         <p className="">{item.title}</p>
                     </div>
-                    <div className="price flex items-center gap-3 ">
-                        <span className="font-semibold text-gray-800">
-                            {" "}
-                            ₹{item.sellingPrice}
-                        </span>
-                        <span className="text thin-line-through text-gray-400 ">
-                            ₹{item.mrpPrice}
-                        </span>
-                        <span className="text-[#00927c] font-semibold">
-                            {item.discountPercent}% off
-                        </span>
+                    <div className="price flex items-center gap-2 flex-wrap">
+                        {item.variantCount != null && item.variantCount > 1 && item.minPrice != null && item.maxPrice != null && item.minPrice !== item.maxPrice ? (
+                            <span className="font-bold text-gray-900 text-base">
+                                ₹{item.minPrice} - ₹{item.maxPrice}
+                            </span>
+                        ) : (
+                            <span className="font-bold text-gray-900 text-base">
+                                ₹{item.sellingPrice}
+                            </span>
+                        )}
+                        {item.mrpPrice > item.sellingPrice && (
+                            <span className="text-gray-400 line-through text-sm">
+                                ₹{item.mrpPrice}
+                            </span>
+                        )}
+                        {item.discountPercent != null && item.discountPercent > 0 && (
+                            <span className="text-[#00927c] font-bold text-sm">
+                                {item.discountPercent}% off
+                            </span>
+                        )}
                     </div>
                 </div>
 

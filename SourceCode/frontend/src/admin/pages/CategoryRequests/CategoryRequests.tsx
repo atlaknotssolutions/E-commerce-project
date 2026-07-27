@@ -34,6 +34,7 @@ import {
     clearError,
 } from "../../../Redux Toolkit/Admin/AdminCategoryRequestSlice";
 import { fetchCategoryTree } from "../../../Redux Toolkit/Admin/AdminCategorySlice";
+import { StyledTableCell, StyledTableRow, EmptyRow } from '../../../components/shared/Table';
 import { Category } from "../../../types/categoryTypes";
 
 const statusColors: Record<string, "warning" | "success" | "error"> = {
@@ -167,22 +168,22 @@ const CategoryRequests = () => {
                     <CircularProgress />
                 </Box>
             ) : (
-                <TableContainer component={Paper}>
-                    <Table>
+                <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                    <Table stickyHeader>
                         <TableHead>
                             <TableRow>
-                                <TableCell>Seller</TableCell>
-                                <TableCell>Requested Name</TableCell>
-                                <TableCell>Parent Hierarchy</TableCell>
-                                <TableCell>Level</TableCell>
-                                <TableCell>Status</TableCell>
-                                <TableCell>Audit</TableCell>
-                                <TableCell align="center">Actions</TableCell>
+                                <StyledTableCell>Seller</StyledTableCell>
+                                <StyledTableCell>Requested Name</StyledTableCell>
+                                <StyledTableCell>Parent Hierarchy</StyledTableCell>
+                                <StyledTableCell>Level</StyledTableCell>
+                                <StyledTableCell>Status</StyledTableCell>
+                                <StyledTableCell>Audit</StyledTableCell>
+                                <StyledTableCell align="center">Actions</StyledTableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {requests.map((req) => (
-                                <TableRow key={req._id} hover>
+                                <StyledTableRow key={req._id} hover>
                                     <TableCell sx={{ maxWidth: 150 }}>
                                         <Typography variant="body2" fontWeight={500}>
                                             {req.seller?.sellerName || "—"}
@@ -274,15 +275,9 @@ const CategoryRequests = () => {
                                             <Typography variant="caption" color="text.secondary">—</Typography>
                                         )}
                                     </TableCell>
-                                </TableRow>
+                                </StyledTableRow>
                             ))}
-                            {requests.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={7} align="center">
-                                        <Typography py={2} color="text.secondary">No requests found.</Typography>
-                                    </TableCell>
-                                </TableRow>
-                            )}
+                            {requests.length === 0 ? (<EmptyRow colSpan={7} message="No requests found." />) : null}
                         </TableBody>
                     </Table>
                 </TableContainer>

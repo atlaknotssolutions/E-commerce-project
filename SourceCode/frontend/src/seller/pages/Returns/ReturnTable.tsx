@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import {
     Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-    MenuItem, Snackbar, Alert, styled, TextField, TablePagination,
+    MenuItem, Snackbar, Alert, TextField, TablePagination,
     CircularProgress, Typography
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
@@ -18,25 +18,7 @@ import {
 } from '../../../Redux Toolkit/Seller/sellerReturnSlice';
 import { ReturnRequest, ReturnStatus } from '../../../types/orderTypes';
 import { formatDate } from '../../../customer/util/fomateDate';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-    [`&.${tableCellClasses.head}`]: {
-        backgroundColor: theme.palette.common.black,
-        color: theme.palette.common.white,
-    },
-    [`&.${tableCellClasses.body}`]: {
-        fontSize: 14,
-    },
-}));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-    '&:nth-of-type(odd)': {
-        backgroundColor: theme.palette.action.hover,
-    },
-    '&:last-child td, &:last-child th': {
-        border: 0,
-    },
-}));
+import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
 
 const STATUS_COLOR: Record<ReturnStatus, { bg: string; border: string; text: string }> = {
     [ReturnStatus.REQUESTED]: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
@@ -71,7 +53,7 @@ const ReturnTable = () => {
     const { sellerReturn, auth } = useAppSelector(store => store);
 
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(5);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -232,8 +214,8 @@ const ReturnTable = () => {
                 </div>
             ) : (
                 <>
-                    <TableContainer component={Paper}>
-                        <Table sx={{ minWidth: 900 }} aria-label="returns table">
+                    <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+                        <Table stickyHeader sx={{ minWidth: 900 }} aria-label="returns table">
                             <TableHead>
                                 <TableRow>
                                     <StyledTableCell>Return ID</StyledTableCell>
@@ -303,7 +285,7 @@ const ReturnTable = () => {
                             setRowsPerPage(parseInt(e.target.value, 10));
                             setPage(0);
                         }}
-                        rowsPerPageOptions={[5, 10, 25]}
+                        rowsPerPageOptions={[10, 25, 50, 100]}
                     />
                 </>
             )}

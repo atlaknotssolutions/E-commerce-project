@@ -159,3 +159,82 @@ export const COMMISSION_STATUS = Object.freeze({
   SETTLED: 'SETTLED',
   CANCELLED: 'CANCELLED',
 });
+
+// Payout lifecycle states
+export const PAYOUT_STATUS = Object.freeze({
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  COMPLETED: 'COMPLETED',
+});
+
+// Gateway provider identifiers (customer payments + seller payouts)
+export const GATEWAY = Object.freeze({
+  MOCK_RAZORPAYX: 'MOCK_RAZORPAYX',
+  MOCK_RAZORPAY: 'MOCK_RAZORPAY',
+  RAZORPAY: 'RAZORPAY',
+  RAZORPAYX: 'RAZORPAYX',
+  STRIPE: 'STRIPE',
+  CASHFREE: 'CASHFREE',
+  PHONEPE: 'PHONEPE',
+  PAYPAL: 'PAYPAL',
+});
+
+// Gateway-level payout status (separate from business PAYOUT_STATUS)
+export const GATEWAY_PAYOUT_STATUS = Object.freeze({
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  PROCESSED: 'processed',
+  FAILED: 'failed',
+  CANCELLED: 'cancelled',
+  REVERSED: 'reversed',
+});
+
+// Gateway-level refund status (separate from business REFUND_STATUS)
+export const GATEWAY_REFUND_STATUS = Object.freeze({
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  PROCESSED: 'processed',
+  FAILED: 'failed',
+  CANCELLED: 'cancelled',
+  REVERSED: 'reversed',
+});
+
+// Gateway event types (append-only event log)
+// Uppercase = mock gateways write these (enum constants)
+// Lowercase = business services write these at initiation/webhook time
+export const GATEWAY_EVENT_TYPE = Object.freeze({
+  PAYOUT_REQUESTED: 'PAYOUT_REQUESTED',
+  PAYOUT_PROCESSING: 'PAYOUT_PROCESSING',
+  PAYOUT_WEBHOOK_RECEIVED: 'PAYOUT_WEBHOOK_RECEIVED',
+  PAYOUT_PROCESSED: 'PAYOUT_PROCESSED',
+  PAYOUT_FAILED: 'PAYOUT_FAILED',
+  PAYOUT_CANCELLED: 'PAYOUT_CANCELLED',
+  PAYOUT_RETRY: 'PAYOUT_RETRY',
+  REFUND_REQUESTED: 'REFUND_REQUESTED',
+  REFUND_PROCESSING: 'REFUND_PROCESSING',
+  REFUND_WEBHOOK_RECEIVED: 'REFUND_WEBHOOK_RECEIVED',
+  REFUND_PROCESSED: 'REFUND_PROCESSED',
+  REFUND_FAILED: 'REFUND_FAILED',
+  REFUND_RETRY: 'REFUND_RETRY',
+  PAYOUT_INITIATED: 'payout.initiated',
+  PAYOUT_WEBHOOK: 'payout.webhook',
+  REFUND_INITIATED: 'refund.initiated',
+  REFUND_WEBHOOK: 'refund.webhook',
+});
+
+// Brand request lifecycle states
+export const BRAND_REQUEST_STATUS = Object.freeze({
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+});
+
+// Brand sort options for listing
+export const BRAND_SORT_OPTIONS = Object.freeze({
+  NAME_ASC: 'name_asc',
+  NAME_DESC: 'name_desc',
+  CREATED_ASC: 'created_asc',
+  CREATED_DESC: 'created_desc',
+  DISPLAY_ORDER: 'display_order',
+});
