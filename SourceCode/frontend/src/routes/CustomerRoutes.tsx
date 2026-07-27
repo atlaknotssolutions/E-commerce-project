@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import Home from '../customer/pages/Home/Home'
 import Products from '../customer/pages/Products/Products'
 import ProductDetails from '../customer/pages/Products/ProductDetails/ProductDetails'
@@ -47,6 +47,7 @@ const LegalFallback = () => (
 const CustomerRoutes = () => {
   const dispatch = useAppDispatch()
     const { cart, auth, user } = useAppSelector(store => store);
+    const location = useLocation();
 
 useEffect(() => {
     if (user.user?.role !== "ROLE_CUSTOMER") return;
@@ -54,6 +55,7 @@ useEffect(() => {
     dispatch(fetchUserCart(localStorage.getItem("jwt") || ""));
     dispatch(getWishlistByUserId());
 }, [auth.jwt, user.user]);
+  const hideFooter = location.pathname === '/login' || location.pathname === '/become-seller';
   return (
     <>
       <Navbar />
@@ -84,10 +86,9 @@ useEffect(() => {
         <Route path='*' element={<NotFound />} />
       </Routes>
       </Suspense>
-      <Footer />
+      {!hideFooter && <Footer />}
       <CookieBanner />
     </>
-
   )
 }
 

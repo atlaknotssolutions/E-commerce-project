@@ -2,7 +2,7 @@ import React, { useState, useEffect, MouseEvent } from "react";
 import "./ProductCard.css";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import { teal } from "@mui/material/colors";
-import { Box, Button, Chip, IconButton, Modal } from "@mui/material";
+import { Box, Button, IconButton, Modal } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { Product } from "../../../../types/productTypes";
 import {
@@ -140,26 +140,27 @@ const ProductCard: React.FC<ProductCardProps> = ({ item }) => {
                         </h1>
                         <p className="">{item.title}</p>
                     </div>
-                    <div className="price flex items-center gap-3 ">
-                        {item.variantCount && item.variantCount > 1 && item.minPrice != null && item.maxPrice != null ? (
-                            <span className="font-semibold text-gray-800">
+                    <div className="price flex items-center gap-2 flex-wrap">
+                        {item.variantCount != null && item.variantCount > 1 && item.minPrice != null && item.maxPrice != null && item.minPrice !== item.maxPrice ? (
+                            <span className="font-bold text-gray-900 text-base">
                                 ₹{item.minPrice} - ₹{item.maxPrice}
                             </span>
                         ) : (
-                            <span className="font-semibold text-gray-800">
+                            <span className="font-bold text-gray-900 text-base">
                                 ₹{item.sellingPrice}
                             </span>
                         )}
-                        <span className="text thin-line-through text-gray-400 ">
-                            ₹{item.mrpPrice}
-                        </span>
-                        <span className="text-[#00927c] font-semibold">
-                            {item.discountPercent}% off
-                        </span>
+                        {item.mrpPrice > item.sellingPrice && (
+                            <span className="text-gray-400 line-through text-sm">
+                                ₹{item.mrpPrice}
+                            </span>
+                        )}
+                        {item.discountPercent != null && item.discountPercent > 0 && (
+                            <span className="text-[#00927c] font-bold text-sm">
+                                {item.discountPercent}% off
+                            </span>
+                        )}
                     </div>
-                    {item.variantCount != null && item.variantCount > 1 && (
-                        <Chip size="small" label={`${item.variantCount} Variants`} variant="outlined" sx={{ fontSize: "0.7rem", height: "20px" }} />
-                    )}
                 </div>
 
             </div>

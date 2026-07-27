@@ -1,12 +1,12 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
-import { Payouts } from "../../types/payoutsType";
-import { Transaction } from "../../types/Transaction";
+import { Payout, SellerBalance, PayoutRequest, PayoutStats } from "../../types/payoutsType";
 import { api } from "../../Config/Api";
 
 interface PayoutsState {
-  payouts: Payouts[];
-  payout: Payouts | null;
+  payouts: Payout[];
+  payout: Payout | null;
+  balance: SellerBalance | null;
+  stats: PayoutStats | null;
   loading: boolean;
   error: string | null;
   payoutsLoaded: boolean;
@@ -15,25 +15,23 @@ interface PayoutsState {
 const initialState: PayoutsState = {
   payouts: [],
   payout: null,
+  balance: null,
+  stats: null,
   loading: false,
   error: null,
   payoutsLoaded: false,
 };
 
-// Thunks
 export const fetchPayoutsBySeller = createAsyncThunk<
-  Payouts[],
+  Payout[],
   string,
   { rejectValue: string }
 >("payouts/fetchPayoutsBySeller", async (jwt, { rejectWithValue }) => {
   try {
-    const response = await api.get<Payouts[]>("/api/payouts/seller", {
-      headers: {
-        Authorization: `Bearer ${jwt}`,
-      },
+    const response = await api.get("/seller/payouts", {
+      headers: { Authorization: `Bearer ${jwt}` },
     });
-    console.log("Payouts ",response.data)
-    return response.data;
+    return response.data.data;
   } catch (error: any) {
     if (error.response) {
       return rejectWithValue(error.response.data.message);
@@ -42,14 +40,34 @@ export const fetchPayoutsBySeller = createAsyncThunk<
   }
 });
 
-export const fetchPayoutById = createAsyncThunk<
-  Payouts,
-  number,
+export const fetchPayoutBalance = createAsyncThunk<
+  SellerBalance,
+  string,
   { rejectValue: string }
->("payouts/fetchPayoutById", async (id, { rejectWithValue }) => {
+>("payouts/fetchPayoutBalance", async (jwt, { rejectWithValue }) => {
   try {
-    const response = await api.get<Payouts>(`/api/payouts/${id}`);
-    return response.data;
+    const response = await api.get("/seller/payouts/balance", {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    return response.data.data;
+  } catch (error: any) {
+    if (error.response) {
+      return rejectWithValue(error.response.data.message);
+    }
+    return rejectWithValue("Failed to fetch balance");
+  }
+});
+
+export const fetchPayoutById = createAsyncThunk<
+  Payout,
+  { id: string; jwt: string },
+  { rejectValue: string }
+>("payouts/fetchPayoutById", async ({ id, jwt }, { rejectWithValue }) => {
+  try {
+    const response = await api.get(`/seller/payouts/${id}`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    return response.data.data;
   } catch (error: any) {
     if (error.response) {
       return rejectWithValue(error.response.data.message);
@@ -58,33 +76,88 @@ export const fetchPayoutById = createAsyncThunk<
   }
 });
 
-export const updatePayoutStatus = createAsyncThunk<
-  Payouts,
-  { id: number; status: string },
+export const requestPayout = createAsyncThunk<
+  Payout,
+  { jwt: string; data: PayoutRequest },
   { rejectValue: string }
->("payouts/updatePayoutStatus", async ({ id, status }, { rejectWithValue }) => {
+>("payouts/requestPayout", async ({ jwt, data }, { rejectWithValue }) => {
   try {
-    const response = await api.put<Payouts>(
-      `/api/payouts/${id}/status`,
-      null,
-      {
-        params: { status },
-      }
-    );
-    return response.data;
+    const response = await api.post("/seller/payouts/request", data, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    return response.data.data;
   } catch (error: any) {
     if (error.response) {
       return rejectWithValue(error.response.data.message);
     }
-    return rejectWithValue("Failed to update payout status");
+    return rejectWithValue("Failed to request payout");
   }
 });
 
-// Slice
+export const approvePayout = createAsyncThunk<
+  Payout,
+  { id: string; jwt: string },
+  { rejectValue: string }
+>("payouts/approvePayout", async ({ id, jwt }, { rejectWithValue }) => {
+  try {
+    const response = await api.patch(`/admin/payouts/${id}/approve`, null, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    return response.data.data;
+  } catch (error: any) {
+    if (error.response) {
+      return rejectWithValue(error.response.data.message);
+    }
+    return rejectWithValue("Failed to approve payout");
+  }
+});
+
+export const rejectPayout = createAsyncThunk<
+  Payout,
+  { id: string; jwt: string; reason?: string },
+  { rejectValue: string }
+>("payouts/rejectPayout", async ({ id, jwt, reason }, { rejectWithValue }) => {
+  try {
+    const response = await api.patch(
+      `/admin/payouts/${id}/reject`,
+      { reason },
+      { headers: { Authorization: `Bearer ${jwt}` } }
+    );
+    return response.data.data;
+  } catch (error: any) {
+    if (error.response) {
+      return rejectWithValue(error.response.data.message);
+    }
+    return rejectWithValue("Failed to reject payout");
+  }
+});
+
+export const markPayoutPaid = createAsyncThunk<
+  Payout,
+  { id: string; jwt: string },
+  { rejectValue: string }
+>("payouts/markPayoutPaid", async ({ id, jwt }, { rejectWithValue }) => {
+  try {
+    const response = await api.patch(`/admin/payouts/${id}/pay`, null, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    return response.data.data;
+  } catch (error: any) {
+    if (error.response) {
+      return rejectWithValue(error.response.data.message);
+    }
+    return rejectWithValue("Failed to mark payout as paid");
+  }
+});
+
 const payoutsSlice = createSlice({
   name: "payouts",
   initialState,
-  reducers: {},
+  reducers: {
+    clearPayoutError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchPayoutsBySeller.pending, (state) => {
@@ -100,6 +173,15 @@ const payoutsSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      .addCase(fetchPayoutBalance.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(fetchPayoutBalance.fulfilled, (state, action) => {
+        state.balance = action.payload;
+      })
+      .addCase(fetchPayoutBalance.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
       .addCase(fetchPayoutById.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -112,26 +194,56 @@ const payoutsSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-
-      //   update payouts
-      .addCase(updatePayoutStatus.pending, (state) => {
+      .addCase(requestPayout.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(updatePayoutStatus.fulfilled, (state, action) => {
+      .addCase(requestPayout.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.payouts.findIndex(
-          (p) => p.id === action.payload.id
-        );
+        state.payouts.unshift(action.payload);
+      })
+      .addCase(requestPayout.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(approvePayout.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(approvePayout.fulfilled, (state, action) => {
+        const index = state.payouts.findIndex((p) => p.id === action.payload.id);
         if (index !== -1) {
           state.payouts[index] = action.payload;
         }
       })
-      .addCase(updatePayoutStatus.rejected, (state, action) => {
-        state.loading = false;
+      .addCase(approvePayout.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      .addCase(rejectPayout.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(rejectPayout.fulfilled, (state, action) => {
+        const index = state.payouts.findIndex((p) => p.id === action.payload.id);
+        if (index !== -1) {
+          state.payouts[index] = action.payload;
+        }
+      })
+      .addCase(rejectPayout.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      .addCase(markPayoutPaid.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(markPayoutPaid.fulfilled, (state, action) => {
+        const index = state.payouts.findIndex((p) => p.id === action.payload.id);
+        if (index !== -1) {
+          state.payouts[index] = action.payload;
+        }
+      })
+      .addCase(markPayoutPaid.rejected, (state, action) => {
         state.error = action.payload as string;
       });
   },
 });
 
+export const { clearPayoutError } = payoutsSlice.actions;
 export default payoutsSlice.reducer;

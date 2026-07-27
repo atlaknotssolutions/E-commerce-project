@@ -141,9 +141,10 @@ const Home = () =>
                     </Button>}
                 </section>
 
-            </div> : <Backdrop open={true}>
+            </div> : <div className="min-h-screen flex flex-col items-center justify-center gap-4">
                 <CircularProgress color="inherit" />
-            </Backdrop>}
+                <p className="text-gray-400 text-sm">Loading amazing products for you...</p>
+            </div>}
         </>
     )
 }

@@ -102,7 +102,7 @@ const CommissionTable: React.FC<CommissionTableProps> = ({
                     onPageChange={(_, page) => onPageChange(page + 1)}
                     rowsPerPage={pagination.limit}
                     onRowsPerPageChange={(e) => onRowsPerPageChange(parseInt(e.target.value, 10))}
-                    rowsPerPageOptions={[10, 20, 50]}
+                    rowsPerPageOptions={[10, 25, 50, 100]}
                 />
             )}
 

@@ -31,6 +31,7 @@ const Footer = () => {
               <li><Link to="/account" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">My Account</Link></li>
               <li><Link to="/account/orders" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Orders</Link></li>
               <li><Link to="/wishlist" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Wishlist</Link></li>
+              <li><Link to="/account/coupons" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Coupons</Link></li>
               <li><Link to="/become-seller" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Become a Seller</Link></li>
             </ul>
           </div>
@@ -38,9 +39,9 @@ const Footer = () => {
           <div>
             <h3 className="font-semibold text-xs uppercase tracking-widest mb-5 text-gray-300">Legal</h3>
             <ul className="space-y-3">
-              {/* <li><Link to="/privacy-policy" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Privacy Policy</Link></li>
+              <li><Link to="/privacy-policy" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Privacy Policy</Link></li>
               <li><Link to="/terms" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Terms & Conditions</Link></li>
-              <li><Link to="/cookie-policy" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Cookie Policy</Link></li> */}
+              <li><Link to="/cookie-policy" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Cookie Policy</Link></li>
               <li><Link to="/refund-policy" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Refund Policy</Link></li>
               <li><Link to="/shipping-policy" className="text-gray-400 text-sm hover:text-white transition-colors duration-200 no-underline">Shipping Policy</Link></li>
             </ul>
@@ -54,10 +55,10 @@ const Footer = () => {
               {branding.address && <li className="text-gray-400 text-sm">{branding.address}</li>}
             </ul>
             <div className="flex gap-2.5 mt-5">
-              {branding.socialLinks.facebook && <a href={branding.socialLinks.facebook} className="w-8 h-8 rounded-lg bg-gray-700/50 flex items-center justify-center text-gray-400 hover:bg-[#00927c] hover:text-white transition-all duration-200 text-xs font-medium">f</a>}
-              {branding.socialLinks.twitter && <a href={branding.socialLinks.twitter} className="w-8 h-8 rounded-lg bg-gray-700/50 flex items-center justify-center text-gray-400 hover:bg-[#00927c] hover:text-white transition-all duration-200 text-xs font-medium">t</a>}
-              {branding.socialLinks.instagram && <a href={branding.socialLinks.instagram} className="w-8 h-8 rounded-lg bg-gray-700/50 flex items-center justify-center text-gray-400 hover:bg-[#00927c] hover:text-white transition-all duration-200 text-xs font-medium">ig</a>}
-              {branding.socialLinks.linkedin && <a href={branding.socialLinks.linkedin} className="w-8 h-8 rounded-lg bg-gray-700/50 flex items-center justify-center text-gray-400 hover:bg-[#00927c] hover:text-white transition-all duration-200 text-xs font-medium">in</a>}
+              {branding.socialLinks.facebook && <a href={branding.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-gray-700/50 flex items-center justify-center text-gray-400 hover:bg-[#00927c] hover:text-white transition-all duration-200 text-xs font-medium">f</a>}
+              {branding.socialLinks.twitter && <a href={branding.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-gray-700/50 flex items-center justify-center text-gray-400 hover:bg-[#00927c] hover:text-white transition-all duration-200 text-xs font-medium">t</a>}
+              {branding.socialLinks.instagram && <a href={branding.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-gray-700/50 flex items-center justify-center text-gray-400 hover:bg-[#00927c] hover:text-white transition-all duration-200 text-xs font-medium">ig</a>}
+              {branding.socialLinks.linkedin && <a href={branding.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-gray-700/50 flex items-center justify-center text-gray-400 hover:bg-[#00927c] hover:text-white transition-all duration-200 text-xs font-medium">in</a>}
             </div>
           </div>
         </div>

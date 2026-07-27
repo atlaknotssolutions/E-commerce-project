@@ -11,6 +11,21 @@ export const createCommissionController = ({ commissionService }) => {
         res.status(200).json({ success: true, data: commission });
     };
 
+    const approveCommission = async (req, res) => {
+        const commission = await commissionService.approveCommission(req.params.id);
+        res.status(200).json({ success: true, data: commission });
+    };
+
+    const settleCommission = async (req, res) => {
+        const commission = await commissionService.settleCommission(req.params.id);
+        res.status(200).json({ success: true, data: commission });
+    };
+
+    const cancelCommission = async (req, res) => {
+        const commission = await commissionService.cancelCommission(req.params.id);
+        res.status(200).json({ success: true, data: commission });
+    };
+
     const getAllCommissions = async (req, res) => {
         const { status, seller, search, startDate, endDate, page, limit } = req.query;
         const result = await commissionService.getAllCommissions({
@@ -51,6 +66,9 @@ export const createCommissionController = ({ commissionService }) => {
     return Object.freeze({
         calculateCommission,
         getCommission,
+        approveCommission,
+        settleCommission,
+        cancelCommission,
         getAllCommissions,
         getCommissionStats,
         getSellerCommissions,

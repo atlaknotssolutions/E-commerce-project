@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import Demo from "../../components/Demo/Demo";
 import SellingChart from "./SellingChart";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { fetchSellerReport } from "../../../Redux Toolkit/Seller/sellerSlice";

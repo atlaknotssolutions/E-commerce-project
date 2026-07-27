@@ -82,11 +82,11 @@ export const createCommissionRepository = ({ Commission }) => {
         };
     };
 
-    const updateStatus = async (id, status) => {
+    const updateStatus = async (id, status, options = {}) => {
         return Commission.findByIdAndUpdate(
             id,
             { $set: { status } },
-            { new: true }
+            { ...options, new: true }
         )
             .populate('order', 'orderId totalSellingPrice')
             .populate('seller', 'companyName email')
@@ -159,6 +159,14 @@ export const createCommissionRepository = ({ Commission }) => {
         return { ...result, statusCounts };
     };
 
+    const getActiveCommissionTotal = async (sellerId, statuses) => {
+        const [result] = await Commission.aggregate([
+            { $match: { seller: sellerId, status: { $in: statuses } } },
+            { $group: { _id: null, total: { $sum: { $add: ['$commissionAmount', '$gstAmount'] } } } },
+        ]);
+        return result ? result.total : 0;
+    };
+
     return Object.freeze({
         create,
         findById,
@@ -168,5 +176,6 @@ export const createCommissionRepository = ({ Commission }) => {
         updateStatus,
         getSellerCommissionStats,
         getAdminCommissionStats,
+        getActiveCommissionTotal,
     });
 };

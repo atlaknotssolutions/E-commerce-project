@@ -81,6 +81,15 @@ const configuration = {
         .split(',')
         .map((origin) => origin.trim())
         .filter((origin) => origin !== ''),
+
+    // Mock gateway configuration (development/testing only)
+    mockGateways: {
+        payoutFailureRate: parseInt(process.env.MOCK_PAYOUT_FAILURE_RATE || '0', 10),
+        refundFailureRate: parseInt(process.env.MOCK_REFUND_FAILURE_RATE || '0', 10),
+        defaultPayoutProvider: process.env.DEFAULT_PAYOUT_PROVIDER || 'mock_razorpayx',
+        defaultRefundProvider: process.env.DEFAULT_REFUND_PROVIDER || 'mock_razorpay',
+        webhookSecret: process.env.WEBHOOK_SECRET || '',
+    },
 };
 
 // 5. Object ko immutable banaein (Read-Only)

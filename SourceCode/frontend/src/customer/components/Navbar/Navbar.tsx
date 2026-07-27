@@ -24,6 +24,7 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { fetchUserProfile } from "../../../Redux Toolkit/Customer/UserSlice";
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import SearchBar from "./SearchBar";
 import { FavoriteBorder } from "@mui/icons-material";
 import { getAccountRoute, getHomeRoute } from "../../../util/roleRoutes";
 import branding from "../../../Config/branding";
@@ -36,7 +37,7 @@ const Navbar = () =>
   const theme = useTheme();
   const isLarge = useMediaQuery(theme.breakpoints.up("lg"));
   const dispatch = useAppDispatch();
-  const { user, auth, cart, sellers } = useAppSelector((store) => store);
+  const { user, auth, cart, sellers, wishlist } = useAppSelector((store) => store);
   const navigate = useNavigate();
 
 
@@ -111,9 +112,7 @@ const Navbar = () =>
         </div>
 
         <div className="flex items-center gap-1 lg:gap-2">
-          <IconButton onClick={() => navigate("/search-products")} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
-            <SearchIcon className="text-gray-500" sx={{ fontSize: 22 }} />
-          </IconButton>
+          <SearchBar />
 
           {user.user ? (
             <Button
@@ -154,7 +153,9 @@ const Navbar = () =>
           )}
 
           <IconButton onClick={() => navigate("/wishlist")} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
-            <FavoriteBorder sx={{ fontSize: 22 }} className="text-gray-500" />
+            <Badge badgeContent={wishlist.wishlist?.products?.length ?? 0} color="primary" sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 18, minWidth: 18 } }}>
+              <FavoriteBorder sx={{ fontSize: 22 }} className="text-gray-500" />
+            </Badge>
           </IconButton>
 
           <IconButton onClick={() => navigate("/cart")} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">

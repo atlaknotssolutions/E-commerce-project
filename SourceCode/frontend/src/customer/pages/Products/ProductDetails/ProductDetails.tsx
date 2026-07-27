@@ -17,6 +17,9 @@ import { useAppDispatch, useAppSelector } from '../../../../Redux Toolkit/Store'
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchProductById, getAllProducts } from '../../../../Redux Toolkit/Customer/ProductSlice';
 import { addItemToCart } from '../../../../Redux Toolkit/Customer/CartSlice';
+import { addProductToWishlist } from '../../../../Redux Toolkit/Customer/WishlistSlice';
+import { fetchCustomerCoupons } from '../../../../Redux Toolkit/Customer/CouponSlice';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import ProductReviewCard from '../../Review/ProductReviewCard';
 import RatingCard from '../../Review/RatingCard';
 import { fetchReviewsByProductId } from '../../../../Redux Toolkit/Customer/ReviewSlice';
@@ -43,7 +46,8 @@ const ProductDetails = () =>
     const handleOpen = () => setOpen(true);
     const handleClose = () => setOpen(false);
     const dispatch = useAppDispatch();
-    const { products, review } = useAppSelector(store => store)
+    const { products, review, wishlist, coupone } = useAppSelector(store => store)
+    const isWishlisted = wishlist.wishlist?.products?.some((p: any) => p.id === productId) || false;
     const navigate = useNavigate()
     const { productId, categoryId } = useParams<{
         productId: string;
@@ -140,7 +144,10 @@ const ProductDetails = () =>
         }
         dispatch(getAllProducts({ category: categoryId }));
 
-    }, [productId])
+        if (!coupone.customerCouponsLoaded) {
+            dispatch(fetchCustomerCoupons());
+        }
+    }, [dispatch, productId, categoryId])
 
     const handleAttributeSelect = (key: string, value: string) =>
     {
@@ -217,6 +224,40 @@ const ProductDetails = () =>
                         <p className='text-sm'>Inclusive of all taxes. Free Shipping above ₹1500.</p>
                     </div>
 
+                    {coupone.availableCoupons && coupone.availableCoupons.length > 0 && (
+                        <div className='mt-4 p-3 border border-dashed border-teal-400 bg-teal-50 rounded-lg'>
+                            <div className='flex items-center gap-2 mb-2'>
+                                <LocalOfferIcon sx={{ color: '#00927c', fontSize: 18 }} />
+                                <span className='text-sm font-semibold text-teal-800'>Available Coupons</span>
+                            </div>
+                            <div className='space-y-2'>
+                                {coupone.availableCoupons.slice(0, 3).map((coupon) => (
+                                    <div key={coupon._id} className='flex items-center justify-between bg-white rounded-md px-3 py-2 border border-teal-100'>
+                                        <div className='flex-1 min-w-0'>
+                                            <div className='flex items-center gap-2'>
+                                                <span className='font-mono font-bold text-teal-700 text-xs'>{coupon.code}</span>
+                                                <span className='text-xs text-gray-500'>•</span>
+                                                <span className='text-xs font-medium text-teal-700'>
+                                                    {coupon.discountType === 'PERCENTAGE'
+                                                        ? `${coupon.discountPercentage}% OFF`
+                                                        : `₹${coupon.discountValue} OFF`}
+                                                </span>
+                                            </div>
+                                            <p className='text-[11px] text-gray-400 truncate'>Min. ₹{coupon.minimumOrderValue}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {coupone.availableCoupons.length > 3 && (
+                                    <p className='text-[11px] text-teal-600 cursor-pointer hover:underline'
+                                       onClick={() => navigate('/account/coupons')}>
+                                        +{coupone.availableCoupons.length - 3} more coupons available
+                                    </p>
+                                )}
+                            </div>
+                            <p className='text-[11px] text-gray-400 mt-2'>Apply coupons at checkout for extra savings</p>
+                        </div>
+                    )}
+
                     <div className='mt-7 space-y-3'>
                         <VariantSelector
                             variants={variants}
@@ -279,7 +320,7 @@ const ProductDetails = () =>
                         <h1>QUANTITY:</h1>
                         <div className=' flex items-center gap-2  w-[140px] justify-between'>
 
-                            <Button disabled={quantity == 1} onClick={() => setQuantity(quantity - 1)} variant='outlined'>
+                            <Button disabled={quantity === 1} onClick={() => setQuantity(quantity - 1)} variant='outlined'>
                                 <RemoveIcon />
                             </Button>
                             <span className='px-3 text-lg font-semibold'>
@@ -302,8 +343,15 @@ const ProductDetails = () =>
                         </Button>
                         <Button
                             sx={{ py: "1rem" }}
-                            variant='outlined' fullWidth startIcon={<FavoriteBorderIcon />}>
-                            Whishlist
+                            variant='outlined' fullWidth startIcon={<FavoriteBorderIcon />}
+                            onClick={() => {
+                                if (productId) {
+                                    dispatch(addProductToWishlist({ productId }));
+                                }
+                            }}
+                            color={isWishlisted ? "error" : "inherit"}
+                        >
+                            {isWishlisted ? "Wishlisted" : "Wishlist"}
                         </Button>
 
                     </div>

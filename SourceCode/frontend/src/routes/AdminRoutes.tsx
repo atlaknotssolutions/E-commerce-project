@@ -18,6 +18,7 @@ import Reports from '../admin/pages/Reports/Reports'
 import Notifications from '../admin/pages/Notifications/Notifications'
 import SystemSettings from '../admin/pages/SystemSettings/SystemSettings'
 import AdminCommissions from '../admin/pages/Commissions/Commissions'
+import AdminPayouts from '../admin/pages/Payouts/Payouts'
 import AdminBrandPage from '../admin/pages/Brands/AdminBrandPage'
 
 const AdminRoutes = () => {
@@ -40,6 +41,7 @@ const AdminRoutes = () => {
     <Route path='/notifications' element={<Notifications/>}/>
     <Route path='/settings' element={<SystemSettings/>}/>
       <Route path='/commissions' element={<AdminCommissions/>}/>
+      <Route path='/payouts' element={<AdminPayouts/>}/>
       <Route path='/brands' element={<AdminBrandPage/>}/>
       <Route path='/account' element={<AdminAccount/>}/>
     </Routes>

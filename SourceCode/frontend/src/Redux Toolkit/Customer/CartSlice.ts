@@ -3,10 +3,8 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { Cart, CartItem } from "../../types/cartTypes";
 import { api } from "../../Config/Api";
 import { RootState } from "../Store";
-import { ApiResponse } from "../../types/authTypes";
 import { applyCoupon } from "./CouponSlice";
 import { sumCartItemMrpPrice, sumCartItemSellingPrice } from "../../util/cartCalculator";
-import { stat } from "fs";
 
 interface CartState
 {

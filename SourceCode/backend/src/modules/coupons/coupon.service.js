@@ -224,11 +224,29 @@ export const createCouponService = ({
         return couponRepository.findAllCoupons();
     };
 
+    /**
+     * Customer-facing: Returns all active coupons available to the user, plus their used/expired coupons.
+     */
+    const getAvailableCoupons = async ({ userId }) =>
+    {
+        const now = new Date();
+        const [available, used] = await Promise.all([
+            couponRepository.findAvailableForCustomer(userId),
+            couponRepository.findUsedByCustomer(userId),
+        ]);
+
+        const expired = used.filter(c => new Date(c.validityEndDate) < now);
+        const usedCoupons = used.filter(c => new Date(c.validityEndDate) >= now);
+
+        return { available, used: usedCoupons, expired };
+    };
+
     return Object.freeze({
         applyCoupon,
         removeCoupon,
         createCoupon,
         deleteCoupon,
         listCoupons,
+        getAvailableCoupons,
     });
 };

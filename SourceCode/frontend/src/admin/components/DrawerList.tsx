@@ -18,6 +18,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import PaymentIcon from '@mui/icons-material/Payment';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import LogoutIcon from '@mui/icons-material/Logout';
 const menu = [
@@ -116,6 +117,12 @@ const menu = [
         path: "/admin/commissions",
         icon: <AccountBalanceIcon className="text-primary-color" />,
         activeIcon: <AccountBalanceIcon className="text-white" />,
+    },
+    {
+        name: "Payouts",
+        path: "/admin/payouts",
+        icon: <PaymentIcon className="text-primary-color" />,
+        activeIcon: <PaymentIcon className="text-white" />,
     },
     {
         name: "System Settings",

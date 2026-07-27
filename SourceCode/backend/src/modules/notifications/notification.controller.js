@@ -1,50 +1,32 @@
 /**
- * Pure function-based factory representing the Customer Notifications HTTP API Controllers.
- * Strictly enforces thin controller design principles, avoiding classes and context leaks.
+ * Pure function-based factory representing the Enterprise Notification HTTP API Controllers.
+ * Thin controllers: delegate all logic to the service layer.
  */
 export const createNotificationController = ({ notificationService }) =>
 {
+    // ──────────────────────────────────────────
+    // LEGACY CUSTOMER ENDPOINTS
+    // ──────────────────────────────────────────
 
-    /**
-     * Retrieves customer-specific notifications and alerts listings.
-     * Maps exactly to: GET /api/notifications (Authentication required)
-     */
     const getCustomerNotifications = async (req, res) =>
     {
-        // Reads authenticated customer ID directly from decoded Bearer claims (req.user)
         const customerId = req.user.id;
-
         const notifications = await notificationService.getCustomerNotifications({ customerId });
-
-        // 200 OK: Delivers complete feedback lists back to client UI
         res.status(200).json(notifications);
     };
 
-    /**
-     * Modifies an existing notification readStatus owned by the customer.
-     * Maps exactly to: PATCH /api/notifications/:notificationId/read (Ownership required)
-     */
     const markAsRead = async (req, res) =>
     {
         const userId = req.user.id;
         const { notificationId } = req.params;
-
-        const updatedNotification = await notificationService.markAsRead({
-            notificationId,
-            userId,
-        });
-
+        const updatedNotification = await notificationService.markAsRead({ notificationId, userId });
         res.status(200).json(updatedNotification);
     };
 
-    // ==========================================
-    // SELLER NOTIFICATION CONTROLLER METHODS
-    // ==========================================
+    // ──────────────────────────────────────────
+    // LEGACY SELLER ENDPOINTS
+    // ──────────────────────────────────────────
 
-    /**
-     * Retrieves seller-specific notifications.
-     * Maps exactly to: GET /api/seller/notifications (ROLE_SELLER required)
-     */
     const getSellerNotifications = async (req, res) =>
     {
         const sellerId = req.user.id;
@@ -52,10 +34,6 @@ export const createNotificationController = ({ notificationService }) =>
         res.status(200).json(notifications);
     };
 
-    /**
-     * Returns unread notification count for seller.
-     * Maps exactly to: GET /api/seller/notifications/unread-count (ROLE_SELLER required)
-     */
     const getUnreadSellerNotificationCount = async (req, res) =>
     {
         const sellerId = req.user.id;
@@ -63,25 +41,14 @@ export const createNotificationController = ({ notificationService }) =>
         res.status(200).json(result);
     };
 
-    /**
-     * Marks a single seller notification as read.
-     * Maps exactly to: PATCH /api/seller/notifications/:notificationId/read (ROLE_SELLER required)
-     */
     const markSellerNotificationAsRead = async (req, res) =>
     {
         const sellerId = req.user.id;
         const { notificationId } = req.params;
-        const notification = await notificationService.markSellerNotificationAsRead({
-            notificationId,
-            sellerId
-        });
+        const notification = await notificationService.markSellerNotificationAsRead({ notificationId, sellerId });
         res.status(200).json(notification);
     };
 
-    /**
-     * Marks all seller notifications as read.
-     * Maps exactly to: PATCH /api/seller/notifications/read-all (ROLE_SELLER required)
-     */
     const markAllSellerNotificationsAsRead = async (req, res) =>
     {
         const sellerId = req.user.id;
@@ -89,30 +56,192 @@ export const createNotificationController = ({ notificationService }) =>
         res.status(200).json(result);
     };
 
-    /**
-     * Deletes a specific seller notification.
-     * Maps exactly to: DELETE /api/seller/notifications/:notificationId (ROLE_SELLER required)
-     */
     const deleteSellerNotification = async (req, res) =>
     {
         const sellerId = req.user.id;
         const { notificationId } = req.params;
-        const result = await notificationService.deleteSellerNotification({
-            notificationId,
-            sellerId
-        });
+        const result = await notificationService.deleteSellerNotification({ notificationId, sellerId });
         res.status(200).json(result);
     };
 
-    /**
-     * Retrieves recent activities from multiple collections.
-     * Maps exactly to: GET /api/seller/dashboard/recent-activities (ROLE_SELLER required)
-     */
     const getRecentSellerActivities = async (req, res) =>
     {
         const sellerId = req.user.id;
         const activities = await notificationService.getRecentSellerActivities({ sellerId });
         res.status(200).json(activities);
+    };
+
+    // ──────────────────────────────────────────
+    // ENTERPRISE NOTIFICATION ENDPOINTS
+    // ──────────────────────────────────────────
+
+    const sendNotification = async (req, res) =>
+    {
+        const { recipientId, recipientEmail, recipientPhone, type, title, body, channels, templateName, variables, metadata, priority } = req.body;
+        const createdBy = req.user.id;
+        const result = await notificationService.send({
+            recipientId, recipientEmail, recipientPhone, type, title, body,
+            channels, templateName, variables, metadata, priority, createdBy,
+        });
+        res.status(201).json(result);
+    };
+
+    const sendBulkNotifications = async (req, res) =>
+    {
+        const { recipientIds, type, title, body, channels, templateName, variables, metadata, priority } = req.body;
+        const createdBy = req.user.id;
+        const results = await notificationService.sendBulk({
+            recipientIds, type, title, body, channels, templateName, variables, metadata, priority, createdBy,
+        });
+        res.status(201).json({ results });
+    };
+
+    const sendToRole = async (req, res) =>
+    {
+        const { role, type, title, body, channels, templateName, variables, metadata, priority } = req.body;
+        const createdBy = req.user.id;
+        const result = await notificationService.sendToRole({
+            role, type, title, body, channels, templateName, variables, metadata, priority, createdBy,
+        });
+        res.status(201).json(result);
+    };
+
+    const getNotifications = async (req, res) =>
+    {
+        const recipientId = req.user.id;
+        const { page = 1, limit = 20, type = null } = req.query;
+        const result = await notificationService.getNotifications({
+            recipientId, page: parseInt(page), limit: parseInt(limit), type,
+        });
+        res.status(200).json(result);
+    };
+
+    const getUnreadCount = async (req, res) =>
+    {
+        const recipientId = req.user.id;
+        const result = await notificationService.getUnreadCount({ recipientId });
+        res.status(200).json(result);
+    };
+
+    const markAllAsRead = async (req, res) =>
+    {
+        const recipientId = req.user.id;
+        const result = await notificationService.markAllAsRead({ recipientId });
+        res.status(200).json(result);
+    };
+
+    const archiveNotification = async (req, res) =>
+    {
+        const recipientId = req.user.id;
+        const { notificationId } = req.params;
+        const result = await notificationService.archive({ notificationId, recipientId });
+        res.status(200).json(result);
+    };
+
+    const deleteNotification = async (req, res) =>
+    {
+        const recipientId = req.user.id;
+        const { notificationId } = req.params;
+        const result = await notificationService.deleteNotification({ notificationId, recipientId });
+        res.status(200).json(result);
+    };
+
+    const retryNotification = async (req, res) =>
+    {
+        const { notificationId } = req.params;
+        const result = await notificationService.retryFailed({ notificationId });
+        res.status(200).json(result);
+    };
+
+    const scheduleNotification = async (req, res) =>
+    {
+        const { recipientId, type, title, body, channels, templateName, variables, metadata, priority, scheduledAt } = req.body;
+        const createdBy = req.user.id;
+        const result = await notificationService.schedule({
+            recipientId, type, title, body, channels, templateName, variables, metadata, priority, scheduledAt, createdBy,
+        });
+        res.status(201).json(result);
+    };
+
+    const cancelScheduledNotification = async (req, res) =>
+    {
+        const recipientId = req.user.id;
+        const { notificationId } = req.params;
+        const result = await notificationService.cancelScheduled({ notificationId, recipientId });
+        res.status(200).json(result);
+    };
+
+    const processScheduledNotifications = async (req, res) =>
+    {
+        const results = await notificationService.processScheduled();
+        res.status(200).json({ processed: results.length, results });
+    };
+
+    const getNotificationAnalytics = async (req, res) =>
+    {
+        const { startDate, endDate } = req.query;
+        const result = await notificationService.getAnalytics({ startDate, endDate });
+        res.status(200).json(result);
+    };
+
+    // ──────────────────────────────────────────
+    // TEMPLATE MANAGEMENT ENDPOINTS
+    // ──────────────────────────────────────────
+
+    const createTemplate = async (req, res) =>
+    {
+        const { name, type, channelContent, variables } = req.body;
+        const template = await notificationService.createTemplate({ name, type, channelContent, variables });
+        res.status(201).json(template);
+    };
+
+    const getTemplate = async (req, res) =>
+    {
+        const { templateId } = req.params;
+        const template = await notificationService.getTemplate({ templateId });
+        res.status(200).json(template);
+    };
+
+    const getTemplates = async (req, res) =>
+    {
+        const { page = 1, limit = 50, isActive = null } = req.query;
+        const result = await notificationService.getTemplates({
+            page: parseInt(page), limit: parseInt(limit), isActive: isActive !== null ? isActive === 'true' : null,
+        });
+        res.status(200).json(result);
+    };
+
+    const updateTemplate = async (req, res) =>
+    {
+        const { templateId } = req.params;
+        const template = await notificationService.updateTemplate({ templateId, updateData: req.body });
+        res.status(200).json(template);
+    };
+
+    const deleteTemplate = async (req, res) =>
+    {
+        const { templateId } = req.params;
+        await notificationService.deleteTemplate({ templateId });
+        res.status(200).json({ success: true, message: 'Template deleted.' });
+    };
+
+    // ──────────────────────────────────────────
+    // PREFERENCE MANAGEMENT ENDPOINTS
+    // ──────────────────────────────────────────
+
+    const getPreferences = async (req, res) =>
+    {
+        const userId = req.user.id;
+        const preferences = await notificationService.getPreferences({ userId });
+        res.status(200).json(preferences);
+    };
+
+    const updatePreferences = async (req, res) =>
+    {
+        const userId = req.user.id;
+        const { channels, quietHours, mutedTypes } = req.body;
+        const preferences = await notificationService.updatePreferences({ userId, channels, quietHours, mutedTypes });
+        res.status(200).json(preferences);
     };
 
     return Object.freeze({
@@ -124,5 +253,25 @@ export const createNotificationController = ({ notificationService }) =>
         markAllSellerNotificationsAsRead,
         deleteSellerNotification,
         getRecentSellerActivities,
+        sendNotification,
+        sendBulkNotifications,
+        sendToRole,
+        getNotifications,
+        getUnreadCount,
+        markAllAsRead,
+        archiveNotification,
+        deleteNotification,
+        retryNotification,
+        scheduleNotification,
+        cancelScheduledNotification,
+        processScheduledNotifications,
+        getNotificationAnalytics,
+        createTemplate,
+        getTemplate,
+        getTemplates,
+        updateTemplate,
+        deleteTemplate,
+        getPreferences,
+        updatePreferences,
     });
 };

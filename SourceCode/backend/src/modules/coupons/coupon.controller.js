@@ -74,10 +74,22 @@ export const createCouponController = ({ couponService }) =>
         res.status(200).json(outcome);
     };
 
+    /**
+     * Customer Endpoint: Returns available, used, and expired coupons for the logged-in user.
+     * Maps exactly to: GET /api/coupons/customer
+     */
+    const getCustomerCoupons = async (req, res) =>
+    {
+        const userId = req.user.id;
+        const coupons = await couponService.getAvailableCoupons({ userId });
+        res.status(200).json(coupons);
+    };
+
     return Object.freeze({
         applyCoupon,
         createCoupon,
         listCoupons,
         deleteCoupon,
+        getCustomerCoupons,
     });
 };

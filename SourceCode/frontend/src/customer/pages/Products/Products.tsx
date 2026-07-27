@@ -118,9 +118,16 @@ const Products = () => {
                 </IconButton>
               )}
               {showFilter && !isLarge && (
-                <Box sx={{ zIndex: 3 }} className="absolute top-[60px]">
-                  <FilterSection />
-                </Box>
+                <>
+                  <div className="fixed inset-0 bg-black/40 z-40" onClick={handleShowFilter} />
+                  <Box sx={{ zIndex: 50 }} className="fixed top-[68px] left-0 bottom-0 w-[85vw] max-w-[360px] overflow-y-auto bg-white shadow-xl">
+                    <div className="flex items-center justify-between px-4 py-3 border-b sticky top-0 bg-white z-10">
+                      <p className="font-semibold">Filters</p>
+                      <button onClick={handleShowFilter} className="text-gray-500 text-2xl leading-none">&times;</button>
+                    </div>
+                    <FilterSection />
+                  </Box>
+                </>
               )}
               {totalElements > 0 && (
                 <Chip
@@ -140,8 +147,10 @@ const Products = () => {
                 onChange={handleSortProduct}
               >
                 <MenuItem value="">Relevance</MenuItem>
+                <MenuItem value="popularity">Popularity</MenuItem>
                 <MenuItem value="price_low">Price: Low to High</MenuItem>
                 <MenuItem value="price_high">Price: High to Low</MenuItem>
+                <MenuItem value="rating">Rating</MenuItem>
                 <MenuItem value="discount">Discount</MenuItem>
                 <MenuItem value="newest">Newest</MenuItem>
               </Select>

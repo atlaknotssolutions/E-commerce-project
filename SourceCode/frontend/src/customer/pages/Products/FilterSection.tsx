@@ -286,6 +286,45 @@ const FilterSection = () => {
             </RadioGroup>
           </FormControl>
         </section>
+
+        {/* ============================== */}
+        {/* RATING FILTER                  */}
+        {/* ============================== */}
+        <section>
+          <FormControl>
+            <FormLabel
+              sx={{
+                fontSize: "16px",
+                fontWeight: "bold",
+                pb: "14px",
+                color: teal[600],
+              }}
+              id="filter-rating"
+            >
+              Customer Rating
+            </FormLabel>
+            <RadioGroup
+              name="rating"
+              onChange={(e) => updateFilterParam("rating", e.target.value)}
+              aria-labelledby="filter-rating"
+              value={searchParams.get("rating") || ""}
+            >
+              {[
+                { name: "4★ & above", value: "4" },
+                { name: "3★ & above", value: "3" },
+                { name: "2★ & above", value: "2" },
+                { name: "1★ & above", value: "1" },
+              ].map((item) => (
+                <FormControlLabel
+                  key={item.name}
+                  value={item.value}
+                  control={<Radio size="small" />}
+                  label={item.name}
+                />
+              ))}
+            </RadioGroup>
+          </FormControl>
+        </section>
       </div>
     </div>
   );

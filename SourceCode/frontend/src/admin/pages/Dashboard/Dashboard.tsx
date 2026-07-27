@@ -8,7 +8,7 @@ import { useAppSelector } from '../../../Redux Toolkit/Store'
 import { useLocation } from 'react-router-dom'
 
 const AdminDashboard = () => {
-  const { deal,admin } = useAppSelector(store => store)
+  const { adminDeals: deal, admin } = useAppSelector(store => store)
   const [snackbarOpen, setOpenSnackbar] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -17,10 +17,10 @@ const AdminDashboard = () => {
     setOpenSnackbar(false);
   }
   useEffect(() => {
-    if (deal.dealCreated || deal.dealUpdated ||deal.error || admin.categoryUpdated) {
+    if (deal.dealCreated || deal.dealUpdated || deal.error || admin.categoryUpdated) {
       setOpenSnackbar(true)
     }
-  }, [deal.dealCreated, deal.dealUpdated, deal.error,admin.categoryUpdated])
+  }, [deal.dealCreated, deal.dealUpdated, deal.error, admin.categoryUpdated])
 
   useEffect(() => {
     if (contentRef.current) {

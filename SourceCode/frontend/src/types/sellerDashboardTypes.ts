@@ -324,6 +324,7 @@ export interface SellerDashboardState {
     notifications: SellerNotification[];
     recentActivities: RecentActivity[];
     loading: boolean;
+    pendingRequests: number;
     error: string | null;
     loaded: boolean;
     refreshing: boolean;

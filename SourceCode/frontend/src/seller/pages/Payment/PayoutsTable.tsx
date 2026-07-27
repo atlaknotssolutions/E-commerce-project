@@ -1,98 +1,119 @@
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
-import React from 'react'
-import { fetchSellerOrders } from '../../../Redux Toolkit/Seller/sellerOrderSlice';
+import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Box, Button, Typography } from '@mui/material';
+import React from 'react';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
-import { Order, OrderItem } from '../../../types/orderTypes';
-import { fetchPayoutsBySeller } from '../../../Redux Toolkit/Seller/payoutSlice';
+import { fetchPayoutsBySeller, fetchPayoutBalance, requestPayout } from '../../../Redux Toolkit/Seller/payoutSlice';
 import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
+
+const statusColor: Record<string, "warning" | "success" | "error" | "info" | "default"> = {
+  PENDING: "warning",
+  APPROVED: "info",
+  REJECTED: "error",
+  COMPLETED: "success",
+};
 
 const PayoutsTable = () => {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
-  const { sellerOrder, payouts } = useAppSelector(store => store);
+  const { payouts } = useAppSelector(store => store);
   const dispatch = useAppDispatch();
+  const jwt = localStorage.getItem("jwt") || "";
 
   React.useEffect(() => {
-    if (payouts.payoutsLoaded) return;
-    dispatch(fetchPayoutsBySeller(localStorage.getItem("jwt") || ""));
-  }, [dispatch, payouts.payoutsLoaded]);
+    if (!payouts.payoutsLoaded) {
+      dispatch(fetchPayoutsBySeller(jwt));
+    }
+    dispatch(fetchPayoutBalance(jwt));
+  }, [dispatch, payouts.payoutsLoaded, jwt]);
+
+  const handleRequestPayout = () => {
+    if (!payouts.balance) return;
+    const amount = prompt(`Available balance: ₹${payouts.balance.availableBalance}\nEnter amount to withdraw:`);
+    if (amount) {
+      const parsed = parseFloat(amount);
+      if (!isNaN(parsed) && parsed > 0) {
+        dispatch(requestPayout({ jwt, data: { amount: parsed } }));
+      }
+    }
+  };
 
   return (
-    <div>
-          <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
-        <Table stickyHeader sx={{ minWidth: 700 }} aria-label="customized table">
+    <div className="space-y-4">
+      {payouts.balance && (
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <Paper sx={{ p: 2, flex: 1 }}>
+            <Typography variant="caption" color="text.secondary">Available Balance</Typography>
+            <Typography variant="h6" color="primary">₹{payouts.balance.availableBalance.toLocaleString()}</Typography>
+          </Paper>
+          <Paper sx={{ p: 2, flex: 1 }}>
+            <Typography variant="caption" color="text.secondary">Net Earnings</Typography>
+            <Typography variant="h6">₹{payouts.balance.netEarnings.toLocaleString()}</Typography>
+          </Paper>
+          <Paper sx={{ p: 2, flex: 1 }}>
+            <Typography variant="caption" color="text.secondary">Active Commissions</Typography>
+            <Typography variant="h6">₹{payouts.balance.activeCommissions.toLocaleString()}</Typography>
+          </Paper>
+          <Paper sx={{ p: 2, flex: 1 }}>
+            <Button
+              variant="contained"
+              fullWidth
+              disabled={payouts.loading || !payouts.balance || payouts.balance.availableBalance <= 0}
+              onClick={handleRequestPayout}
+            >
+              Request Payout
+            </Button>
+          </Paper>
+        </Box>
+      )}
+
+      <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 400px)" }}>
+        <Table stickyHeader sx={{ minWidth: 700 }} aria-label="payouts table">
           <TableHead>
             <TableRow>
-              <StyledTableCell>Date</StyledTableCell>
+              <StyledTableCell>Requested Date</StyledTableCell>
               <StyledTableCell>Amount</StyledTableCell>
-              <StyledTableCell align='right'>Status</StyledTableCell>
-              {/* <TableCell align="right">Amount</TableCell> */}
+              <StyledTableCell>Status</StyledTableCell>
+              <StyledTableCell align="right">Processed Date</StyledTableCell>
+              <StyledTableCell align="right">Rejection Reason</StyledTableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {sellerOrder.orders.map((item: Order) => (
-              <StyledTableRow key={item.id}>
-                <StyledTableCell align="left">{item.id}</StyledTableCell>
-                <StyledTableCell component="th" scope="row">
-                  <div className='flex gap-1 flex-wrap'>
-                    {item.orderItems.map((orderItem: OrderItem) =>
-                      <div key={orderItem.id} className='flex gap-5'>
-                        <img className='w-20 rounded-md' src={orderItem.product?.images?.[0]?.url || "/logo192.png"} alt="" />
-                        <div className='flex flex-col justify-between py-2'>
-                          <h1>Title: {orderItem.product?.title}</h1>
-                          <h1>Price: Rs.{orderItem.product?.sellingPrice}</h1>
-                          <h1>Color: {orderItem.product?.color}</h1>
-                          <h1>Size: {orderItem.size}</h1>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+            {payouts.error && (
+              <StyledTableRow>
+                <StyledTableCell colSpan={5} align="center" sx={{ color: 'error.main' }}>
+                  {payouts.error}
                 </StyledTableCell>
-                {/* <TableCell>
-                  <div className='flex flex-col gap-y-2'>
-                    <h1>{item.shippingAddress.name}</h1>
-                    <h1>{item.shippingAddress.address}, {item.shippingAddress.city}</h1>
-                    <h1>{item.shippingAddress.state} - {item.shippingAddress.pinCode}</h1>
-                    <h1><strong>Mobile:</strong> {item.shippingAddress.mobile}</h1>
-                  </div>
-                </TableCell> */}
-                {/* <TableCell 
-                 sx={{color:orderStatusColor[item.orderStatus].color}} 
-                 align="center"> <Box sx={{borderColor:orderStatusColor[item.orderStatus].color}}  className={`border px-2 py-1 rounded-full text-xs`}>
-                  {item.orderStatus}</Box> 
-                 </TableCell> */}
-                {/* <TableCell align="right">
-                  <Button
-                    size='small'
-                    onClick={(e) => handleClick(e, item.id)}
-                    color='primary'
-                    className='bg-primary-color'>
-                    Status
-                  </Button>
-                  <Menu
-                    id={`status-menu ${item.id}`}
-                    anchorEl={anchorEl[item.id]}
-                    open={Boolean(anchorEl[item.id])}
-                    onClose={() => handleClose(item.id)}
-                    MenuListProps={{
-                      'aria-labelledby': `status-menu ${item.id}`,
-                    }}
-                  >
-                    {orderStatus.map((status) =>
-                      <MenuItem 
-                      key={status.label} 
-                      onClick={() => handleUpdateOrder(item.id, status.label)}>
-                        {status.label}</MenuItem>
-                    )}
-                  </Menu>
-                </TableCell> */}
               </StyledTableRow>
-            ))}
+            )}
+            {!payouts.error && payouts.loading && payouts.payouts.length === 0 ? (
+              <StyledTableRow>
+                <StyledTableCell colSpan={5} align="center">Loading...</StyledTableCell>
+              </StyledTableRow>
+            ) : payouts.payouts.length === 0 ? (
+              <StyledTableRow>
+                <StyledTableCell colSpan={5} align="center">No payout records found</StyledTableCell>
+              </StyledTableRow>
+            ) : (
+              payouts.payouts.map((payout) => (
+                <StyledTableRow key={payout.id}>
+                  <StyledTableCell>{new Date(payout.requestedAt).toLocaleDateString()}</StyledTableCell>
+                  <StyledTableCell>₹{payout.amount.toLocaleString()}</StyledTableCell>
+                  <StyledTableCell>
+                    <Chip label={payout.status} color={statusColor[payout.status] || "default"} size="small" />
+                  </StyledTableCell>
+                  <StyledTableCell align="right">
+                    {payout.processedAt ? new Date(payout.processedAt).toLocaleDateString() : "—"}
+                  </StyledTableCell>
+                  <StyledTableCell align="right">
+                    {payout.rejectionReason || "—"}
+                  </StyledTableCell>
+                </StyledTableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </TableContainer>
     </div>
-  )
-}
+  );
+};
 
-export default PayoutsTable
+export default PayoutsTable;

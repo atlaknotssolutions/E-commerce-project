@@ -32,6 +32,8 @@ import { Transaction } from './modules/transactions/transaction.model.js';
 import { SellerReport } from './modules/reports/sellerReport.model.js';
 import { Review } from './modules/reviews/review.model.js';
 import { Notification } from './modules/notifications/notification.model.js';
+import { NotificationTemplate } from './modules/notifications/notificationTemplate.model.js';
+import { NotificationPreference } from './modules/notifications/notificationPreference.model.js';
 import { PasswordResetToken } from './modules/auth/passwordResetToken.model.js';
 import { RefreshToken } from './modules/auth/refreshToken.model.js';
 import { Deal } from './modules/deals/deal.model.js';
@@ -42,6 +44,8 @@ import { Refund } from './modules/payments/refund.model.js';
 import { AdminNotification } from './modules/adminNotifications/adminNotification.model.js';
 import { SystemSettings } from './modules/systemSettings/systemSettings.model.js';
 import { Commission } from './modules/commissions/commission.model.js';
+import { Payout } from './modules/payouts/payout.model.js';
+import { GatewayEvent } from './modules/gateway/gatewayEvent.model.js';
 import { Brand } from './modules/brands/brand.model.js';
 import { BrandRequest } from './modules/brandRequests/brandRequest.model.js';
 
@@ -60,6 +64,8 @@ import { createTransactionRepository } from './modules/transactions/transaction.
 import { createSellerReportRepository } from './modules/reports/sellerReport.repository.js';
 import { createReviewRepository } from './modules/reviews/review.repository.js';
 import { createNotificationRepository } from './modules/notifications/notification.repository.js';
+import { createNotificationTemplateRepository } from './modules/notifications/notificationTemplate.repository.js';
+import { createNotificationPreferenceRepository } from './modules/notifications/notificationPreference.repository.js';
 import { createPasswordResetTokenRepository } from './modules/auth/passwordResetToken.repository.js';
 import { createRefreshTokenRepository } from './modules/auth/refreshToken.repository.js';
 import { createDealRepository } from './modules/deals/deal.repository.js';
@@ -92,14 +98,27 @@ import { createSystemSettingsService } from './modules/systemSettings/systemSett
 import { createSystemSettingsController } from './modules/systemSettings/systemSettings.controller.js';
 import { createSystemSettingsRoutes } from './modules/systemSettings/systemSettings.routes.js';
 import { createCommissionRepository } from './modules/commissions/commission.repository.js';
+import { createPayoutRepository } from './modules/payouts/payout.repository.js';
+import { createGatewayEventRepository } from './modules/gateway/gatewayEvent.repository.js';
 import { createBrandRepository } from './modules/brands/brand.repository.js';
 import { createBrandRequestRepository } from './modules/brandRequests/brandRequest.repository.js';
 import { mapCommission, mapCommissions } from './modules/commissions/commission.mapper.js';
+import { mapPayout, mapPayouts } from './modules/payouts/payout.mapper.js';
 import { mapBrand, mapBrands } from './modules/brands/brand.mapper.js';
 import { mapBrandRequest, mapBrandRequests } from './modules/brandRequests/brandRequest.mapper.js';
 import { createCommissionService } from './modules/commissions/commission.service.js';
 import { createCommissionController } from './modules/commissions/commission.controller.js';
 import { createCommissionRoutes } from './modules/commissions/commission.routes.js';
+import { createPayoutService } from './modules/payouts/payout.service.js';
+import { createPayoutController } from './modules/payouts/payout.controller.js';
+import { createPayoutRoutes } from './modules/payouts/payout.routes.js';
+import { createGatewayService } from './modules/gateway/gateway.service.js';
+import { createGatewayController } from './modules/gateway/gateway.controller.js';
+import { createGatewayRoutes } from './modules/gateway/gateway.routes.js';
+import { createRazorpayXMockGateway } from './integrations/payment/gateways/razorpayx.mock.gateway.js';
+import { createRazorpayMockGateway } from './integrations/payment/gateways/razorpay.mock.gateway.js';
+import { createPaymentGatewayFactory } from './integrations/payment/paymentGatewayFactory.js';
+import * as gatewayUtils from './integrations/payment/gatewayUtils.js';
 import { seedHomeCategories } from "./database/seedHomeCategories.js"; // ---- seed  home data
 import { createInventoryHelper } from './modules/orders/orderInventoryHelper.js';
 
@@ -217,6 +236,14 @@ import { mapReturn, mapReturns } from "./utils/mappers/return.mapper.js";
 import { mapReview, mapReviews } from "./utils/mappers/review.mapper.js";
 import { mapSellerDashboardSummary, mapRevenueAnalytics, mapProductAnalytics, mapOrderAnalytics, mapCustomerAnalytics, mapReturnRefundAnalytics } from "./utils/mappers/sellerDashboard.mapper.js";
 import { mapSellerNotification, mapSellerNotifications, mapRecentActivity, mapRecentActivities } from "./utils/mappers/notification.mapper.js";
+import { mapNotification, mapNotifications, mapNotificationListResponse, mapNotificationWithHistory } from "./modules/notifications/notification.mapper.js";
+import { createInAppProvider } from './modules/notifications/providers/inApp.provider.js';
+import { createEmailProvider } from './modules/notifications/providers/email.provider.js';
+import { createSmsProvider } from './modules/notifications/providers/sms.provider.js';
+import { createPushProvider } from './modules/notifications/providers/push.provider.js';
+import { createNotificationChannelFactory } from './modules/notifications/providers/notificationChannelFactory.js';
+import { createTemplateRenderer } from './modules/notifications/templateRenderer.js';
+import { createNotificationDispatcher } from './modules/notifications/notificationDispatcher.js';
 
 /**
  * Functional dependency-injection based Express App Creator.
@@ -283,6 +310,8 @@ export const createApp = async ({ env, dbManager }) =>
     const sellerReportRepository = createSellerReportRepository({ SellerReport });
     const reviewRepository = createReviewRepository({ Review });
     const notificationRepository = createNotificationRepository({ Notification, Order, PaymentOrder, ReturnRequest, Product });
+    const notificationTemplateRepository = createNotificationTemplateRepository({ NotificationTemplate });
+    const notificationPreferenceRepository = createNotificationPreferenceRepository({ NotificationPreference });
     const passwordResetTokenRepository = createPasswordResetTokenRepository({ PasswordResetToken });
     const refreshTokenRepository = createRefreshTokenRepository({ RefreshToken });
     const dealRepository = createDealRepository({ Deal });
@@ -313,6 +342,14 @@ export const createApp = async ({ env, dbManager }) =>
 
     const commissionRepository = createCommissionRepository({
         Commission,
+    });
+
+    const payoutRepository = createPayoutRepository({
+        Payout,
+    });
+
+    const gatewayEventRepository = createGatewayEventRepository({
+        GatewayEvent,
     });
 
     await seedHomeCategories({
@@ -397,14 +434,39 @@ export const createApp = async ({ env, dbManager }) =>
         createApiError,
     });
 
+    // Enterprise Notification Channel Providers
+    const inAppProvider = createInAppProvider({ notificationRepository });
+    const emailProvider = createEmailProvider({ emailClient });
+    const smsProvider = createSmsProvider();
+    const pushProvider = createPushProvider();
+    const notificationChannelFactory = createNotificationChannelFactory({ inAppProvider, emailProvider, smsProvider, pushProvider });
+    const templateRenderer = createTemplateRenderer();
+    const notificationDispatcher = createNotificationDispatcher({
+        notificationChannelFactory,
+        notificationTemplateRepository,
+        notificationPreferenceRepository,
+        notificationRepository,
+        userRepository,
+        User,
+        templateRenderer,
+        createApiError,
+    });
+
     const notificationService = createNotificationService({
         notificationRepository,
+        notificationTemplateRepository,
+        notificationPreferenceRepository,
+        notificationDispatcher,
         userRepository,
         createApiError,
         mapSellerNotification,
         mapSellerNotifications,
         mapRecentActivity,
         mapRecentActivities,
+        mapNotification,
+        mapNotifications,
+        mapNotificationListResponse,
+        mapNotificationWithHistory,
     });
 
     const commissionService = createCommissionService({
@@ -414,6 +476,46 @@ export const createApp = async ({ env, dbManager }) =>
         createApiError,
         mapCommission,
         mapCommissions,
+    });
+
+    // Gateway module instantiation
+    const razorpayXMockGateway = createRazorpayXMockGateway({
+        gatewayEventRepository,
+        mockGatewaysConfig: env.mockGateways,
+    });
+
+    const razorpayMockGateway = createRazorpayMockGateway({
+        gatewayEventRepository,
+        mockGatewaysConfig: env.mockGateways,
+    });
+
+    const paymentGatewayFactory = createPaymentGatewayFactory();
+    paymentGatewayFactory.register('mock_razorpayx', razorpayXMockGateway);
+    paymentGatewayFactory.register('mock_razorpay', razorpayMockGateway);
+
+    const payoutService = createPayoutService({
+        payoutRepository,
+        commissionRepository,
+        sellerReportRepository,
+        paymentGatewayFactory,
+        gatewayEventRepository,
+        gatewayUtils,
+        mockGatewaysConfig: env.mockGateways,
+        createApiError,
+        mapPayout,
+        mapPayouts,
+    });
+
+    const gatewayService = createGatewayService({
+        gatewayEventRepository,
+        payoutRepository,
+        refundRepository,
+        payoutService,
+        commissionService,
+        sellerReportRepository,
+        notificationService,
+        paymentGatewayFactory,
+        createApiError,
     });
 
     const orderService = createOrderService({
@@ -523,6 +625,12 @@ export const createApp = async ({ env, dbManager }) =>
         refundRepository,
         inventoryHelper: returnInventoryHelper,
         notificationService,
+        commissionService,
+        sellerReportRepository,
+        paymentGatewayFactory,
+        gatewayEventRepository,
+        gatewayUtils,
+        mockGatewaysConfig: env.mockGateways,
         createApiError,
         mapReturn,
         mapReturns,
@@ -673,6 +781,10 @@ export const createApp = async ({ env, dbManager }) =>
     const systemSettingsController = createSystemSettingsController({ systemSettingsService });
 
     const commissionController = createCommissionController({ commissionService });
+
+    const payoutController = createPayoutController({ payoutService });
+
+    const gatewayController = createGatewayController({ gatewayService });
 
     // F. Assembly Routes
     const rawAuthRouterInstance = express.Router();
@@ -998,6 +1110,25 @@ export const createApp = async ({ env, dbManager }) =>
         asyncHandler,
     });
 
+    const rawPayoutRouter = express.Router();
+    const payoutRoutes = createPayoutRoutes({
+        router: rawPayoutRouter,
+        controller: payoutController,
+        authenticate,
+        authorizeRoles,
+        asyncHandler,
+    });
+
+    const rawGatewayRouter = express.Router();
+    const gatewayRoutes = createGatewayRoutes({
+        router: rawGatewayRouter,
+        controller: gatewayController,
+        authenticate,
+        authorizeRoles,
+        asyncHandler,
+        webhookSecret: env.mockGateways.webhookSecret,
+    });
+
     // =========================================================================
     // MOUNT ROUTING & SYSTEM EXCEPTION CHANNELS
     // =========================================================================
@@ -1040,7 +1171,6 @@ export const createApp = async ({ env, dbManager }) =>
     app.use(productRoutes);
 
     // Mount shopping cart pathways
-    app.use(cors());
     app.use(cartRoutes);
 
     // Mount wishlist pathways
@@ -1136,6 +1266,12 @@ export const createApp = async ({ env, dbManager }) =>
 
     // Mount commission engine pathways
     app.use(commissionRoutes);
+
+    // Mount payout engine pathways
+    app.use(payoutRoutes);
+
+    // Mount gateway webhook and admin dashboard pathways
+    app.use(gatewayRoutes);
 
     // Wildcard Fallback Route for non-existent system paths
     app.use((req, res, next) =>

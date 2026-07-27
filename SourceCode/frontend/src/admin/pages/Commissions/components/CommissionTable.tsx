@@ -6,6 +6,9 @@ import {
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import {
     Commission,
     COMMISSION_STATUS_LABELS,
@@ -15,6 +18,9 @@ interface CommissionTableProps {
     commissions: Commission[];
     pagination: { page: number; limit: number; total: number; totalPages: number } | null;
     onView: (commission: Commission) => void;
+    onApprove: (commission: Commission) => void;
+    onSettle: (commission: Commission) => void;
+    onCancel: (commission: Commission) => void;
     onPageChange: (page: number) => void;
     onRowsPerPageChange: (limit: number) => void;
 }
@@ -33,6 +39,9 @@ const CommissionTable: React.FC<CommissionTableProps> = ({
     commissions,
     pagination,
     onView,
+    onApprove,
+    onSettle,
+    onCancel,
     onPageChange,
     onRowsPerPageChange,
 }) => {
@@ -139,6 +148,24 @@ const CommissionTable: React.FC<CommissionTableProps> = ({
                     <ListItemIcon><VisibilityIcon fontSize="small" /></ListItemIcon>
                     <ListItemText>View Details</ListItemText>
                 </MenuItem>
+                {selectedCommission?.status === 'CALCULATED' && (
+                    <MenuItem onClick={() => { if (selectedCommission) onApprove(selectedCommission); handleMenuClose(); }}>
+                        <ListItemIcon><CheckCircleOutlineIcon fontSize="small" color="success" /></ListItemIcon>
+                        <ListItemText>Approve</ListItemText>
+                    </MenuItem>
+                )}
+                {selectedCommission?.status === 'APPROVED' && (
+                    <MenuItem onClick={() => { if (selectedCommission) onSettle(selectedCommission); handleMenuClose(); }}>
+                        <ListItemIcon><AccountBalanceWalletIcon fontSize="small" color="primary" /></ListItemIcon>
+                        <ListItemText>Settle</ListItemText>
+                    </MenuItem>
+                )}
+                {(selectedCommission?.status === 'CALCULATED' || selectedCommission?.status === 'APPROVED') && (
+                    <MenuItem onClick={() => { if (selectedCommission) onCancel(selectedCommission); handleMenuClose(); }}>
+                        <ListItemIcon><CancelOutlinedIcon fontSize="small" color="error" /></ListItemIcon>
+                        <ListItemText>Cancel</ListItemText>
+                    </MenuItem>
+                )}
             </Menu>
         </Paper>
     );

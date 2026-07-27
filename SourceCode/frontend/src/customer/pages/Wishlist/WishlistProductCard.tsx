@@ -29,47 +29,36 @@ const WishlistProductCard: React.FC<ProductCardProps> = ({ item }) => {
 
 
     return (
-        <div className='w-60 relative '>
-            <div
-                className="w-full"
-            >
-
+        <div className='w-60 relative group cursor-pointer' onClick={() => {
+            if (item.id && item.category?.categoryId) {
+                navigate(`/product-details/${item.category.categoryId}/${item.title}/${item.id}`);
+            }
+        }}>
+            <div className="w-full overflow-hidden">
                 <img
-                    className=" object-top w-full"
+                    className="object-top w-full h-[240px] object-cover group-hover:scale-105 transition-transform duration-300"
                     src={item.images[0]?.url || ""}
                     alt={`product-${item.title}`}
-
                 />
-
-
-
             </div>
-            <div className='pt-3 space-y-1  rounded-md '>
-                <div className=' space-y '>
-            
-                    <p className=''>{item.title}</p>
-
+            <div className='pt-3 space-y-1 rounded-md'>
+                <p className='text-sm text-gray-600 line-clamp-2'>{item.title}</p>
+                <div className='flex items-center gap-2'>
+                    <span className='font-semibold text-gray-800'>₹{item.sellingPrice}</span>
+                    {item.mrpPrice > item.sellingPrice && (
+                        <span className='text-gray-400 line-through text-sm'>₹{item.mrpPrice}</span>
+                    )}
+                    {(item.discountPercent ?? 0) > 0 && (
+                        <span className='text-[#00927c] font-semibold text-sm'>{item.discountPercent}% off</span>
+                    )}
                 </div>
-                <div className=' flex items-center gap-3 '>
-                    <span className='font-semibold text-gray-800'> ₹{item.sellingPrice}</span>
-                    <span className='text thin-line-through text-gray-400 '>₹{item.mrpPrice}</span>
-                    <span className='text-[#00927c] font-semibold'>{item.discountPercent}% off</span>
-                </div>
-
-
-
             </div>
 
-<div className='absolute top-1 right-1'>
-     
-     <button
-     onClick={handleIconClick}
-      >
- <CloseIcon className='cursor-pointer bg-white rounded-full p-1' sx={{ color: teal[500],fontSize:"2rem"  }} />
-     </button>
-               
-</div>
-            
+            <div className='absolute top-1 right-1' onClick={(e) => e.stopPropagation()}>
+                <button onClick={handleIconClick}>
+                    <CloseIcon className='cursor-pointer bg-white rounded-full p-1 shadow-sm' sx={{ color: '#ef4444', fontSize: "1.8rem" }} />
+                </button>
+            </div>
         </div>
     );
 };

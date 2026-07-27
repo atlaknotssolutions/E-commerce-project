@@ -108,6 +108,12 @@ export const mapRefund = (refund) =>
         status: refund.status,
         method: refund.method,
         providerRefundId: refund.providerRefundId,
+        gateway: refund.gateway ? {
+            provider: refund.gateway,
+            status: refund.gatewayStatus || null,
+            providerRefundId: refund.providerRefundId || null,
+        } : null,
+        processedAt: refund.processedAt || null,
         createdAt: refund.createdAt,
         updatedAt: refund.updatedAt,
     };

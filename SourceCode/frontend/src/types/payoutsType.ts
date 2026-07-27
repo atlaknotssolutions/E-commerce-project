@@ -1,15 +1,37 @@
-// types/payoutsTypes.ts
-
-import { Order } from "./orderTypes";
-import { Seller } from "./sellerTypes";
-import { Transaction } from "./Transaction";
-import { User } from "./userTypes";
-
-export interface Payouts {
-  id: number;
-  transactions: Transaction[];
-  seller: Seller;
+export interface Payout {
+  id: string;
+  seller: {
+    id: string;
+    companyName?: string;
+    email?: string;
+  };
   amount: number;
-  status: "PENDING" | "SUCCESS" | "REJECTED";
-  date: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "COMPLETED";
+  requestedAt: string;
+  processedAt?: string | null;
+  approvedBy?: string | null;
+  rejectionReason?: string | null;
+  transactions: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SellerBalance {
+  netEarnings: number;
+  activeCommissions: number;
+  lockedPayouts: number;
+  availableBalance: number;
+}
+
+export interface PayoutRequest {
+  amount: number;
+}
+
+export interface PayoutStats {
+  totalPayouts: number;
+  totalAmount: number;
+  totalCompleted: number;
+  totalPending: number;
+  totalApproved: number;
+  totalRejected: number;
 }

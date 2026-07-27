@@ -310,7 +310,7 @@ const AdminBrandTable: React.FC = () => {
                             setRowsPerPage(parseInt(e.target.value, 10));
                             setPage(0);
                         }}
-                        rowsPerPageOptions={[10, 20, 50]}
+                        rowsPerPageOptions={[10, 25, 50, 100]}
                     />
                 </TableContainer>
             )}

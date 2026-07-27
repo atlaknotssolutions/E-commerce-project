@@ -6,6 +6,7 @@ import
         PAYMENT_METHODS,
         REFUND_STATUS,
         REFUND_METHOD,
+        GATEWAY_REFUND_STATUS,
     } from '../../constants/enums.js';
 
 /**
@@ -24,6 +25,12 @@ export const createReturnService = ({
     refundRepository,
     inventoryHelper,
     notificationService,
+    commissionService,
+    sellerReportRepository,
+    paymentGatewayFactory,
+    gatewayEventRepository,
+    gatewayUtils,
+    mockGatewaysConfig,
     createApiError,
     mapReturn,
     mapReturns,
@@ -432,7 +439,6 @@ export const createReturnService = ({
             });
         }
 
-        // Determine refund method based on original payment method
         const isOnlinePayment = [PAYMENT_METHODS.RAZORPAY, PAYMENT_METHODS.STRIPE]
             .includes(paymentOrder.paymentMethod);
 
@@ -449,27 +455,81 @@ export const createReturnService = ({
             method: refundMethod,
         });
 
+        if (paymentGatewayFactory && isOnlinePayment)
+        {
+            try
+            {
+                await executeGatewayRefund({
+                    refundId: refund._id.toString(),
+                    paymentOrderId: paymentOrder._id.toString(),
+                    amount: returnRequest.refundAmount,
+                    returnId,
+                });
+            }
+            catch (err)
+            {
+                // Gateway failure is non-blocking for the return flow
+                // The refund stays PENDING and can be retried
+            }
+        }
+
         const updated = await returnRequestRepository.updateStatus({
             returnId,
-            returnStatus: RETURN_STATUS.REFUND_COMPLETED,
-            resolvedAt: new Date(),
+            returnStatus: RETURN_STATUS.ITEM_RECEIVED,
             historyEntry: buildHistoryEntry({
                 fromStatus: RETURN_STATUS.ITEM_RECEIVED,
-                toStatus: RETURN_STATUS.REFUND_COMPLETED,
+                toStatus: RETURN_STATUS.ITEM_RECEIVED,
                 changedBy: null,
-                changedByModel: 'Admin',
-                changedByRole: 'ROLE_ADMIN',
-                note: `Refund of amount ${returnRequest.refundAmount} initiated via ${refundMethod}.`,
+                changedByModel: 'System',
+                changedByRole: 'ROLE_SYSTEM',
+                note: `Refund of amount ${returnRequest.refundAmount} initiated via ${refundMethod}. Awaiting gateway confirmation.`,
             }),
         });
 
-        // Fire-and-forget notification to customer
         notificationService.createNotification({
             customerId: returnRequest.customer?._id || returnRequest.customer,
             message: `Refund of amount ${returnRequest.refundAmount} for return ${returnRequest.returnId} has been initiated. It will be credited shortly.`,
         }).catch(() => { });
 
         return { returnRequest: mapReturn(updated), refund };
+    };
+
+    // ==========================================
+    // 8. GATEWAY REFUND ORCHESTRATION
+    // ==========================================
+
+    const executeGatewayRefund = async ({ refundId, paymentOrderId, amount, returnId }) =>
+    {
+        const provider = mockGatewaysConfig?.defaultRefundProvider || 'mock_razorpay';
+        const gateway = paymentGatewayFactory.getRefundGateway(provider);
+        const idempotencyKey = gatewayUtils.generateIdempotencyKey('REFUND', refundId, 1);
+        const correlationId = gatewayUtils.generateCorrelationId();
+
+        const gatewayResponse = await gateway.createRefund({
+            entityId: refundId,
+            paymentId: paymentOrderId,
+            amount,
+            speed: 'normal',
+            notes: { returnId },
+            idempotencyKey,
+            correlationId,
+        });
+
+        if (gatewayResponse.status === GATEWAY_REFUND_STATUS.FAILED)
+        {
+            await refundRepository.updateGatewayStatus(refundId, {
+                gateway: provider,
+                gatewayStatus: GATEWAY_REFUND_STATUS.FAILED,
+                status: REFUND_STATUS.FAILED,
+            });
+            return;
+        }
+
+        await refundRepository.updateGatewayStatus(refundId, {
+            gateway: provider,
+            providerRefundId: gatewayResponse.id,
+            gatewayStatus: gatewayResponse.status,
+        });
     };
 
     return Object.freeze({
@@ -480,5 +540,6 @@ export const createReturnService = ({
         rejectReturn,
         markItemReceived,
         processRefund,
+        executeGatewayRefund,
     });
 };

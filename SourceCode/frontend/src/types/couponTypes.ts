@@ -70,4 +70,8 @@ export interface CouponState {
   error: string | null;
   couponCreated: boolean;
   couponApplied: boolean;
+  availableCoupons: Coupon[];
+  usedCoupons: Coupon[];
+  expiredCoupons: Coupon[];
+  customerCouponsLoaded: boolean;
 }

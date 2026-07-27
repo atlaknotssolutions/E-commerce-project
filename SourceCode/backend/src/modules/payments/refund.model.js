@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
-import { REFUND_STATUS, REFUND_METHOD } from '../../constants/enums.js';
+import { REFUND_STATUS, REFUND_METHOD, GATEWAY, GATEWAY_REFUND_STATUS } from '../../constants/enums.js';
 
 /**
  * Refund schema for tracking refund transactions against return requests.
  * Separate collection to keep return and refund concerns decoupled.
+ * Gateway-level data lives in GatewayEvent (append-only log).
+ * This model stores lightweight pointers for fast queries.
  */
 const RefundSchema = new mongoose.Schema({
     returnRequestId: {
@@ -41,6 +43,27 @@ const RefundSchema = new mongoose.Schema({
         trim: true,
         sparse: true,
     },
+
+    // Gateway integration fields (lightweight pointers)
+    gateway: {
+        type: String,
+        enum: Object.values(GATEWAY),
+        default: null,
+    },
+    gatewayStatus: {
+        type: String,
+        enum: Object.values(GATEWAY_REFUND_STATUS),
+        default: null,
+    },
+    gatewayEventId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'GatewayEvent',
+        default: null,
+    },
+    processedAt: {
+        type: Date,
+        default: null,
+    },
 }, {
     timestamps: true,
 });
@@ -50,5 +73,6 @@ RefundSchema.index({ returnRequestId: 1 });
 RefundSchema.index({ orderId: 1 });
 RefundSchema.index({ paymentOrderId: 1 });
 RefundSchema.index({ status: 1 });
+RefundSchema.index({ gatewayStatus: 1 });
 
 export const Refund = mongoose.model('Refund', RefundSchema);
