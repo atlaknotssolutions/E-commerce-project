@@ -16,6 +16,7 @@ import { isWishlisted } from "../../../../util/isWishlisted";
 import ModeCommentIcon from '@mui/icons-material/ModeComment';
 import ChatBot from "../../ChatBot/ChatBot";
 
+
 interface ProductCardProps {
     // images: string[];
     // categoryId: string | undefined;
