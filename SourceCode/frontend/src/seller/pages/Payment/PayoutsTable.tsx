@@ -1,4 +1,4 @@
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Box, Button, Typography } from '@mui/material';
+import { Paper, Table, TableBody, TableContainer, TableHead, TableRow, Chip, Box, Button, Typography } from '@mui/material';
 import React from 'react';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
 import { fetchPayoutsBySeller, fetchPayoutBalance, requestPayout } from '../../../Redux Toolkit/Seller/payoutSlice';
@@ -12,8 +12,6 @@ const statusColor: Record<string, "warning" | "success" | "error" | "info" | "de
 };
 
 const PayoutsTable = () => {
-  const [page, setPage] = React.useState(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState(5);
   const { payouts } = useAppSelector(store => store);
   const dispatch = useAppDispatch();
   const jwt = localStorage.getItem("jwt") || "";

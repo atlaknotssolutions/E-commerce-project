@@ -1,25 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Avatar,
   Box,
-  Button,
   Chip,
   Divider,
   IconButton,
-  Snackbar,
 } from "@mui/material";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { fetchAdminProfile, updateAdminProfilePhoto } from "../../../Redux Toolkit/Admin/AdminSlice";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
-import DevicesIcon from "@mui/icons-material/Devices";
+import { notification } from "../../../services/notificationService";
 
 const AdminAccount = () => {
   const dispatch = useAppDispatch();
   const { admin } = useAppSelector((store) => store);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -33,7 +27,7 @@ const AdminAccount = () => {
 
   useEffect(() => {
     if (admin.error) {
-      setSnackbarOpen(true);
+      notification.error(admin.error || "Failed to load profile");
     }
   }, [admin.error]);
 
@@ -42,12 +36,12 @@ const AdminAccount = () => {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setSnackbarOpen(true);
+      notification.error("Only image files are allowed.");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setSnackbarOpen(true);
+      notification.error("File size should be less than 5MB.");
       return;
     }
 
@@ -58,7 +52,7 @@ const AdminAccount = () => {
     try {
       await dispatch(updateAdminProfilePhoto({ jwt, file })).unwrap();
     } catch {
-      setSnackbarOpen(true);
+      notification.error("Failed to update profile photo");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -187,7 +181,7 @@ const AdminAccount = () => {
       </div>
 
       {/* Future Placeholder: Change Password */}
-      <div className="w-full lg:w-[70%]">
+      {/* <div className="w-full lg:w-[70%]">
         <h1 className="text-2xl font-bold text-gray-600 pb-3">
           Security Settings
         </h1>
@@ -208,23 +202,8 @@ const AdminAccount = () => {
             description="View and manage your active login sessions."
           />
         </div>
-      </div>
+      </div> */}
 
-      <Snackbar
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={() => setSnackbarOpen(false)}
-      >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity="error"
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {admin.error || "Failed to load profile"}
-        </Alert>
-      </Snackbar>
     </div>
   );
 };
@@ -234,27 +213,6 @@ const FieldRow = ({ label, value }: { label: string; value: React.ReactNode }) =
     <p className="w-20 lg:w-36 pr-5">{label}</p>
     <Divider orientation="vertical" flexItem />
     <div className="pl-4 lg:pl-10 font-semibold lg:text-lg">{value}</div>
-  </div>
-);
-
-const PlaceholderCard = ({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) => (
-  <div className="p-5 flex items-center gap-4 bg-slate-50 rounded-md border border-gray-200 opacity-60">
-    <div className="text-gray-400">{icon}</div>
-    <div className="flex-1">
-      <h3 className="font-semibold text-gray-700">{title}</h3>
-      <p className="text-sm text-gray-500">{description}</p>
-    </div>
-    <Button variant="outlined" size="small" disabled>
-      Coming Soon
-    </Button>
   </div>
 );
 

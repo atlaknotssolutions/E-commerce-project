@@ -1,13 +1,16 @@
-import { Alert, Divider, Snackbar } from '@mui/material'
-import React, { useEffect, useState } from 'react'
+import { Divider } from '@mui/material'
+import React, { useEffect } from 'react'
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import Order from './Order'
 import UserDetails from './UserDetails'
-import SavedCards from './SavedCards'
+// import SavedCards from './SavedCards'
 import OrderDetails from './OrderDetails'
 import ReviewHistory from './ReviewHistory'
+import { notification } from '../../../services/notificationService'
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store'
 import { performLogout } from '../../../Redux Toolkit/Customer/AuthSlice'
+import { clearProfileUpdated, clearUserError } from '../../../Redux Toolkit/Customer/UserSlice'
+import { clearOrderCanceled } from '../../../Redux Toolkit/Customer/OrderSlice'
 import Addresses from './Adresses'
 import CustomerDashboard from './CustomerDashboard'
 import CustomerCoupons from './CustomerCoupons'
@@ -27,7 +30,6 @@ const Profile = () => {
     const location = useLocation();
     const dispatch = useAppDispatch()
     const { user,orders } = useAppSelector(store => store)
-    const [snackbarOpen, setOpenSnackbar] = useState(false);
 
     const handleLogout = () => {
         dispatch(performLogout())
@@ -40,15 +42,19 @@ const Profile = () => {
         }
         else navigate(item.path)
     }
-    const handleCloseSnackbar = () => {
-        setOpenSnackbar(false);
-    };
 
     useEffect(() => {
-        if (user.profileUpdated || orders.orderCanceled || user.error) {
-            setOpenSnackbar(true);
+        if (user.profileUpdated) {
+            notification.success("Profile updated successfully");
+            dispatch(clearProfileUpdated());
+        } else if (orders.orderCanceled) {
+            notification.success("Order canceled successfully");
+            dispatch(clearOrderCanceled());
+        } else if (user.error) {
+            notification.error(user.error);
+            dispatch(clearUserError());
         }
-    }, [user.profileUpdated, orders.orderCanceled, user.error]);
+    }, [user.profileUpdated, orders.orderCanceled, user.error, dispatch]);
     return (
         <div className='px-5 lg:px-52 min-h-screen mt-10 '>
 
@@ -56,7 +62,7 @@ const Profile = () => {
                 <h1 className='text-xl font-bold pb-5'>{user.user?.fullName}</h1>
             </div>
             <Divider />
-            <div className='grid grid-cols-1 lg:grid-cols-3 lg:min-h-[78vh]'>
+            <div className='grid grid-cols-1 lg:grid-cols-6 lg:min-h-[78vh]'>
 
                 <div className="col-span-1 lg:border-r lg:pr-5 py-5 h-full flex flex-row flex-wrap lg:flex-col gap-1">
                     {menu.map((item, index) => {
@@ -80,7 +86,7 @@ const Profile = () => {
                         );
                     })}
                 </div>
-                <div className='lg:col-span-2 lg:pl-5 py-5'>
+                <div className='lg:col-span-5 lg:pl-5 py-5'>
 
                     <Routes>
                         <Route path='/' element={<CustomerDashboard />} />
@@ -95,21 +101,6 @@ const Profile = () => {
                 </div>
 
             </div>
-            <Snackbar
-                anchorOrigin={{ vertical: "top", horizontal: "right" }}
-                open={snackbarOpen}
-                autoHideDuration={6000}
-                onClose={handleCloseSnackbar}
-            >
-                <Alert
-                    onClose={handleCloseSnackbar}
-                    severity={user.error ? "error" : "success"}
-                    variant="filled"
-                    sx={{ width: "100%" }}
-                >
-                    {user.error ? user.error : orders.orderCanceled?"order canceled successfully": "success"}
-                </Alert>
-            </Snackbar>
         </div>
     )
 }

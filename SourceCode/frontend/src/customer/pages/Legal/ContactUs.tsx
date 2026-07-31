@@ -10,8 +10,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Snackbar,
-  Alert,
   MenuItem,
   Stack,
   IconButton,
@@ -26,6 +24,7 @@ import TwitterIcon from '@mui/icons-material/Twitter';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import SendIcon from '@mui/icons-material/Send';
+import { notification } from '../../../services/notificationService';
 import PageHero from '../../components/Legal/PageHero';
 import SectionTitle from '../../components/Legal/SectionTitle';
 import branding from '../../../Config/branding';
@@ -82,7 +81,6 @@ const ContactUs = () => {
     message: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSnackbar, setShowSnackbar] = useState(false);
 
   useEffect(() => {
     document.title = 'Contact Us | AI Knots Marketplace';
@@ -99,13 +97,13 @@ const ContactUs = () => {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.subject || !formData.message) {
-      alert('Please fill in all required fields.');
+      notification.error("Please fill in all required fields.");
       return;
     }
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      setShowSnackbar(true);
+      notification.success("Your message has been sent successfully! We'll get back to you soon.");
       setFormData({ name: '', email: '', subject: '', message: '' });
     }, 1000);
   };
@@ -486,21 +484,6 @@ const ContactUs = () => {
         </Container>
       </Box>
 
-      <Snackbar
-        open={showSnackbar}
-        autoHideDuration={5000}
-        onClose={() => setShowSnackbar(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setShowSnackbar(false)}
-          severity="success"
-          variant="filled"
-          sx={{ borderRadius: '10px', width: '100%' }}
-        >
-          Your message has been sent successfully! We'll get back to you soon.
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

@@ -1,23 +1,25 @@
 import React, { useEffect, useState } from 'react'
 import LoginForm from './LoginForm'
-import { Alert, Button, Snackbar } from '@mui/material';
+import { Button } from '@mui/material';
 import SignupForm from './SignupForm';
-import { useAppSelector } from '../../../Redux Toolkit/Store';
+import { notification } from '../../../services/notificationService';
+import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
+import { clearOtpSent, clearAuthError } from '../../../Redux Toolkit/Customer/AuthSlice';
 
 const Auth = () => {
     const [isLoginPage, setIsLoginPage] = useState(true);
-    const handleCloseSnackbar = () => setSnackbarOpen(false)
+    const dispatch = useAppDispatch();
     const { auth } = useAppSelector(store => store)
-    const [snackbarOpen, setSnackbarOpen] = useState(false);
 
     useEffect(() => {
-
-        if (auth.otpSent || auth.error) {
-            setSnackbarOpen(true);
-            console.log("store ", auth.error)
+        if (auth.otpSent) {
+            notification.success("OTP sent to your email!");
+            dispatch(clearOtpSent());
+        } else if (auth.error) {
+            notification.error(auth.error);
+            dispatch(clearAuthError());
         }
-
-    }, [auth.otpSent,auth.error])
+    }, [auth.otpSent, auth.error, dispatch])
 
     return (
         <div className='flex justify-center h-[90vh] items-center'>
@@ -34,20 +36,6 @@ const Auth = () => {
 
 
             </div>
-            <Snackbar
-                anchorOrigin={{ vertical: "top", horizontal: "right" }}
-                open={snackbarOpen} autoHideDuration={6000}
-                onClose={handleCloseSnackbar}
-            >
-                <Alert
-                    onClose={handleCloseSnackbar}
-                    severity={auth.error?"error":"success"}
-                    variant="filled"
-                    sx={{ width: '100%' }}
-                >
-                    {auth.error?auth.error : " otp sent to your email!"}
-                </Alert>
-            </Snackbar>
         </div>
     )
 }

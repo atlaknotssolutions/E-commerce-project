@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Alert, Button, Snackbar, Box } from '@mui/material';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Alert, Button } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
 import {
     fetchNotifications,
@@ -14,6 +14,7 @@ import {
     clearAdminNotificationActionSuccess,
 } from '../../../Redux Toolkit/Admin/adminNotificationSlice';
 import { NotificationFilters as NotificationFiltersType, AdminNotification } from '../../../types/adminNotificationTypes';
+import { notification } from '../../../services/notificationService';
 import NotificationStatsCards from './components/NotificationStatistics';
 import NotificationFilters from './components/NotificationFilters';
 import NotificationTable from './components/NotificationTable';
@@ -24,7 +25,6 @@ const Notifications: React.FC = () => {
     const dispatch = useAppDispatch();
     const {
         notifications,
-        selectedNotification,
         statistics,
         pagination,
         loading,
@@ -46,13 +46,12 @@ const Notifications: React.FC = () => {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [formOpen, setFormOpen] = useState(false);
     const [editingNotification, setEditingNotification] = useState<AdminNotification | null>(null);
-    const [confirmDelete, setConfirmDelete] = useState<AdminNotification | null>(null);
-    const [confirmPublish, setConfirmPublish] = useState<AdminNotification | null>(null);
-    const [confirmSchedule, setConfirmSchedule] = useState<AdminNotification | null>(null);
-    const [confirmArchive, setConfirmArchive] = useState<AdminNotification | null>(null);
+
+    const filtersRef = useRef(filters);
+    filtersRef.current = filters;
 
     useEffect(() => {
-        dispatch(fetchNotifications(filters));
+        dispatch(fetchNotifications(filtersRef.current));
         dispatch(fetchNotificationStatistics());
     }, [dispatch, filters.page, filters.limit]);
 
@@ -63,10 +62,6 @@ const Notifications: React.FC = () => {
             dispatch(clearAdminNotificationActionSuccess());
             setFormOpen(false);
             setEditingNotification(null);
-            setConfirmDelete(null);
-            setConfirmPublish(null);
-            setConfirmSchedule(null);
-            setConfirmArchive(null);
         }
     }, [actionSuccess, dispatch, filters]);
 
@@ -94,21 +89,60 @@ const Notifications: React.FC = () => {
         setFormOpen(true);
     }, []);
 
-    const handleDelete = useCallback((notification: AdminNotification) => {
-        setConfirmDelete(notification);
-    }, []);
+    const handleDelete = useCallback((notif: AdminNotification) => {
+        dispatch(deleteNotification(notif._id))
+            .unwrap()
+            .then(() => {
+                notification.success('Notification deleted successfully');
+                dispatch(fetchNotifications(filters));
+                dispatch(fetchNotificationStatistics());
+            })
+            .catch((err: any) => {
+                notification.error(err || 'Failed to delete notification');
+            });
+    }, [dispatch, filters]);
 
-    const handlePublish = useCallback((notification: AdminNotification) => {
-        setConfirmPublish(notification);
-    }, []);
+    const handlePublish = useCallback((notif: AdminNotification) => {
+        dispatch(publishNotification(notif._id))
+            .unwrap()
+            .then(() => {
+                notification.success('Notification published successfully');
+                dispatch(fetchNotifications(filters));
+                dispatch(fetchNotificationStatistics());
+            })
+            .catch((err: any) => {
+                notification.error(err || 'Failed to publish notification');
+            });
+    }, [dispatch, filters]);
 
-    const handleSchedule = useCallback((notification: AdminNotification) => {
-        setConfirmSchedule(notification);
-    }, []);
+    const handleSchedule = useCallback((notif: AdminNotification) => {
+        const scheduledAt = prompt('Enter scheduled date/time (ISO format):');
+        if (scheduledAt) {
+            dispatch(scheduleNotification({ id: notif._id, scheduledAt }))
+                .unwrap()
+                .then(() => {
+                    notification.success('Notification scheduled successfully');
+                    dispatch(fetchNotifications(filters));
+                    dispatch(fetchNotificationStatistics());
+                })
+                .catch((err: any) => {
+                    notification.error(err || 'Failed to schedule notification');
+                });
+        }
+    }, [dispatch, filters]);
 
-    const handleArchive = useCallback((notification: AdminNotification) => {
-        setConfirmArchive(notification);
-    }, []);
+    const handleArchive = useCallback((notif: AdminNotification) => {
+        dispatch(archiveNotification(notif._id))
+            .unwrap()
+            .then(() => {
+                notification.success('Notification archived successfully');
+                dispatch(fetchNotifications(filters));
+                dispatch(fetchNotificationStatistics());
+            })
+            .catch((err: any) => {
+                notification.error(err || 'Failed to archive notification');
+            });
+    }, [dispatch, filters]);
 
     const handleFormSubmit = useCallback((data: Partial<AdminNotification>) => {
         if (editingNotification) {
@@ -117,33 +151,6 @@ const Notifications: React.FC = () => {
             dispatch(createNotification(data));
         }
     }, [dispatch, editingNotification]);
-
-    const handleConfirmDelete = useCallback(() => {
-        if (confirmDelete) {
-            dispatch(deleteNotification(confirmDelete._id));
-        }
-    }, [dispatch, confirmDelete]);
-
-    const handleConfirmPublish = useCallback(() => {
-        if (confirmPublish) {
-            dispatch(publishNotification(confirmPublish._id));
-        }
-    }, [dispatch, confirmPublish]);
-
-    const handleConfirmSchedule = useCallback(() => {
-        if (confirmSchedule) {
-            const scheduledAt = prompt('Enter scheduled date/time (ISO format):');
-            if (scheduledAt) {
-                dispatch(scheduleNotification({ id: confirmSchedule._id, scheduledAt }));
-            }
-        }
-    }, [dispatch, confirmSchedule]);
-
-    const handleConfirmArchive = useCallback(() => {
-        if (confirmArchive) {
-            dispatch(archiveNotification(confirmArchive._id));
-        }
-    }, [dispatch, confirmArchive]);
 
     return (
         <div className="space-y-6" role="main" aria-label="Notification Center">
@@ -213,102 +220,6 @@ const Notifications: React.FC = () => {
                 onClose={() => { setFormOpen(false); setEditingNotification(null); }}
                 onSubmit={handleFormSubmit}
             />
-
-            {/* Delete Confirmation */}
-            <Snackbar
-                open={!!confirmDelete}
-                autoHideDuration={null}
-                onClose={() => setConfirmDelete(null)}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Alert
-                    severity="warning"
-                    action={
-                        <Box className="flex gap-2">
-                            <Button color="inherit" size="small" onClick={handleConfirmDelete}>
-                                Delete
-                            </Button>
-                            <Button color="inherit" size="small" onClick={() => setConfirmDelete(null)}>
-                                Cancel
-                            </Button>
-                        </Box>
-                    }
-                >
-                    Delete "{confirmDelete?.title}"?
-                </Alert>
-            </Snackbar>
-
-            {/* Publish Confirmation */}
-            <Snackbar
-                open={!!confirmPublish}
-                autoHideDuration={null}
-                onClose={() => setConfirmPublish(null)}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Alert
-                    severity="info"
-                    action={
-                        <Box className="flex gap-2">
-                            <Button color="inherit" size="small" onClick={handleConfirmPublish}>
-                                Publish
-                            </Button>
-                            <Button color="inherit" size="small" onClick={() => setConfirmPublish(null)}>
-                                Cancel
-                            </Button>
-                        </Box>
-                    }
-                >
-                    Publish "{confirmPublish?.title}" now?
-                </Alert>
-            </Snackbar>
-
-            {/* Schedule Confirmation */}
-            <Snackbar
-                open={!!confirmSchedule}
-                autoHideDuration={null}
-                onClose={() => setConfirmSchedule(null)}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Alert
-                    severity="info"
-                    action={
-                        <Box className="flex gap-2">
-                            <Button color="inherit" size="small" onClick={handleConfirmSchedule}>
-                                Schedule
-                            </Button>
-                            <Button color="inherit" size="small" onClick={() => setConfirmSchedule(null)}>
-                                Cancel
-                            </Button>
-                        </Box>
-                    }
-                >
-                    Schedule "{confirmSchedule?.title}"?
-                </Alert>
-            </Snackbar>
-
-            {/* Archive Confirmation */}
-            <Snackbar
-                open={!!confirmArchive}
-                autoHideDuration={null}
-                onClose={() => setConfirmArchive(null)}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Alert
-                    severity="warning"
-                    action={
-                        <Box className="flex gap-2">
-                            <Button color="inherit" size="small" onClick={handleConfirmArchive}>
-                                Archive
-                            </Button>
-                            <Button color="inherit" size="small" onClick={() => setConfirmArchive(null)}>
-                                Cancel
-                            </Button>
-                        </Box>
-                    }
-                >
-                    Archive "{confirmArchive?.title}"?
-                </Alert>
-            </Snackbar>
         </div>
     );
 };

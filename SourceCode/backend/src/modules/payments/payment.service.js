@@ -5,8 +5,10 @@ import
     PAYMENT_METHODS,
     ORDER_STATUS,
     ROLES,
+    STATUS_HISTORY_ACTOR,
 } from '../../constants/enums.js';
 import { createInventoryHelper } from '../orders/orderInventoryHelper.js';
+import { createCouponFacade } from '../../utils/couponEngine/CouponFacade.js';
 
 /**
  * Pure function-based factory representing the Payment Verification & Settlements Business Service.
@@ -19,6 +21,8 @@ export const createPaymentService = ({
     sellerReportRepository,
     cartRepository,
     productRepository,
+    couponRepository,
+    userRepository,
     razorpayClient,
     stripeClient,
     createApiError,
@@ -200,7 +204,7 @@ export const createPaymentService = ({
                                 fromStatus: currentOrder.orderStatus,
                                 toStatus: ORDER_STATUS.CANCELLED,
                                 changedBy: currentOrder.user,
-                                changedByModel: 'System',
+                                changedByModel: STATUS_HISTORY_ACTOR.SYSTEM,
                                 changedByRole: ROLES.ADMIN,
                                 changedAt: new Date(),
                                 note: reason || 'Payment failed: automatic cancellation',
@@ -222,6 +226,16 @@ export const createPaymentService = ({
         {
             await inventory.releaseOrderInventory([item]);
         }
+
+        // Coupon rollback via CouponRollbackService (single source of truth)
+        const couponFacade = createCouponFacade();
+        const cart = await cartRepository.findByUserId({ userId: paymentOrder.user });
+        await couponFacade.rollbackByCart({
+            cart,
+            userId: paymentOrder.user,
+            couponRepository,
+            userRepository,
+        });
     };
 
     /**
@@ -298,11 +312,18 @@ export const createPaymentService = ({
                         }, { session });
                     }
 
-                    await sellerReportRepository.applyPaymentSuccess({
-                        sellerId: order.seller,
-                        earnings: order.totalSellingPrice,
-                        sales: order.totalMrpPrice,
-                    }, { session });
+                    // Idempotent: only update seller report once per order
+                    if (!existingTransaction)
+                    {
+                        const sellerEarnings = order.couponSnapshot?.ownerType === 'PLATFORM'
+                            ? order.totalSellingPrice
+                            : (order.totalSellingPrice - (order.couponPrice || 0));
+                        await sellerReportRepository.applyPaymentSuccess({
+                            sellerId: order.seller,
+                            earnings: Math.max(0, sellerEarnings),
+                            sales: order.totalSellingPrice,
+                        }, { session });
+                    }
                 }
 
                 await cartRepository.updateCart({
@@ -405,11 +426,18 @@ export const createPaymentService = ({
                         }, { session });
                     }
 
-                    await sellerReportRepository.applyPaymentSuccess({
-                        sellerId: order.seller,
-                        earnings: order.totalSellingPrice,
-                        sales: order.totalMrpPrice,
-                    }, { session });
+                    // Idempotent: only update seller report once per order
+                    if (!existingTransaction)
+                    {
+                        const sellerEarnings = order.couponSnapshot?.ownerType === 'PLATFORM'
+                            ? order.totalSellingPrice
+                            : (order.totalSellingPrice - (order.couponPrice || 0));
+                        await sellerReportRepository.applyPaymentSuccess({
+                            sellerId: order.seller,
+                            earnings: Math.max(0, sellerEarnings),
+                            sales: order.totalSellingPrice,
+                        }, { session });
+                    }
                 }
 
                 await cartRepository.updateCart({
@@ -472,7 +500,8 @@ export const createPaymentService = ({
             });
         }
 
-        const amount = order.totalSellingPrice;
+        const couponFacade = createCouponFacade();
+        const amount = couponFacade.computeSellerEarnings(order.totalSellingPrice, order.couponPrice);
 
         const { payment_link_url } = await createPaymentOrder({
             userId,

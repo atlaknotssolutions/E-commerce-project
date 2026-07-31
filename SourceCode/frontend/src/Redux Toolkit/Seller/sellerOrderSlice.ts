@@ -10,6 +10,7 @@ interface SellerOrderState {
   loading: boolean;
   error: string | null;
   ordersLoaded: boolean;
+  transitionRules: Record<string, string[]> | null;
 }
 
 const initialState: SellerOrderState = {
@@ -17,6 +18,7 @@ const initialState: SellerOrderState = {
   loading: false,
   error: null,
   ordersLoaded: false,
+  transitionRules: null,
 };
 
 // Thunks for async actions
@@ -79,6 +81,126 @@ export const assignTracking = createAsyncThunk<Order, { jwt: string, orderId: st
         headers: { Authorization: `Bearer ${jwt}` },
       });
       return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const exportSellerOrders = createAsyncThunk<void, { jwt: string; format: string; filters: { search: string; orderStatus: string; paymentStatus: string; paymentMethod: string } }>(
+  'sellerOrders/exportOrders',
+  async ({ jwt, format, filters }, { rejectWithValue }) => {
+    try {
+      const params: Record<string, string> = { format };
+      if (filters.search) params.search = filters.search;
+      if (filters.orderStatus) params.orderStatus = filters.orderStatus;
+      if (filters.paymentStatus) params.paymentStatus = filters.paymentStatus;
+      if (filters.paymentMethod) params.paymentMethod = filters.paymentMethod;
+
+      const response = await api.get('/seller/orders/export', {
+        params,
+        headers: { Authorization: `Bearer ${jwt}` },
+        responseType: 'blob',
+      });
+
+      const ext = format === 'xlsx' ? 'xlsx' : 'csv';
+      const mime = format === 'xlsx'
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv;charset=utf-8;';
+
+      const blob = new Blob([response.data], { type: mime });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `orders-export-${new Date().toISOString().split('T')[0]}.${ext}`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to export orders');
+    }
+  }
+);
+
+const downloadDocument = async (endpoint: string, orderId: string, filename: string) => {
+  const jwt = localStorage.getItem("jwt") || "";
+  const response = await api.get(endpoint, {
+    headers: { Authorization: `Bearer ${jwt}` },
+    responseType: "blob",
+  });
+  const blob = new Blob([response.data], { type: "application/pdf" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+export const downloadSellerInvoice = createAsyncThunk<void, string>(
+  "sellerOrders/downloadSellerInvoice",
+  async (orderId, { rejectWithValue }) => {
+    try {
+      await downloadDocument(`/api/invoice/seller/${orderId}`, orderId, `settlement-${orderId}.pdf`);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to download seller invoice");
+    }
+  }
+);
+
+export const downloadPackingSlip = createAsyncThunk<void, string>(
+  "sellerOrders/downloadPackingSlip",
+  async (orderId, { rejectWithValue }) => {
+    try {
+      await downloadDocument(`/api/invoice/packing-slip/${orderId}`, orderId, `packing-slip-${orderId}.pdf`);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to download packing slip");
+    }
+  }
+);
+
+export const downloadCustomerInvoice = createAsyncThunk<void, string>(
+  "sellerOrders/downloadCustomerInvoice",
+  async (orderId, { rejectWithValue }) => {
+    try {
+      await downloadDocument(`/api/invoice/customer/${orderId}`, orderId, `invoice-${orderId}.pdf`);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to download customer invoice");
+    }
+  }
+);
+
+export const bulkDownloadDocuments = createAsyncThunk<void, { orderIds: string[]; documentType: "customer" | "seller" | "packing" }>(
+  "sellerOrders/bulkDownloadDocuments",
+  async ({ orderIds, documentType }, { rejectWithValue }) => {
+    try {
+      const jwt = localStorage.getItem("jwt") || "";
+      const response = await api.post(
+        "/api/invoice/bulk",
+        { orderIds, documentType },
+        {
+          headers: { Authorization: `Bearer ${jwt}` },
+          responseType: "blob",
+        }
+      );
+      const blob = new Blob([response.data], { type: "application/zip" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      const typeLabel = { customer: "Invoices", seller: "Settlements", packing: "Packing-Slips" };
+      link.download = `${typeLabel[documentType]}-${new Date().toISOString().split("T")[0]}.zip`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to bulk download");
+    }
+  }
+);
+
+export const fetchTransitionRules = createAsyncThunk<Record<string, string[]>, string>(
+  'sellerOrders/fetchTransitionRules',
+  async (jwt, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/seller/orders/transition-rules', {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      return response.data.transitionRules;
     } catch (error: any) {
       return rejectWithValue(error.response.data);
     }
@@ -155,6 +277,15 @@ console.log(
       })
       .addCase(assignTracking.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(fetchTransitionRules.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(fetchTransitionRules.fulfilled, (state, action) => {
+        state.transitionRules = action.payload;
+      })
+      .addCase(fetchTransitionRules.rejected, (state, action) => {
         state.error = action.payload as string;
       });
   },

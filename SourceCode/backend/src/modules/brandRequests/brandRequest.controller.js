@@ -25,9 +25,10 @@ export const createBrandRequestController = ({
 
     const getMyRequests = async (req, res) =>
     {
-        const requests = await brandRequestService.getSellerRequests({
+        const result = await brandRequestService.getSellerRequests({
             sellerId: req.user.id,
         });
+        const requests = Array.isArray(result) ? result : result.data || [];
         return res.status(200).json({
             success: true,
             data: mapBrandRequests(requests),
@@ -37,10 +38,11 @@ export const createBrandRequestController = ({
     const getAllRequests = async (req, res) =>
     {
         const { status, search } = req.query;
-        const requests = await brandRequestService.getAllRequests({ status, search });
+        const result = await brandRequestService.getAllRequests({ status, search });
+        const requests = Array.isArray(result) ? result : result.data || [];
         return res.status(200).json({
             success: true,
-            data: requests,
+            data: mapBrandRequests(requests),
         });
     };
 

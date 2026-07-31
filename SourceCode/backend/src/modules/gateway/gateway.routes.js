@@ -59,23 +59,33 @@ export const createGatewayRoutes = ({
     authorizeRoles,
     asyncHandler,
     webhookSecret,
+    razorpayXWebhookSecret,
 }) => {
 
-    const verifySignature = verifyWebhookSignature(webhookSecret);
+    const verifyMockSignature = verifyWebhookSignature(webhookSecret);
+    const verifyRazorpayXSignature = verifyWebhookSignature(razorpayXWebhookSecret || webhookSecret);
 
     // Webhook endpoints — HMAC verified, no auth required
+    // Mock webhook endpoints
     router.post(
         '/webhooks/mock/razorpayx',
-        verifySignature,
+        verifyMockSignature,
         validatePayoutWebhook,
         asyncHandler(controller.handlePayoutWebhook)
     );
 
     router.post(
         '/webhooks/mock/razorpay',
-        verifySignature,
+        verifyMockSignature,
         validateRefundWebhook,
         asyncHandler(controller.handleRefundWebhook)
+    );
+
+    // Real RazorpayX webhook endpoint
+    router.post(
+        '/webhooks/razorpayx',
+        verifyRazorpayXSignature,
+        asyncHandler(controller.handleRazorpayXWebhook)
     );
 
     // Admin gateway dashboard

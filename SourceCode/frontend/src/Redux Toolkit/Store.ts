@@ -43,7 +43,10 @@ import sellerCommissionSlice from "./Seller/sellerCommissionSlice";
 import adminBrandSlice from "./Admin/adminBrandSlice";
 import adminBrandRequestSlice from "./Admin/adminBrandRequestSlice";
 import sellerBrandRequestSlice from "./Seller/sellerBrandRequestSlice";
+import sellerCouponSlice from "./Seller/sellerCouponSlice";
+import walletSlice from "./Seller/walletSlice";
 import publicBrandSlice from "./Customer/publicBrandSlice";
+import cookieConsentSlice from "./Customer/cookieConsentSlice";
 
 const rootReducer = combineReducers({
   
@@ -59,6 +62,7 @@ const rootReducer = combineReducers({
   aiChatBot: AiChatBotSlice,
   homePage:CustomerSlice,
   publicBrand: publicBrandSlice,
+  cookieConsent: cookieConsentSlice,
 
   // seller
   sellers: sellerSlice,
@@ -70,6 +74,8 @@ const rootReducer = combineReducers({
   revenueChart: revenueChartSlice,
   sellerDashboard: sellerDashboardSlice,
   sellerBrandRequest: sellerBrandRequestSlice,
+  sellerCoupon: sellerCouponSlice,
+  wallet: walletSlice,
 
   // admin
   adminCoupon:AdminCouponSlice,

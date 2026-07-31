@@ -1,6 +1,5 @@
 // src/slices/userSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import axios from "axios";
 import { Address, User, UserState } from "../../types/userTypes";
 import { api } from "../../Config/Api";
 import { RootState } from "../Store";
@@ -208,6 +207,12 @@ const userSlice = createSlice({
       state.error = null;
       state.profileUpdated = false;
     },
+    clearProfileUpdated: (state) => {
+      state.profileUpdated = false;
+    },
+    clearUserError: (state) => {
+      state.error = null;
+    },
   },
   extraReducers: (builder) =>
   {
@@ -335,7 +340,7 @@ const userSlice = createSlice({
   },
 });
 
-export const { resetUserState } = userSlice.actions;
+export const { resetUserState, clearProfileUpdated, clearUserError } = userSlice.actions;
 
 export default userSlice.reducer;
 

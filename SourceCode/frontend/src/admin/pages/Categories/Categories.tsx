@@ -11,8 +11,6 @@ import {
     MenuItem,
     Switch,
     FormControlLabel,
-    Alert,
-    Snackbar,
     CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -27,6 +25,7 @@ import {
 } from "../../../Redux Toolkit/Admin/AdminCategorySlice";
 import CategoryTable from "./CategoryTable";
 import { Category } from "../../../types/categoryTypes";
+import { notification } from "../../../services/notificationService";
 
 const Categories = () => {
     const dispatch = useAppDispatch();
@@ -41,11 +40,6 @@ const Categories = () => {
     const [openEdit, setOpenEdit] = useState(false);
     const [openDelete, setOpenDelete] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
-        open: false,
-        message: "",
-        severity: "success",
-    });
 
     const [createForm, setCreateForm] = useState({
         name: "",
@@ -67,7 +61,7 @@ const Categories = () => {
 
     useEffect(() => {
         if (error) {
-            setSnackbar({ open: true, message: error, severity: "error" });
+            notification.error(error);
             dispatch(clearError());
         }
     }, [error, dispatch]);
@@ -93,7 +87,7 @@ const Categories = () => {
         if (createForm.parentCategory) payload.parentCategory = createForm.parentCategory;
         const result = await dispatch(createCategory(payload));
         if (createCategory.fulfilled.match(result)) {
-            setSnackbar({ open: true, message: "Category created successfully", severity: "success" });
+            notification.success("Category created successfully");
             handleCloseCreate();
         }
     };
@@ -122,7 +116,7 @@ const Categories = () => {
         payload.isActive = editForm.isActive;
         const result = await dispatch(updateCategory({ id: selectedCategory._id, payload }));
         if (updateCategory.fulfilled.match(result)) {
-            setSnackbar({ open: true, message: "Category updated successfully", severity: "success" });
+            notification.success("Category updated successfully");
             handleCloseEdit();
         }
     };
@@ -141,7 +135,7 @@ const Categories = () => {
         if (!selectedCategory) return;
         const result = await dispatch(deleteCategory(selectedCategory._id));
         if (deleteCategory.fulfilled.match(result)) {
-            setSnackbar({ open: true, message: "Category deleted successfully", severity: "success" });
+            notification.success("Category deleted successfully");
             handleCloseDelete();
         }
     };
@@ -321,16 +315,6 @@ const Categories = () => {
                 </DialogActions>
             </Dialog>
 
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar({ ...snackbar, open: false })}
-                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-            >
-                <Alert severity={snackbar.severity} variant="filled">
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </Box>
     );
 };

@@ -10,7 +10,7 @@ const SellerAccountVerification = () => {
 
   useEffect(()=>{
     dispatch(verifySellerEmail({otp:Number(otp),navigate}))
-  },[otp])
+  },[otp, dispatch, navigate])
 
 
   return (

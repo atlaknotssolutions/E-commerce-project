@@ -20,7 +20,7 @@ export const createBrandRequestRepository = ({ BrandRequest }) =>
     const findById = async (id, options = {}) =>
     {
         return BrandRequest.findById(id, null, options)
-            .populate('requestedBy', 'sellerName email')
+            .populate('requestedBy', 'sellerName email businessDetails.businessName')
             .populate('brandId', 'name slug logo')
             .populate('approvedBy', 'fullName email')
             .populate('rejectedBy', 'fullName email')
@@ -101,7 +101,7 @@ export const createBrandRequestRepository = ({ BrandRequest }) =>
 
         const [data, total] = await Promise.all([
             BrandRequest.find(filter, null, { lean: true })
-                .populate('requestedBy', 'sellerName email')
+                .populate('requestedBy', 'sellerName email businessDetails.businessName')
                 .populate('brandId', 'name slug logo')
                 .populate('approvedBy', 'fullName email')
                 .populate('rejectedBy', 'fullName email')
@@ -130,7 +130,7 @@ export const createBrandRequestRepository = ({ BrandRequest }) =>
             { $set: updateData },
             { new: true, runValidators: true, ...options }
         )
-            .populate('requestedBy', 'sellerName email')
+            .populate('requestedBy', 'sellerName email businessDetails.businessName')
             .populate('brandId', 'name slug logo')
             .populate('approvedBy', 'fullName email')
             .populate('rejectedBy', 'fullName email')

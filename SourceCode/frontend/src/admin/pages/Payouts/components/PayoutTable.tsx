@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Paper, IconButton, Chip, Typography, Box, TablePagination, Menu, MenuItem,
+    Paper, IconButton, Chip, Typography, TablePagination, Menu, MenuItem,
     ListItemIcon, ListItemText, CircularProgress,
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';

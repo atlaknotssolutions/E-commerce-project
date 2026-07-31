@@ -20,7 +20,7 @@ import {
     Paper,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { ProductModeration, ProductModerationHistoryEntry } from '../../../../types/productModerationTypes';
+import { ProductModeration } from '../../../../types/productModerationTypes';
 
 interface ProductDetailDialogProps {
     open: boolean;

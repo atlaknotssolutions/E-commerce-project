@@ -67,11 +67,61 @@ export const createSellerRepository = ({ Seller }) =>
         ).lean();
     };
 
+    /**
+     * Searches sellers by name, email, or business name with pagination.
+     */
+    const searchSellers = async ({ search, page = 1, limit = 20 }) =>
+    {
+        const query = {};
+
+        const trimmed = search ? search.trim() : '';
+        if (trimmed.length >= 2)
+        {
+            const regex = new RegExp(trimmed, 'i');
+            query.$or = [
+                { sellerName: regex },
+                { email: regex },
+                { 'businessDetails.businessName': regex },
+            ];
+        }
+
+        const skip = (page - 1) * limit;
+        const [data, total] = await Promise.all([
+            Seller.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Seller.countDocuments(query),
+        ]);
+
+        return {
+            data,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    };
+
+    const updateRazorpayXFields = async ({ id, contactId, fundAccountId, fundAccountStatus }, options = {}) =>
+    {
+        const $set = {};
+        if (contactId !== undefined) $set.razorpayxContactId = contactId;
+        if (fundAccountId !== undefined) $set.razorpayxFundAccountId = fundAccountId;
+        if (fundAccountStatus !== undefined) $set.razorpayxFundAccountStatus = fundAccountStatus;
+        return Seller.findByIdAndUpdate(id, { $set }, { ...options, new: true }).lean();
+    };
+
     return Object.freeze({
         findByEmail,
         findById,
         create,
         updateVerificationStatus,
         updateAccountStatus,
+        searchSellers,
+        updateRazorpayXFields,
     });
 };

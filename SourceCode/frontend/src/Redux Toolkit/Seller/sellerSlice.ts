@@ -290,7 +290,12 @@ export const deleteSeller = createAsyncThunk<void, string>(
 const sellerSlice = createSlice({
   name: "sellers",
   initialState,
-  reducers: {},
+  reducers: {
+    clearSellerMessages: (state) => {
+      state.profileUpdated = false;
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
 
@@ -420,6 +425,7 @@ const sellerSlice = createSlice({
   },
 });
 
+export const { clearSellerMessages } = sellerSlice.actions;
 export default sellerSlice.reducer;
 
 // Define selector functions

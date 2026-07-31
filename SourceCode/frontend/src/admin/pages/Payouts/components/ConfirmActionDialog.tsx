@@ -7,7 +7,6 @@ import {
     Button,
     Typography,
     TextField,
-    Box,
 } from '@mui/material';
 
 interface ConfirmActionDialogProps {

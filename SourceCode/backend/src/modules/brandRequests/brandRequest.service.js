@@ -64,7 +64,7 @@ export const createBrandRequestService = ({
         }
 
         return brandRequestRepository.create({
-            seller: sellerId,
+            requestedBy: sellerId,
             name: trimmedName,
             description: description?.trim() || '',
             website: website?.trim() || '',

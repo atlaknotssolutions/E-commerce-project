@@ -1,6 +1,8 @@
+import http from 'http';
 import { env } from './config/env.js';
 import { createDatabaseManager } from './database/db.js';
 import { createApp } from './app.js';
+import { createSocketService } from './services/socket.service.js';
 
 // Create the database manager with the MongoDB connection string
 const dbManager = createDatabaseManager({ mongoDbUri: env.mongoDbUri });
@@ -18,8 +20,12 @@ const startServer = async () =>
       dbManager,
     });
 
-    // 4. Start listening for incoming HTTP TCP port sockets 
-    const server = app.listen(env.port, () =>
+    // 4. Create HTTP server and attach Socket.IO
+    const server = http.createServer(app);
+    createSocketService(server);
+
+    // 5. Start listening for incoming HTTP TCP port sockets 
+    server.listen(env.port, () =>
     {
       console.log(`[BOOTUP] Server successfully listening on network port: ${env.port} in [${env.nodeEnv}] mode.`);
     });

@@ -75,7 +75,11 @@ const CartSchema = new mongoose.Schema({
     couponPrice: {
         type: Number,
         default: 0,
-    }
+    },
+    lastActivityAt: {
+        type: Date,
+        default: Date.now,
+    },
 }, {
     // Automatically adds createdAt and updatedAt fields.
     timestamps: true,

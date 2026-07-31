@@ -1,12 +1,8 @@
-import React, { useState, useEffect, MouseEvent } from 'react';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import { teal } from '@mui/material/colors';
-import { Button, IconButton } from '@mui/material';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { MouseEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Product } from '../../../types/productTypes';
 import { useAppDispatch } from '../../../Redux Toolkit/Store';
 import CloseIcon from '@mui/icons-material/Close';
-import CancelIcon from '@mui/icons-material/Cancel';
 import { addProductToWishlist } from '../../../Redux Toolkit/Customer/WishlistSlice';
 
 interface ProductCardProps {
@@ -14,14 +10,10 @@ interface ProductCardProps {
 }
 
 const WishlistProductCard: React.FC<ProductCardProps> = ({ item }) => {
-    const [currentImage, setCurrentImage] = useState(0);
-    const [isHovered, setIsHovered] = useState(false);
-    const [isFavorite, setIsFavorite] = useState(false);
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
 
     const handleIconClick = (e:MouseEvent) => {
-        setIsFavorite((prev) => !prev);
         if(item.id)
         dispatch(addProductToWishlist({productId:item.id}))
     };

@@ -31,8 +31,6 @@ const NotificationPreferenceSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-NotificationPreferenceSchema.index({ user: 1 });
-
 export const NotificationPreference = mongoose.model(
   'NotificationPreference',
   NotificationPreferenceSchema

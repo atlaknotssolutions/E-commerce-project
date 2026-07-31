@@ -94,13 +94,15 @@ export const canCustomerCancel = (currentStatus) =>
 /**
  * Seller-allowed forward transitions.
  * Sellers advance orders through the fulfillment pipeline.
- * Sellers cannot cancel orders — only customers and admins can.
+ * Sellers may cancel orders before shipment (PENDING, PLACED, CONFIRMED, PACKED).
+ * After shipment (SHIPPED → DELIVERED) the order must complete — cancellations
+ * and returns are handled by the customer support / Returns module.
  */
 const SELLER_TRANSITIONS = Object.freeze({
-    [ORDER_STATUS.PENDING]: Object.freeze([ORDER_STATUS.CONFIRMED]),
-    [ORDER_STATUS.PLACED]: Object.freeze([ORDER_STATUS.CONFIRMED]),
-    [ORDER_STATUS.CONFIRMED]: Object.freeze([ORDER_STATUS.PACKED]),
-    [ORDER_STATUS.PACKED]: Object.freeze([ORDER_STATUS.SHIPPED]),
+    [ORDER_STATUS.PENDING]: Object.freeze([ORDER_STATUS.CONFIRMED, ORDER_STATUS.CANCELLED]),
+    [ORDER_STATUS.PLACED]: Object.freeze([ORDER_STATUS.CONFIRMED, ORDER_STATUS.CANCELLED]),
+    [ORDER_STATUS.CONFIRMED]: Object.freeze([ORDER_STATUS.PACKED, ORDER_STATUS.CANCELLED]),
+    [ORDER_STATUS.PACKED]: Object.freeze([ORDER_STATUS.SHIPPED, ORDER_STATUS.CANCELLED]),
     [ORDER_STATUS.SHIPPED]: Object.freeze([ORDER_STATUS.OUT_FOR_DELIVERY]),
     [ORDER_STATUS.OUT_FOR_DELIVERY]: Object.freeze([ORDER_STATUS.DELIVERED]),
     [ORDER_STATUS.DELIVERED]: Object.freeze([]),

@@ -20,10 +20,15 @@ export const mapOrder = (order) =>
 {
     if (!order) return null;
 
+    const totalSellingPrice = Number(order.totalSellingPrice) || 0;
+    const couponPrice = Number(order.couponPrice) || 0;
+
     return {
         ...order,
 
         id: order._id?.toString(),
+
+        customerPaidAmount: Math.max(0, totalSellingPrice - couponPrice),
 
         shippingAddress: {
             ...order.shippingAddress,

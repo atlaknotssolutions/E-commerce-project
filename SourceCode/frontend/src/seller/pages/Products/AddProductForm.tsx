@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useFormik } from "formik";
-import * as Yup from "yup";
+import { notification } from "../../../services/notificationService";
 import
 {
   TextField,
@@ -12,9 +12,6 @@ import
   FormHelperText,
   Grid,
   CircularProgress,
-  IconButton,
-  Snackbar,
-  Alert,
 } from "@mui/material";
 import "tailwindcss/tailwind.css";
 import { colors } from "../../../data/Filter/color";
@@ -29,44 +26,18 @@ import { ProductImage, AttributeDefinition } from "../../../types/productTypes";
 import ProductImageUpload from "../../components/ProductImageUpload";
 import VariantManager from "../../components/VariantManager";
 
-const validationSchema = Yup.object({
-  title: Yup.string()
-    .min(5, "Title should be at least 5 characters long")
-    .required("Title is required"),
-  description: Yup.string()
-    .min(10, "Description should be at least 10 characters long")
-    .required("Description is required"),
-  price: Yup.number()
-    .positive("Price should be greater than zero")
-    .required("Price is required"),
-  discountedPrice: Yup.number()
-    .positive("Discounted Price should be greater than zero")
-    .required("Discounted Price is required"),
-  discountPercent: Yup.number()
-    .positive("Discount Percent should be greater than zero")
-    .required("Discount Percent is required"),
-  quantity: Yup.number()
-    .positive("Quantity should be greater than zero")
-    .required("Quantity is required"),
-  color: Yup.string(),
-  category: Yup.string().required("Category is required"),
-  sizes: Yup.string(),
-})
-
 const ProductForm = () =>
 {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditMode = Boolean(id);
   const dispatch = useAppDispatch();
-  const { sellers, sellerProduct, homePage, sellerCategoryRequest, publicBrand } = useAppSelector(store => store);
+  const { sellerProduct, homePage, sellerCategoryRequest, publicBrand } = useAppSelector(store => store);
   const { categoryTree } = homePage;
   const { brands: activeBrands } = publicBrand;
   const pendingRequests = sellerCategoryRequest?.requests?.filter(
     (r: any) => r.status === 'PENDING'
   ) || [];
-
-  const [snackbarOpen, setOpenSnackbar] = useState(false);
 
   const productToEdit = isEditMode
     ? sellerProduct.products?.find((p: any) => p.id === id || p._id === id)
@@ -162,18 +133,17 @@ const ProductForm = () =>
     formik.setFieldValue("images", images);
   };
 
-  const handleCloseSnackbar = () =>
-  {
-    setOpenSnackbar(false);
-  }
-
   useEffect(() =>
   {
-    if (sellerProduct.productCreated || sellerProduct.productUpdated || sellerProduct.error)
+    if (sellerProduct.productCreated)
     {
-      setOpenSnackbar(true);
+      notification.success(isEditMode ? "Product updated successfully" : "Product created successfully");
     }
-  }, [sellerProduct.productCreated, sellerProduct.productUpdated, sellerProduct.error]);
+    if (sellerProduct.error)
+    {
+      notification.error(sellerProduct.error);
+    }
+  }, [sellerProduct.productCreated, sellerProduct.productUpdated, sellerProduct.error, isEditMode]);
 
   return (
     <div>
@@ -575,24 +545,6 @@ const ProductForm = () =>
         </div>
       )}
 
-      <Snackbar
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        open={snackbarOpen} autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={sellerProduct.error ? "error" : "success"}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {sellerProduct.error
-            ? sellerProduct.error
-            : isEditMode
-              ? "Product updated successfully"
-              : "Product created successfully"}
-        </Alert>
-      </Snackbar>
     </div>
 
   );

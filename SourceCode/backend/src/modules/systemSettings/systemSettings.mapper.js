@@ -11,6 +11,8 @@ export const mapSystemSettings = (settings) => {
         security: settings.security,
         maintenance: settings.maintenance,
         appearance: settings.appearance,
+        invoicing: settings.invoicing,
+        metadata: settings.metadata,
         settingsVersion: settings.settingsVersion,
         createdAt: settings.createdAt,
         updatedAt: settings.updatedAt,

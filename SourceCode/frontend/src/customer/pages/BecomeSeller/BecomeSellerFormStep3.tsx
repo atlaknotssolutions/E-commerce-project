@@ -1,5 +1,5 @@
 import React from "react";
-import { Grid, TextField } from "@mui/material";
+import { TextField } from "@mui/material";
 
 interface BecomeSellerFormStep2Props {
   formik: any; // Replace 'any' with the correct type for formik instance

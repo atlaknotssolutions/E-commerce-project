@@ -474,9 +474,49 @@ export const createGatewayService = ({
         return await gatewayEventRepository.findTimelineByEntity({ entityType, entityId });
     };
 
+    // ============================================================
+    // RazorpayX Real Webhook — translate real payload to canonical
+    // ============================================================
+    const handleRazorpayXWebhook = async (payload) => {
+        const event = payload.event;
+        const entity = payload.payload?.payout?.entity || payload.payload?.settlement?.entity;
+
+        if (!entity || !entity.id) {
+            throw createApiError({ statusCode: 400, message: 'Invalid RazorpayX webhook payload: missing entity id' });
+        }
+
+        if (!event) {
+            throw createApiError({ statusCode: 400, message: 'Invalid RazorpayX webhook payload: missing event' });
+        }
+
+        // Translate RazorpayX event names to canonical status
+        const eventToStatus = {
+            'payout.processed': GATEWAY_PAYOUT_STATUS.PROCESSED,
+            'payout.failed': GATEWAY_PAYOUT_STATUS.FAILED,
+            'payout.reversed': GATEWAY_PAYOUT_STATUS.REVERSED,
+            'payout.cancelled': GATEWAY_PAYOUT_STATUS.CANCELLED,
+        };
+
+        const canonicalStatus = eventToStatus[event];
+        if (!canonicalStatus) {
+            return { processed: true, event, idempotent: true, message: `Unhandled event type: ${event}` };
+        }
+
+        const normalizedPayload = {
+            payout_id: entity.id,
+            status: canonicalStatus,
+            amount: entity.amount,
+            currency: entity.currency || 'INR',
+            failure_reason: entity.failure_reason || entity.error_reason || null,
+        };
+
+        return await handlePayoutWebhook(normalizedPayload);
+    };
+
     return Object.freeze({
         handlePayoutWebhook,
         handleRefundWebhook,
+        handleRazorpayXWebhook,
         retryPayout,
         getHealth,
         getDashboard,

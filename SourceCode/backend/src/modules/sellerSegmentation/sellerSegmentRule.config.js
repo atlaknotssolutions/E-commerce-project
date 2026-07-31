@@ -1,0 +1,51 @@
+export const SELLER_SEGMENT_RULES = Object.freeze([
+    {
+        name: 'NEW_SELLER',
+        label: 'New Seller',
+        criteria: { totalOrders: { $lte: 5 }, daysSinceRegistration: { $lte: 90 } },
+        priority: 10,
+        isActive: true,
+    },
+    {
+        name: 'ACTIVE_SELLER',
+        label: 'Active Seller',
+        criteria: { totalOrders: { $gte: 10 }, daysSinceLastOrder: { $lte: 30 } },
+        priority: 20,
+        isActive: true,
+    },
+    {
+        name: 'HIGH_REVENUE_SELLER',
+        label: 'High Revenue Seller',
+        criteria: { totalRevenue: { $gte: 1000000 } },
+        priority: 30,
+        isActive: true,
+    },
+    {
+        name: 'FAST_GROWING_SELLER',
+        label: 'Fast Growing Seller',
+        criteria: { revenueGrowth: { $gte: 20 } },
+        priority: 40,
+        isActive: true,
+    },
+    {
+        name: 'TRUSTED_SELLER',
+        label: 'Trusted Seller',
+        criteria: { averageRating: { $gte: 4.5 }, returnRate: { $lte: 5 }, cancellationRate: { $lte: 2 } },
+        priority: 50,
+        isActive: true,
+    },
+    {
+        name: 'PREMIUM_SELLER',
+        label: 'Premium Seller',
+        criteria: { isTopCompositeScore: true },
+        priority: 60,
+        isActive: true,
+    },
+    {
+        name: 'TOP_SELLER',
+        label: 'Top Seller',
+        criteria: { isTopRevenuePercentile: true },
+        priority: 70,
+        isActive: true,
+    },
+]);

@@ -26,7 +26,7 @@ export default function ProductTable() {
     <>
       <h1 className='pb-5 font-bold text-xl'>Products Catalog</h1>
 
-      <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+      <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 200px)" }}>
         <Table stickyHeader sx={{ minWidth: 700 }} aria-label="customized table">
           <TableHead>
             <TableRow>

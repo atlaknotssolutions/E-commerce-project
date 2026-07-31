@@ -26,7 +26,6 @@ const RevenueChart: React.FC = () => {
     const dispatch = useAppDispatch();
     const revenue = useAppSelector((state) => state.sellerDashboard.revenue);
     const loading = useAppSelector((state) => state.sellerDashboard.loading);
-    const refreshing = useAppSelector((state) => state.sellerDashboard.refreshing);
 
     const [period, setPeriod] = React.useState('monthly');
 

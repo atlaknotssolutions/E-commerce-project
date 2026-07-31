@@ -4,29 +4,25 @@ import
     Badge,
     Box,
     Button,
-    Divider,
     Drawer,
     IconButton,
     useMediaQuery,
     useTheme,
   } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import "./Navbar.css";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import StorefrontIcon from "@mui/icons-material/Storefront";
-import SearchIcon from "@mui/icons-material/Search";
 import MenuIcon from "@mui/icons-material/Menu";
 import { mainCategory } from "../../../data/category/mainCategory";
 import CategorySheet from "./CategorySheet";
 import DrawerList from "./DrawerList";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
-import { fetchUserProfile } from "../../../Redux Toolkit/Customer/UserSlice";
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import { useAppSelector } from "../../../Redux Toolkit/Store";
 import SearchBar from "./SearchBar";
 import { FavoriteBorder } from "@mui/icons-material";
-import { getAccountRoute, getHomeRoute } from "../../../util/roleRoutes";
+import { getAccountRoute } from "../../../util/roleRoutes";
 import branding from "../../../Config/branding";
 
 
@@ -36,8 +32,7 @@ const Navbar = () =>
   const [selectedCategory, setSelectedCategory] = useState("men");
   const theme = useTheme();
   const isLarge = useMediaQuery(theme.breakpoints.up("lg"));
-  const dispatch = useAppDispatch();
-  const { user, auth, cart, sellers, wishlist } = useAppSelector((store) => store);
+  const { user, cart, sellers, wishlist } = useAppSelector((store) => store);
   const navigate = useNavigate();
 
 

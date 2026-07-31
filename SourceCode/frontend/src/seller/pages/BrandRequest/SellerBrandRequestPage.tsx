@@ -7,16 +7,14 @@ import {
     Paper,
     Table,
     TableBody,
-    TableCell,
     TableContainer,
     TableHead,
     TableRow,
     Chip,
     CircularProgress,
-    Alert,
-    Snackbar,
     Grid,
 } from "@mui/material";
+import { notification } from "../../../services/notificationService";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import {
     createBrandRequest,
@@ -35,28 +33,23 @@ const statusColors: Record<string, "warning" | "success" | "error"> = {
 const SellerBrandRequestPage = () => {
     const dispatch = useAppDispatch();
 
-    const { requests, loading, error, requestsLoaded } = useAppSelector(
+    const { requests: rawRequests, loading, error, requestsLoaded } = useAppSelector(
         (state) => state.sellerBrandRequest
     );
+    const requests = Array.isArray(rawRequests) ? rawRequests : [];
 
     const [form, setForm] = useState({
         name: "",
         description: "",
         website: "",
     });
-    const [snackbar, setSnackbar] = useState<{
-        open: boolean;
-        message: string;
-        severity: "success" | "error";
-    }>({ open: false, message: "", severity: "success" });
-
     useEffect(() => {
         if (!requestsLoaded) dispatch(fetchSellerBrandRequests());
     }, [dispatch, requestsLoaded]);
 
     useEffect(() => {
         if (error) {
-            setSnackbar({ open: true, message: error, severity: "error" });
+            notification.error(error);
             dispatch(clearSellerBrandRequestError());
         }
     }, [error, dispatch]);
@@ -68,11 +61,7 @@ const SellerBrandRequestPage = () => {
         if (form.website.trim()) payload.website = form.website.trim();
         const result = await dispatch(createBrandRequest(payload));
         if (createBrandRequest.fulfilled.match(result)) {
-            setSnackbar({
-                open: true,
-                message: "Brand request submitted successfully.",
-                severity: "success",
-            });
+            notification.success("Brand request submitted successfully.");
             setForm({ name: "", description: "", website: "" });
             dispatch(fetchSellerBrandRequests());
         }
@@ -216,16 +205,6 @@ const SellerBrandRequestPage = () => {
                 </TableContainer>
             )}
 
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar({ ...snackbar, open: false })}
-                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-            >
-                <Alert severity={snackbar.severity} variant="filled">
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </Box>
     );
 };

@@ -5,19 +5,12 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import {
     TextField,
-    MenuItem,
-    Select,
-    InputLabel,
-    FormControl,
     Button,
-    CircularProgress,
     Typography,
 } from "@mui/material";
-import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
-import { Deal } from "../../../types/dealTypes";
-import { useDispatch } from "react-redux";
+import { useAppDispatch } from "../../../Redux Toolkit/Store";
 import { fetchHomeCategories } from "../../../Redux Toolkit/Admin/AdminSlice";
-import { createDeal, updateDeal } from "../../../Redux Toolkit/Admin/DealSlice";
+import { updateDeal } from "../../../Redux Toolkit/Admin/DealSlice";
 
 // Validation schema using Yup
 const validationSchema = Yup.object({
@@ -37,7 +30,6 @@ const initialValues = {
 };
 
 const UpdateDealForm = ({ id }: { id: number }) => {
-    const { admin } = useAppSelector((store) => store);
     const dispatch = useAppDispatch();
     const formik = useFormik({
         initialValues,
@@ -59,7 +51,7 @@ const UpdateDealForm = ({ id }: { id: number }) => {
 
     useEffect(() => {
         dispatch(fetchHomeCategories());
-    }, []);
+    }, [dispatch]);
 
     return (
         <form className="space-y-4" onSubmit={formik.handleSubmit}>

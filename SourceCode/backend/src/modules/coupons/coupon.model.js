@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
+import { CUSTOMER_SEGMENT_VALUES, SELLER_SEGMENT_VALUES, COUPON_SCOPE_VALUES } from '../../constants/enums.js';
 
 /**
  * Coupon schema for managing discount offers.
+ * Supports enterprise promotion system with target types, stacking, and ownership.
  */
 const CouponSchema = new mongoose.Schema({
     code: {
@@ -10,6 +12,12 @@ const CouponSchema = new mongoose.Schema({
         unique: true,
         uppercase: true,
         trim: true,
+    },
+    name: {
+        type: String,
+        trim: true,
+        maxlength: 200,
+        default: '',
     },
     description: {
         type: String,
@@ -67,6 +75,42 @@ const CouponSchema = new mongoose.Schema({
         default: 0,
         min: 0,
     },
+    ownerType: {
+        type: String,
+        enum: ['PLATFORM', 'SELLER'],
+        default: 'PLATFORM',
+    },
+    sellerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+    },
+    scope: {
+        type: String,
+        enum: COUPON_SCOPE_VALUES,
+        default: 'ORDER',
+    },
+    scopeIds: [{
+        type: mongoose.Schema.Types.ObjectId,
+    }],
+    targetType: {
+        type: String,
+        enum: ['ALL_CUSTOMERS', 'NEW_CUSTOMERS', 'EXISTING_CUSTOMERS', 'FIRST_TIME', ...CUSTOMER_SEGMENT_VALUES.filter(v => v.startsWith('SEGMENT_')), ...SELLER_SEGMENT_VALUES.filter(v => v.startsWith('SEGMENT_'))],
+        default: 'ALL_CUSTOMERS',
+    },
+    priority: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    stackable: {
+        type: Boolean,
+        default: false,
+    },
+    metadata: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {},
+    },
     isActive: {
         type: Boolean,
         default: true,
@@ -80,7 +124,10 @@ const CouponSchema = new mongoose.Schema({
 });
 
 // Indexes to improve query performance.
-// CouponSchema.index({ code: 1 });
 CouponSchema.index({ isActive: 1, validityStartDate: 1, validityEndDate: 1 });
+CouponSchema.index({ ownerType: 1, isActive: 1 });
+CouponSchema.index({ sellerId: 1, isActive: 1, createdAt: -1 });
+CouponSchema.index({ targetType: 1 });
+CouponSchema.index({ priority: -1, stackable: 1 });
 
 export const Coupon = mongoose.model('Coupon', CouponSchema);

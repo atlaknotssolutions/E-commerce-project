@@ -1,16 +1,28 @@
+import mongoose from 'mongoose';
 import { toCartDto } from '../../utils/mappers/cart.mapper.js';
+import {
+    computeDiscountPercent,
+} from '../../utils/financialEngine.js';
+import { createCouponFacade } from '../../utils/couponEngine/CouponFacade.js';
 
 /**
  * Pure function-based factory representing the Coupon Business Service layer.
  * Coordinates dynamic checkout discounts applying and administrative campaign assets controls.
+ * All coupon validation and calculation is delegated to CouponFacade.
  */
 export const createCouponService = ({
     couponRepository,
     cartRepository,
     userRepository,
     createApiError,
+    customerSegmentService,
+    sellerSegmentService,
 }) =>
 {
+    const couponFacade = createCouponFacade({
+        segmentService: customerSegmentService || null,
+        sellerSegmentService: sellerSegmentService || null,
+    });
 
     /**
      * Evaluates and applies a validated promo-code directly to user shopping cart.
@@ -31,28 +43,7 @@ export const createCouponService = ({
             });
         }
 
-        // 2. Security Check: Verify coupon is explicitly active
-        if (!coupon.isActive)
-        {
-            throw createApiError({
-                statusCode: 400,
-                code: 'COUPON_INACTIVE',
-                message: 'This promo code has been deactivated by system administrators.'
-            });
-        }
-
-        // 3. Chronological Check: Verify current clock lies within validity window
-        const now = new Date();
-        if (now < new Date(coupon.validityStartDate) || now > new Date(coupon.validityEndDate))
-        {
-            throw createApiError({
-                statusCode: 400,
-                code: 'COUPON_EXPIRED',
-                message: 'This promotional campaign session has expired or is not yet active.'
-            });
-        }
-
-        // 4. Load and verify customer shopping cart properties
+        // 2. Load cart and user
         const cart = await cartRepository.findByUserId({ userId });
         if (!cart)
         {
@@ -63,26 +54,6 @@ export const createCouponService = ({
             });
         }
 
-        // Cart value must be calculated server-side prior to comparing thresholds (Anti Price-Tampering)
-        let currentSellingPriceSum = 0;
-        cart.items.forEach((item) =>
-        {
-            // Re-calculates actual values safely
-            const unitSelling = item.product ? item.product.sellingPrice : (item.sellingPrice / item.quantity);
-            currentSellingPriceSum += unitSelling * item.quantity;
-        });
-
-        // 5. Spending Limit Check: Verifies total cart value qualifies minimum threshold
-        if (currentSellingPriceSum < coupon.minimumOrderValue)
-        {
-            throw createApiError({
-                statusCode: 400,
-                code: 'MINIMUM_ORDER_VALUE_NOT_MET',
-                message: `Minimum spend required to unlock this discount is Rs. ${coupon.minimumOrderValue}. Your current cart subtotal is Rs. ${currentSellingPriceSum}.`
-            });
-        }
-
-        // 6. Double Redemption Abuse Check: Verify user history records
         const user = await userRepository.findById(userId);
         if (!user)
         {
@@ -93,42 +64,64 @@ export const createCouponService = ({
             });
         }
 
-        const hasAlreadyRedeemed = user.usedCoupons.some(
-            (usedCouponId) => usedCouponId.toString() === coupon._id.toString()
-        );
+        // 3. Server-side cart sum (anti-tampering)
+        const currentSellingPriceSum = couponFacade.computeCartSum(cart.items);
 
-        if (hasAlreadyRedeemed)
+        // 4. Extract seller IDs from cart items for seller segment validation
+        const productIds = cart.items.map((item) => item.product).filter(Boolean);
+        let cartItemSellerIds = [];
+        if (productIds.length > 0)
         {
+            const products = await mongoose.model('Product').find(
+                { _id: { $in: productIds } },
+                { seller: 1 }
+            ).lean();
+            cartItemSellerIds = [...new Set(products.map((p) => p.seller.toString()))];
+        }
+
+        // 5. Validate eligibility using CouponValidationEngine
+        const Order = mongoose.model('Order');
+        const userOrderCount = await Order.countDocuments({ user: userId });
+        const { valid, errors } = await couponFacade.validateEligibility({
+            coupon,
+            user,
+            cartSellingSum: currentSellingPriceSum,
+            sellerModel: mongoose.model('Seller'),
+            productModel: mongoose.model('Product'),
+            categoryModel: mongoose.model('Category'),
+            userOrderCount,
+            cartItemSellerIds,
+        });
+
+        if (!valid)
+        {
+            const err = errors[0];
             throw createApiError({
-                statusCode: 400,
-                code: 'COUPON_ALREADY_USED',
-                message: 'Access Denied: You have already redeemed this promotional code. Limit exactly 1 use per customer.'
+                statusCode: err.code === 'COUPON_NOT_FOUND' ? 404 : 400,
+                code: err.code,
+                message: err.message,
             });
         }
 
-        // 7. Calculate rounded discount cash allocations
-        const discountAmount = Math.round(currentSellingPriceSum * (coupon.discountPercentage / 100));
+        // 5. Calculate capped discount (uses FinancialEngine under the hood)
+        const discountAmount = couponFacade.computeDiscount(currentSellingPriceSum, coupon);
 
-        // 8. Update Cart schema: Inject promo code variables and deduct selling subtotals
+        // 6. Update Cart schema: Inject promo code variables
         const updatedCartPayload = {
             couponCode: coupon.code,
             couponPrice: discountAmount,
-            totalSellingPrice: Math.max(0, currentSellingPriceSum - discountAmount),
-            discount: Math.round(((cart.totalMrpPrice - (currentSellingPriceSum - discountAmount)) / cart.totalMrpPrice) * 100),
+            totalSellingPrice: currentSellingPriceSum,
+            discount: computeDiscountPercent(cart.totalMrpPrice, currentSellingPriceSum),
         };
 
-        // Commit state updates in Cart database table
         const finalCart = await cartRepository.updateCart({ userId, cartData: updatedCartPayload });
-
-        // 9. Update User schema: Lock coupon ID inside history array to prevent re-use
-        user.usedCoupons.push(coupon._id);
-        await userRepository.updateUsedCoupons({ userId, usedCoupons: user.usedCoupons });
 
         return toCartDto(finalCart);
     };
 
     /**
      * Resets applied promotional cuts, restoring standard cart selling subtotals.
+     * Uses CouponRollbackService for usage rollback.
      */
     const removeCoupon = async ({ userId }) =>
     {
@@ -144,38 +137,25 @@ export const createCouponService = ({
 
         if (!cart.couponCode)
         {
-            return toCartDto(cart); // Returns untouched if no coupon is active
+            return toCartDto(cart);
         }
 
-        // 1. Locate applied coupon ID using code string
-        const coupon = await couponRepository.findByCode(cart.couponCode);
-
-        // 2. Remove coupon tracking ID from user's redeem history
-        if (coupon)
-        {
-            const user = await userRepository.findById(userId);
-            if (user)
-            {
-                user.usedCoupons = user.usedCoupons.filter(
-                    (id) => id.toString() !== coupon._id.toString()
-                );
-                await userRepository.updateUsedCoupons({ userId, usedCoupons: user.usedCoupons });
-            }
-        }
-
-        // 3. Recalculate basic cart totals resetting discount price variables
-        let originalSellingPriceSum = 0;
-        cart.items.forEach((item) =>
-        {
-            const unitSelling = item.product ? item.product.sellingPrice : (item.sellingPrice / item.quantity);
-            originalSellingPriceSum += unitSelling * item.quantity;
+        // Use CouponRollbackService (single source of truth)
+        await couponFacade.rollbackByCart({
+            cart,
+            userId,
+            couponRepository,
+            userRepository,
         });
+
+        // Recalculate basic cart totals resetting discount price variables
+        const originalSellingPriceSum = couponFacade.computeCartSum(cart.items);
 
         const resetCartPayload = {
             couponCode: null,
             couponPrice: 0,
             totalSellingPrice: originalSellingPriceSum,
-            discount: Math.round(((cart.totalMrpPrice - originalSellingPriceSum) / cart.totalMrpPrice) * 100),
+            discount: computeDiscountPercent(cart.totalMrpPrice, originalSellingPriceSum),
         };
 
         return toCartDto(await cartRepository.updateCart({ userId, cartData: resetCartPayload }));

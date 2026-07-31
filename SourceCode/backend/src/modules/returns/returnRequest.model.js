@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { RETURN_STATUS, RETURN_REASON } from '../../constants/enums.js';
+import { RETURN_STATUS, RETURN_REASON, STATUS_HISTORY_ACTOR_VALUES } from '../../constants/enums.js';
 
 /**
  * Subdocument schema for a single return status history entry.
@@ -23,7 +23,7 @@ const ReturnHistorySchema = new mongoose.Schema({
     changedByModel: {
         type: String,
         required: [true, 'Actor model type is required'],
-        enum: ['User', 'Seller', 'Admin'],
+        enum: STATUS_HISTORY_ACTOR_VALUES,
     },
     changedByRole: {
         type: String,
@@ -122,6 +122,5 @@ ReturnRequestSchema.index({ customer: 1, requestedAt: -1 });
 ReturnRequestSchema.index({ seller: 1, requestedAt: -1 });
 ReturnRequestSchema.index({ order: 1 });
 ReturnRequestSchema.index({ returnStatus: 1 });
-ReturnRequestSchema.index({ returnId: 1 });
 
 export const ReturnRequest = mongoose.model('ReturnRequest', ReturnRequestSchema);

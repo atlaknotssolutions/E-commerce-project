@@ -11,8 +11,8 @@ import ProductModerationTable from './components/ProductModerationTable';
 const AdminProductModerationPage: React.FC = () =>
 {
     const dispatch = useAppDispatch();
-    const { loading, error, stats } = useAppSelector(
-        (store) => store.adminProductModeration || { loading: false, error: null, stats: null }
+    const { error, stats } = useAppSelector(
+        (store) => store.adminProductModeration || { error: null, stats: null }
     );
 
     useEffect(() =>

@@ -228,7 +228,15 @@ const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
                     </Typography>
                     <FieldRow label="Total MRP" value={formatCurrency(order.totalMrpPrice)} />
                     <FieldRow label="Total Selling Price" value={formatCurrency(order.totalSellingPrice)} />
-                    <FieldRow label="Discount" value={formatCurrency(order.discount)} />
+                    <FieldRow label="Product Discount" value={formatCurrency(order.discount)} />
+
+                    {order.couponDiscount != null && order.couponDiscount > 0 && (
+                        <FieldRow label="Coupon Discount" value={<span className="text-green-600">-{formatCurrency(order.couponDiscount)}</span>} />
+                    )}
+
+                    {order.payment && (
+                        <FieldRow label="Final Amount Paid" value={<span className="font-bold">{formatCurrency(order.payment.amount)}</span>} />
+                    )}
 
                     {/* Payment Info */}
                     {order.payment && (
@@ -238,7 +246,6 @@ const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
                             </Typography>
                             <FieldRow label="Method" value={order.payment.method} />
                             <FieldRow label="Status" value={order.payment.status} />
-                            <FieldRow label="Amount" value={formatCurrency(order.payment.amount)} />
                             <FieldRow label="Transaction ID" value={order.payment.transactionId || 'N/A'} />
                         </>
                     )}

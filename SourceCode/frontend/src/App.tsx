@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './App.css';
 import { ThemeProvider } from '@emotion/react';
 import customeTheme from './Theme/customeTheme';
@@ -6,6 +6,7 @@ import { Route, Routes, Navigate } from 'react-router-dom';
 
 import SellerDashboard from './seller/pages/SellerDashboard/SellerDashboard';
 import CustomerRoutes from './routes/CustomerRoutes';
+import NotificationProvider from './components/shared/NotificationProvider';
 import AdminDashboard from './admin/pages/Dashboard/Dashboard';
 import SellerAccountVerification from './seller/pages/SellerAccountVerification';
 import SellerAccountVerified from './seller/pages/SellerAccountVerified';
@@ -15,19 +16,23 @@ import BecomeSeller from './customer/pages/BecomeSeller/BecomeSeller';
 import AdminAuth from './admin/pages/Auth/AdminAuth';
 import { fetchUserProfile } from './Redux Toolkit/Customer/UserSlice';
 import { fetchHomePageData } from './Redux Toolkit/Customer/Customer/AsyncThunk';
+import { useSocket } from './hooks/useSocket';
+import SocketEventHandler from './components/shared/SocketEventHandler';
 
 function App()
 {
   const dispatch = useAppDispatch()
   const { auth, sellerAuth, sellers, user } = useAppSelector(store => store)
   const [bootstrapping, setBootstrapping] = useState(true);
+  const jwtRef = useRef<string | null>(auth.jwt || sellerAuth.jwt);
+  jwtRef.current = auth.jwt || sellerAuth.jwt;
+  useSocket();
 
   useEffect(() => {
     const bootstrap = async () => {
       const jwt =
         localStorage.getItem("jwt") ||
-        auth.jwt ||
-        sellerAuth.jwt;
+        jwtRef.current;
 
       if (!jwt) {
         setBootstrapping(false);
@@ -63,7 +68,8 @@ function App()
   return (
     <ThemeProvider theme={customeTheme}>
       <div className='App' >
-
+        <NotificationProvider />
+        <SocketEventHandler />
 
         <Routes>
           {sellers.profile && <Route path='/seller/*' element={<SellerDashboard />} />}

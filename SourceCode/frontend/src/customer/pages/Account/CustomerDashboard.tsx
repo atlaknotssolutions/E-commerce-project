@@ -6,11 +6,9 @@ import {
   CardContent,
   Typography,
   Button,
-  Badge,
   Avatar,
   Chip,
   Divider,
-  Grid,
 } from '@mui/material';
 import {
   ShoppingBag,

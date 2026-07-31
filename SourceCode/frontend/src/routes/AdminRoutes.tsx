@@ -1,7 +1,7 @@
 import React from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AdminDashboardPage from '../admin/pages/Dashboard/AdminDashboardPage'
-import SellersTable from '../admin/pages/sellers/SellersTable'
+// import SellersTable from '../admin/pages/sellers/SellersTable'
 import AdminCouponPage from '../admin/pages/Coupon/AdminCouponPage'
 import GridTable from '../admin/pages/Home Page/GridTable'
 import ElectronicsTable from '../admin/pages/Home Page/ElectronicsTable'
@@ -20,6 +20,7 @@ import SystemSettings from '../admin/pages/SystemSettings/SystemSettings'
 import AdminCommissions from '../admin/pages/Commissions/Commissions'
 import AdminPayouts from '../admin/pages/Payouts/Payouts'
 import AdminBrandPage from '../admin/pages/Brands/AdminBrandPage'
+import CookieConsentPage from '../admin/pages/CookieConsent/CookieConsentPage'
 
 const AdminRoutes = () => {
   return (
@@ -43,6 +44,7 @@ const AdminRoutes = () => {
       <Route path='/commissions' element={<AdminCommissions/>}/>
       <Route path='/payouts' element={<AdminPayouts/>}/>
       <Route path='/brands' element={<AdminBrandPage/>}/>
+      <Route path='/cookie-consent' element={<CookieConsentPage/>}/>
       <Route path='/account' element={<AdminAccount/>}/>
     </Routes>
   )

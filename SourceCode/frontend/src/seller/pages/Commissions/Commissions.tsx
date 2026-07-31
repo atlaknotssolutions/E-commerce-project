@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     Container, Typography, Box, Paper, TextField, MenuItem, Button,
     Grid, Card, CardContent, Alert,
@@ -17,15 +17,18 @@ import { Commission } from '../../../types/adminCommissionTypes';
 const SellerCommissions: React.FC = () => {
     const dispatch = useAppDispatch();
     const {
-        commissions, statistics, pagination, loading, error,
+        commissions, statistics, pagination, error,
     } = useAppSelector((store) => store.sellerCommission);
 
     const [filters, setFilters] = useState({ status: '', search: '', page: 1, limit: 20 });
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [viewCommission, setViewCommission] = useState<Commission | null>(null);
 
+    const filtersRef = useRef(filters);
+    filtersRef.current = filters;
+
     useEffect(() => {
-        dispatch(fetchSellerCommissions(filters));
+        dispatch(fetchSellerCommissions(filtersRef.current));
         dispatch(fetchSellerCommissionStats());
     }, [dispatch, filters.page, filters.limit]);
 

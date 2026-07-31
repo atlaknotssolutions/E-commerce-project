@@ -28,12 +28,14 @@ export const createCategoryController = ({
 
     /**
  * Returns complete category hierarchy.
+ * Supports optional sellerId filter to show only categories with seller's products.
  */
     const getCategoryTree = asyncHandler(async (req, res) =>
     {
+        const { sellerId } = req.query;
 
         const tree =
-            await categoryService.getCategoryTree();
+            await categoryService.getCategoryTree({ sellerId });
 
         return res.status(200).json({
             success: true,

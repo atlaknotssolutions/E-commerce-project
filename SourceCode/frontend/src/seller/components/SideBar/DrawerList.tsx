@@ -5,11 +5,11 @@ import { AccountBox, AddTask } from "@mui/icons-material";
 import BrandingWatermarkIcon from '@mui/icons-material/BrandingWatermark';
 import LogoutIcon from '@mui/icons-material/Logout';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import ReceiptIcon from '@mui/icons-material/Receipt';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import AddIcon from '@mui/icons-material/Add';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -57,16 +57,16 @@ const menu = [
     activeIcon: <BrandingWatermarkIcon className="text-white" />,
   },
   {
-    name: "Payment",
-    path: "/seller/payment",
-    icon: <AccountBalanceWalletIcon className="text-primary-color" />,
-    activeIcon: <AccountBalanceWalletIcon className="text-white" />,
+    name: "Coupons",
+    path: "/seller/coupons",
+    icon: <LocalOfferIcon className="text-primary-color" />,
+    activeIcon: <LocalOfferIcon className="text-white" />,
   },
   {
-    name: "Transaction",
-    path: "/seller/transaction",
-    icon: <ReceiptIcon className="text-primary-color" />,
-    activeIcon: <ReceiptIcon className="text-white" />,
+    name: "Wallet",
+    path: "/seller/wallet",
+    icon: <AccountBalanceWalletIcon className="text-primary-color" />,
+    activeIcon: <AccountBalanceWalletIcon className="text-white" />,
   },
   {
     name: "Commissions",

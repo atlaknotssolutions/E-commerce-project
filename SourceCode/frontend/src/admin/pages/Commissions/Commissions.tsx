@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     Container, Typography, Box, Paper, TextField, MenuItem, Button,
-    Grid, Card, CardContent, Snackbar, Alert, CircularProgress, Skeleton,
+    Grid, Card, CardContent, Alert,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
@@ -19,11 +19,12 @@ import { CommissionFilters as CommissionFiltersType } from '../../../types/admin
 import CommissionTable from './components/CommissionTable';
 import CommissionDetailsDialog from './components/CommissionDetailsDialog';
 import { Commission } from '../../../types/adminCommissionTypes';
+import { notification } from '../../../services/notificationService';
 
 const AdminCommissions: React.FC = () => {
     const dispatch = useAppDispatch();
     const {
-        commissions, selectedCommission, statistics, pagination,
+        commissions, statistics, pagination,
         loading, error, actionSuccess,
     } = useAppSelector((store) => store.adminCommission);
 
@@ -38,12 +39,12 @@ const AdminCommissions: React.FC = () => {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [viewCommission, setViewCommission] = useState<Commission | null>(null);
     const [orderIdInput, setOrderIdInput] = useState('');
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-        open: false, message: '', severity: 'success',
-    });
+
+    const filtersRef = useRef(filters);
+    filtersRef.current = filters;
 
     useEffect(() => {
-        dispatch(fetchAllCommissions(filters));
+        dispatch(fetchAllCommissions(filtersRef.current));
         dispatch(fetchCommissionStatistics());
     }, [dispatch, filters.page, filters.limit]);
 
@@ -73,11 +74,11 @@ const AdminCommissions: React.FC = () => {
         dispatch(calculateCommission(orderIdInput.trim()))
             .unwrap()
             .then(() => {
-                setSnackbar({ open: true, message: 'Commission calculated successfully', severity: 'success' });
+                notification.success('Commission calculated successfully');
                 setOrderIdInput('');
             })
             .catch((err: any) => {
-                setSnackbar({ open: true, message: err || 'Failed to calculate commission', severity: 'error' });
+                notification.error(err || 'Failed to calculate commission');
             });
     }, [dispatch, orderIdInput]);
 
@@ -85,10 +86,10 @@ const AdminCommissions: React.FC = () => {
         dispatch(approveCommission(commission.id || (commission as any)._id))
             .unwrap()
             .then(() => {
-                setSnackbar({ open: true, message: 'Commission approved successfully', severity: 'success' });
+                notification.success('Commission approved successfully');
             })
             .catch((err: any) => {
-                setSnackbar({ open: true, message: err || 'Failed to approve commission', severity: 'error' });
+                notification.error(err || 'Failed to approve commission');
             });
     }, [dispatch]);
 
@@ -96,10 +97,10 @@ const AdminCommissions: React.FC = () => {
         dispatch(settleCommission(commission.id || (commission as any)._id))
             .unwrap()
             .then(() => {
-                setSnackbar({ open: true, message: 'Commission settled successfully', severity: 'success' });
+                notification.success('Commission settled successfully');
             })
             .catch((err: any) => {
-                setSnackbar({ open: true, message: err || 'Failed to settle commission', severity: 'error' });
+                notification.error(err || 'Failed to settle commission');
             });
     }, [dispatch]);
 
@@ -107,10 +108,10 @@ const AdminCommissions: React.FC = () => {
         dispatch(cancelCommission(commission.id || (commission as any)._id))
             .unwrap()
             .then(() => {
-                setSnackbar({ open: true, message: 'Commission cancelled successfully', severity: 'success' });
+                notification.success('Commission cancelled successfully');
             })
             .catch((err: any) => {
-                setSnackbar({ open: true, message: err || 'Failed to cancel commission', severity: 'error' });
+                notification.error(err || 'Failed to cancel commission');
             });
     }, [dispatch]);
 
@@ -236,15 +237,6 @@ const AdminCommissions: React.FC = () => {
                 onClose={() => setDetailsOpen(false)}
             />
 
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-            >
-                <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </Container>
     );
 };

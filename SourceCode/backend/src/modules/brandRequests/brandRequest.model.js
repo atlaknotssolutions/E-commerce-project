@@ -21,6 +21,11 @@ const BrandRequestSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
+    website: {
+        type: String,
+        trim: true,
+        default: '',
+    },
     requestedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Seller',

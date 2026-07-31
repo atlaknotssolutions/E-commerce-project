@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
+import { notification } from "../../../services/notificationService";
 import
 {
-  Alert,
   Avatar,
   Box,
   Button,
   Divider,
   Modal,
-  Snackbar,
 } from "@mui/material";
 import ProfileFildCard from "./ProfileFildCard";
 import EditIcon from "@mui/icons-material/Edit";
@@ -21,7 +20,7 @@ import BankDetailsForm from "./BankDetailsForm";
 import IconButton from "@mui/material/IconButton";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import { uploadToCloudinary } from "../../../util/uploadToCloudinary";
-import { updateSeller } from "../../../Redux Toolkit/Seller/sellerSlice";
+import { updateSeller, clearSellerMessages } from "../../../Redux Toolkit/Seller/sellerSlice";
 
 export const style = {
   position: "absolute" as "absolute",
@@ -41,7 +40,6 @@ const Profile = () =>
   const [open, setOpen] = React.useState(false);
   const [selectedForm, setSelectedForm] = useState("persionalDetails");
   const handleClose = () => setOpen(false);
-  const [snackbarOpen, setOpenSnackbar] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleOpen = (formName: string) =>
@@ -65,11 +63,6 @@ const Profile = () =>
       default:
         return null;
     }
-  };
-
-  const handleCloseSnackbar = () =>
-  {
-    setOpenSnackbar(false);
   };
 
   const handleAvatarUpload = async (
@@ -101,11 +94,17 @@ const Profile = () =>
 
   useEffect(() =>
   {
-    if (sellers.profileUpdated || sellers.error)
+    if (sellers.profileUpdated)
     {
-      setOpenSnackbar(true);
+      notification.success("Profile Updated Successfully");
+      dispatch(clearSellerMessages());
     }
-  }, [sellers.profileUpdated]);
+    if (sellers.error)
+    {
+      notification.error(sellers.error);
+      dispatch(clearSellerMessages());
+    }
+  }, [sellers.profileUpdated, sellers.error, dispatch]);
 
 
 
@@ -301,21 +300,6 @@ const Profile = () =>
       >
         <Box sx={style}>{renderSelectedForm()}</Box>
       </Modal>
-      <Snackbar
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={sellers.error ? "error" : "success"}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {sellers.error ? sellers.error : "Profile Updated Successfully"}
-        </Alert>
-      </Snackbar>
     </div>
   );
 };

@@ -1,9 +1,5 @@
 import { Divider } from "@mui/material";
 import React from "react";
-import {
-  sumCartItemMrpPrice,
-  sumCartItemSellingPrice,
-} from "../../../util/cartCalculator";
 import { useAppSelector } from "../../../Redux Toolkit/Store";
 
 const PricingCard = () => {
@@ -12,12 +8,11 @@ const PricingCard = () => {
 
   if (!cartData) return null;
 
-  const totalMrp = cartData.totalMrpPrice || sumCartItemMrpPrice(cartData.cartItems || []);
-  const totalSelling = cartData.totalSellingPrice || sumCartItemSellingPrice(cartData.cartItems || []);
+  const totalMrp = cartData.totalMrpPrice ?? 0;
+  const totalSelling = cartData.totalSellingPrice ?? 0;
   const productDiscount = totalMrp - totalSelling;
   const couponDiscount = cartData.couponPrice || 0;
-  const shipping = totalSelling >= 1500 ? 0 : 79;
-  const amountPaid = totalSelling - couponDiscount + shipping;
+  const amountPaid = totalSelling - couponDiscount;
 
   return (
     <div>
@@ -35,13 +30,6 @@ const PricingCard = () => {
             <span className="text-green-600">- ₹{productDiscount.toFixed(2)}</span>
           </div>
         )}
-
-        <div className="flex justify-between items-center text-sm">
-          <span>Delivery</span>
-          <span className={shipping === 0 ? "text-green-600 font-medium" : ""}>
-            {shipping === 0 ? "Free" : `₹${shipping}`}
-          </span>
-        </div>
 
         {couponDiscount > 0 && (
           <div className="flex justify-between items-center text-sm">

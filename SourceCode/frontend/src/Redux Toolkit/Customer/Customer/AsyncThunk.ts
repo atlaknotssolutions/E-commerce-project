@@ -1,5 +1,4 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import axios from 'axios';
+import { createAsyncThunk } from '@reduxjs/toolkit';
 import { HomeCategory, HomeData } from '../../../types/homeDataTypes';
 import { api } from '../../../Config/Api';
 import { CategoryTreeResponse } from '../../../types/categoryTypes';

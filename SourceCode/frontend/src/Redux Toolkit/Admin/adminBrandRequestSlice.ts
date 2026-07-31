@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { api } from "../../Config/Api";
 import {
     BrandRequest,
@@ -18,7 +18,8 @@ export const fetchAllBrandRequests = createAsyncThunk<
 >("adminBrandRequest/fetchAll", async (params, { rejectWithValue }) => {
     try {
         const response = await api.get(API_URL, { params });
-        return response.data.data;
+        const raw = response.data.data;
+        return Array.isArray(raw) ? raw : raw?.data || [];
     } catch (error: any) {
         return rejectWithValue(
             error.response?.data?.message || "Failed to fetch brand requests"
@@ -135,7 +136,7 @@ const adminBrandRequestSlice = createSlice({
             })
             .addCase(fetchAllBrandRequests.fulfilled, (state, action) => {
                 state.loading = false;
-                state.requests = action.payload;
+                state.requests = Array.isArray(action.payload) ? action.payload : [];
             })
             .addCase(fetchAllBrandRequests.rejected, (state, action) => {
                 handleRejected(state, action);
@@ -147,10 +148,11 @@ const adminBrandRequestSlice = createSlice({
             })
             .addCase(fetchBrandRequestById.fulfilled, (state, action) => {
                 state.loading = false;
-                const existing = state.requests.find((r) => r._id === action.payload._id);
+                const payloadId = action.payload.id || action.payload._id;
+                const existing = state.requests.find((r) => (r.id || r._id) === payloadId);
                 if (existing) {
                     state.requests = state.requests.map((r) =>
-                        r._id === action.payload._id ? action.payload : r
+                        (r.id || r._id) === payloadId ? action.payload : r
                     );
                 } else {
                     state.requests.push(action.payload);
@@ -167,8 +169,9 @@ const adminBrandRequestSlice = createSlice({
             })
             .addCase(approveBrandRequest.fulfilled, (state, action) => {
                 state.loading = false;
+                const payloadId = action.payload.id || action.payload._id;
                 state.requests = state.requests.map((r) =>
-                    r._id === action.payload._id ? action.payload : r
+                    (r.id || r._id) === payloadId ? action.payload : r
                 );
                 state.pendingCount = Math.max(0, state.pendingCount - 1);
             })
@@ -183,8 +186,9 @@ const adminBrandRequestSlice = createSlice({
             })
             .addCase(rejectBrandRequest.fulfilled, (state, action) => {
                 state.loading = false;
+                const payloadId = action.payload.id || action.payload._id;
                 state.requests = state.requests.map((r) =>
-                    r._id === action.payload._id ? action.payload : r
+                    (r.id || r._id) === payloadId ? action.payload : r
                 );
                 state.pendingCount = Math.max(0, state.pendingCount - 1);
             })

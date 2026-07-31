@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import PricingCard from '../Cart/PricingCard'
-import { Alert, Box, Button, FormControl, FormControlLabel, FormLabel, IconButton, Modal, Radio, RadioGroup, Snackbar, TextField, Typography } from '@mui/material'
-import { useNavigate } from 'react-router-dom'
+import { Box, Button, FormControlLabel, IconButton, Modal, Radio, RadioGroup, TextField } from '@mui/material'
 import AddressForm from './AddresssForm'
 import AddressCard from './AddressCard'
 import AddIcon from '@mui/icons-material/Add';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { notification } from '../../../services/notificationService';
 import { createOrder } from '../../../Redux Toolkit/Customer/OrderSlice'
-import { Address } from '../../../types/userTypes'
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store'
 import { applyCoupon, fetchCustomerCoupons, resetCouponApplied } from '../../../Redux Toolkit/Customer/CouponSlice'
 
@@ -38,7 +37,6 @@ const paymentGatwayList = [
 ]
 const AddressPage = () =>
 {
-    const navigate = useNavigate()
     const dispatch = useAppDispatch();
     const [value, setValue] = useState(0);
     const { user, cart, coupone } = useAppSelector(store => store)
@@ -46,7 +44,6 @@ const AddressPage = () =>
 
     const [open, setOpen] = React.useState(false);
     const [couponCode, setCouponCode] = useState('');
-    const [couponSnackbar, setCouponSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
 
     useEffect(() =>
     {
@@ -72,14 +69,14 @@ const AddressPage = () =>
     }, [dispatch, coupone.customerCouponsLoaded]);
 
     useEffect(() => {
-        if (coupone.couponApplied || coupone.error) {
-            setCouponSnackbar({
-                open: true,
-                message: coupone.error || 'Coupon applied successfully!',
-                severity: coupone.error ? 'error' : 'success',
-            });
+        if (coupone.couponApplied) {
+            notification.success('Coupon applied successfully!');
+            dispatch(resetCouponApplied());
+        } else if (coupone.error) {
+            notification.error(coupone.error);
+            dispatch(resetCouponApplied());
         }
-    }, [coupone.couponApplied, coupone.error]);
+    }, [coupone.couponApplied, coupone.error, dispatch]);
 
     const handleApplyCoupon = () => {
         if (!couponCode.trim()) return;
@@ -315,21 +312,6 @@ const AddressPage = () =>
                 </Box>
             </Modal>
 
-            <Snackbar
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                open={couponSnackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setCouponSnackbar(prev => ({ ...prev, open: false }))}
-            >
-                <Alert
-                    onClose={() => setCouponSnackbar(prev => ({ ...prev, open: false }))}
-                    severity={couponSnackbar.severity}
-                    variant="filled"
-                    sx={{ width: '100%' }}
-                >
-                    {couponSnackbar.message}
-                </Alert>
-            </Snackbar>
         </div>
     )
 }

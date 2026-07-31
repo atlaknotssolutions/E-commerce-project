@@ -1,12 +1,11 @@
 import {
-  Alert,
   Button,
   IconButton,
-  Snackbar,
   TextField,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 
+import { notification } from "../../../services/notificationService";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import { teal } from "@mui/material/colors";
 import FavoriteIcon from "@mui/icons-material/Favorite";
@@ -16,7 +15,7 @@ import PricingCard from "./PricingCard";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { fetchUserCart } from "../../../Redux Toolkit/Customer/CartSlice";
 import { CartItem } from "../../../types/cartTypes";
-import { applyCoupon } from "../../../Redux Toolkit/Customer/CouponSlice";
+import { applyCoupon, resetCouponApplied } from "../../../Redux Toolkit/Customer/CouponSlice";
 import { Close } from "@mui/icons-material";
 
 const Cart = () => {
@@ -24,8 +23,6 @@ const Cart = () => {
   const dispatch = useAppDispatch();
   const { cart, auth, coupone } = useAppSelector((store) => store);
   const [couponCode, setCouponCode] = useState("");
-  const [snackbarOpen, setOpenSnackbar] = useState(false);
-
   useEffect(() => {
     dispatch(fetchUserCart(localStorage.getItem("jwt") || ""));
   }, [auth.jwt, dispatch]);
@@ -52,16 +49,17 @@ const Cart = () => {
       })
     );
   };
-  const handleCloseSnackbar = () => {
-    setOpenSnackbar(false);
-  };
-
   useEffect(() => {
-    if (coupone.couponApplied || coupone.error) {
-      setOpenSnackbar(true);
+    if (coupone.couponApplied) {
+      notification.success("Coupon Applied successfully");
       setCouponCode("");
+      dispatch(resetCouponApplied());
+    } else if (coupone.error) {
+      notification.error(coupone.error);
+      setCouponCode("");
+      dispatch(resetCouponApplied());
     }
-  }, [coupone.couponApplied, coupone.error]);
+  }, [coupone.couponApplied, coupone.error, dispatch]);
 
   return (
     <>
@@ -150,21 +148,6 @@ const Cart = () => {
           </Button>
         </div>
       )}
-      <Snackbar
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={coupone.error ? "error" : "success"}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {coupone.error ? coupone.error : "Coupon Applied successfully"}
-        </Alert>
-      </Snackbar>
     </>
   );
 };

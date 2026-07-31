@@ -1,21 +1,14 @@
-import { Alert, Button, Snackbar, Step, StepLabel, Stepper } from "@mui/material";
+import { Button } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import BecomeSellerFormStep1 from "./BecomeSellerFormStep1";
-import BecomeSellerFormStep3 from "./BecomeSellerFormStep3";
-import BecomeSellerFormStep2 from "./BecomeSellerFormStep2";
-import { useFormik } from "formik";
-import * as Yup from "yup";
-import BecomeSellerFormStep4 from "./BecomeSellerFormStep4";
-import { useDispatch } from "react-redux";
+import { notification } from "../../../services/notificationService";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
+import { clearSellerAuthMessages } from "../../../Redux Toolkit/Seller/sellerAuthenticationSlice";
 import SellerLoginForm from "./SellerLoginForm";
 import { useLocation, useNavigate } from "react-router-dom";
 import SellerAccountForm from "./SellerAccountForm";
-import branding from "../../../Config/branding";
 
 const BecomeSeller = () =>
 {
-  const [activeStep, setActiveStep] = useState(0);
   const dispatch = useAppDispatch();
 
   const location = useLocation();
@@ -30,42 +23,30 @@ const BecomeSeller = () =>
 
   const { sellerAuth } = useAppSelector(store => store);
 
-  const handleCloseSnackbar = () =>
-  {
-    setSnackbarOpen(false);
-
-    if (verificationSuccess)
-    {
-      navigate("/become-seller", {
-        replace: true,
-      });
-
-      setVerificationSuccess(false);
-    }
-  };
-
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-
-  const [verificationSuccess, setVerificationSuccess] = useState(false);
-
   useEffect(() =>
   {
-    if (sellerAuth.sellerCreated || sellerAuth.error || sellerAuth.otpSent)
-    {
-      setSnackbarOpen(true);
-      console.log("store ", sellerAuth.error);
+    if (sellerAuth.sellerCreated) {
+      notification.success(sellerAuth.sellerCreated);
+      dispatch(clearSellerAuthMessages());
+    } else if (sellerAuth.error) {
+      notification.error(sellerAuth.error);
+      dispatch(clearSellerAuthMessages());
+    } else if (sellerAuth.otpSent) {
+      notification.success("OTP sent to your email!");
+      dispatch(clearSellerAuthMessages());
     }
-  }, [sellerAuth.sellerCreated, sellerAuth.error, sellerAuth.otpSent]);
+  }, [sellerAuth.sellerCreated, sellerAuth.error, sellerAuth.otpSent, dispatch]);
 
   useEffect(() =>
   {
     if (verified === "true")
     {
-      setVerificationSuccess(true);
       setIsLoginPage(true);
-      setSnackbarOpen(true);
+      const msg = message || "Seller email verified successfully.";
+      notification.success(msg);
+      navigate("/become-seller", { replace: true });
     }
-  }, [verified]);
+  }, [verified, message, navigate]);
 
   return (
     <div className="grid md:gap-10 grid-cols-3 min-h-screen ">
@@ -118,29 +99,6 @@ const BecomeSeller = () =>
         </div>
       </section>
 
-      <Snackbar
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={sellerAuth.error ? "error" : "success"}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {
-            verified === "true"
-              ? (message || "Seller email verified successfully.")
-              : sellerAuth.error
-                ? sellerAuth.error
-                : sellerAuth.sellerCreated
-                  ? sellerAuth.sellerCreated
-                  : "OTP sent to your email!"
-          }
-        </Alert>
-      </Snackbar>
     </div>
   );
 };

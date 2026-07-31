@@ -1,3 +1,5 @@
+import { emitToUser } from '../../services/socket.service.js';
+
 /**
  * Pure function-based factory representing the Wishlist HTTP API Controllers.
  * Strictly enforces thin controller design principles, avoiding classes and context leaks.
@@ -33,6 +35,8 @@ export const createWishlistController = ({ wishlistService }) =>
             userId,
             productId,
         });
+
+        emitToUser(userId, 'wishlist:updated', { productId, wishlist: updatedWishlist });
 
         res.status(200).json(updatedWishlist);
     };

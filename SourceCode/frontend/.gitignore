@@ -21,3 +21,10 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+
+logs/
+*.log
+app.log
+app-error.log
+pnpm-debug.log*

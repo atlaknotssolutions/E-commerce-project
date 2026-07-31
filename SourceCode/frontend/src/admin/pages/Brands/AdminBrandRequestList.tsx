@@ -7,10 +7,8 @@ import {
     MenuItem,
     Table,
     TableBody,
-    TableCell,
     TableContainer,
     TableHead,
-    TableRow,
     Paper,
     Chip,
     IconButton,
@@ -19,13 +17,10 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    Snackbar,
-    Alert,
     Tooltip,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import InfoIcon from "@mui/icons-material/Info";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import {
     fetchAllBrandRequests,
@@ -34,6 +29,7 @@ import {
     clearAdminBrandRequestError,
 } from "../../../Redux Toolkit/Admin/adminBrandRequestSlice";
 import { StyledTableCell, StyledTableRow, EmptyRow } from '../../../components/shared/Table';
+import { notification } from '../../../services/notificationService';
 
 const statusColors: Record<string, "warning" | "success" | "error"> = {
     PENDING: "warning",
@@ -52,9 +48,10 @@ const formatDate = (dateStr?: string | null) => {
 
 const AdminBrandRequestList: React.FC = () => {
     const dispatch = useAppDispatch();
-    const { requests, loading, error } = useAppSelector(
+    const { requests: rawRequests, loading, error } = useAppSelector(
         (store) => store.adminBrandRequest
     );
+    const requests = Array.isArray(rawRequests) ? rawRequests : [];
 
     const [statusFilter, setStatusFilter] = useState("");
     const [search, setSearch] = useState("");
@@ -65,19 +62,13 @@ const AdminBrandRequestList: React.FC = () => {
         reason: string;
     }>({ open: false, id: "", reason: "" });
 
-    const [snackbar, setSnackbar] = useState<{
-        open: boolean;
-        message: string;
-        severity: "success" | "error";
-    }>({ open: false, message: "", severity: "success" });
-
     useEffect(() => {
         dispatch(fetchAllBrandRequests());
     }, [dispatch]);
 
     useEffect(() => {
         if (error) {
-            setSnackbar({ open: true, message: error, severity: "error" });
+            notification.error(error);
             dispatch(clearAdminBrandRequestError());
         }
     }, [error, dispatch]);
@@ -94,11 +85,7 @@ const AdminBrandRequestList: React.FC = () => {
     const handleApprove = async (id: string) => {
         const result = await dispatch(approveBrandRequest(id));
         if (approveBrandRequest.fulfilled.match(result)) {
-            setSnackbar({
-                open: true,
-                message: "Request approved. Brand created.",
-                severity: "success",
-            });
+            notification.success("Request approved. Brand created.");
         }
     };
 
@@ -111,7 +98,7 @@ const AdminBrandRequestList: React.FC = () => {
             })
         );
         if (rejectBrandRequest.fulfilled.match(result)) {
-            setSnackbar({ open: true, message: "Request rejected.", severity: "success" });
+            notification.success("Request rejected.");
             setRejectDialog({ open: false, id: "", reason: "" });
         }
     };
@@ -165,10 +152,10 @@ const AdminBrandRequestList: React.FC = () => {
                         </TableHead>
                         <TableBody>
                             {requests.map((req) => (
-                                <StyledTableRow key={req._id} hover>
-                                    <StyledTableCell sx={{ maxWidth: 150 }}>
+                                <StyledTableRow key={req.id || req._id} hover>
+                                    <StyledTableCell sx={{ maxWidth: 200 }}>
                                         <Typography variant="body2" fontWeight={500}>
-                                            {req.seller?.name || "—"}
+                                            {req.seller?.businessName || req.seller?.name || "—"}
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary">
                                             {req.seller?.email || ""}
@@ -212,7 +199,7 @@ const AdminBrandRequestList: React.FC = () => {
                                             <>
                                                 <IconButton
                                                     color="success"
-                                                    onClick={() => handleApprove(req._id)}
+                                                    onClick={() => handleApprove(req.id || req._id || "")}
                                                     title="Approve"
                                                 >
                                                     <CheckCircleIcon />
@@ -222,7 +209,7 @@ const AdminBrandRequestList: React.FC = () => {
                                                     onClick={() =>
                                                         setRejectDialog({
                                                             open: true,
-                                                            id: req._id,
+                                                            id: req.id || req._id || "",
                                                             reason: "",
                                                         })
                                                     }
@@ -285,16 +272,6 @@ const AdminBrandRequestList: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar({ ...snackbar, open: false })}
-                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-            >
-                <Alert severity={snackbar.severity} variant="filled">
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </Box>
     );
 };

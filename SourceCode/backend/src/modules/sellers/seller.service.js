@@ -164,12 +164,60 @@ export const createSellerService = ({ sellerRepository, createApiError }) =>
         return sellerRepository.updateAccountStatus({ id, status: targetStatus });
     };
 
+    /**
+     * Searches sellers with pagination for admin coupon picker.
+     * Enriches results with product count and active coupon count.
+     */
+    const searchSellers = async ({ search, page = 1, limit = 20 }) =>
+    {
+        const result = await sellerRepository.searchSellers({ search, page, limit });
+
+        // Enrich with product count and active coupon count
+        const ProductModel = mongoose.model('Product');
+        const CouponModel = mongoose.model('Coupon');
+
+        const enriched = await Promise.all(
+            result.data.map(async (seller) =>
+            {
+                const [productCount, activeCouponCount] = await Promise.all([
+                    ProductModel.countDocuments({ seller: seller._id }),
+                    CouponModel.countDocuments({
+                        sellerId: seller._id,
+                        ownerType: 'SELLER',
+                        isActive: true,
+                    }),
+                ]);
+
+                return {
+                    _id: seller._id,
+                    sellerName: seller.sellerName,
+                    email: seller.email,
+                    mobile: seller.mobile,
+                    avatar: seller.avatar ?? null,
+                    businessDetails: seller.businessDetails || {},
+                    accountStatus: seller.accountStatus,
+                    isEmailVerified: seller.isEmailVerified,
+                    createdAt: seller.createdAt,
+                    updatedAt: seller.updatedAt,
+                    productCount,
+                    activeCouponCount,
+                };
+            })
+        );
+
+        return {
+            data: enriched,
+            pagination: result.pagination,
+        };
+    };
+
     return Object.freeze({
         createSeller,
         getSellerProfile,
-        updateSeller, // Added profile updater
-        deleteSeller, // Added admin delete
+        updateSeller,
+        deleteSeller,
         listSellers,
         updateAccountStatus,
+        searchSellers,
     });
 };

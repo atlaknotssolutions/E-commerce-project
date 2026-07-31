@@ -10,7 +10,7 @@ export const createAdminCouponController = ({ adminCouponService }) =>
      */
     const listCoupons = async (req, res) =>
     {
-        const { page, limit, search, isActive, discountType, sortBy, sortOrder } = req.query;
+        const { page, limit, search, isActive, discountType, ownerType, scope, targetType, sortBy, sortOrder } = req.query;
 
         const result = await adminCouponService.getAllCoupons({
             page: parseInt(page, 10) || 1,
@@ -18,6 +18,9 @@ export const createAdminCouponController = ({ adminCouponService }) =>
             search: search || null,
             isActive: isActive !== undefined && isActive !== '' ? isActive : null,
             discountType: discountType || null,
+            ownerType: ownerType || null,
+            scope: scope || null,
+            targetType: targetType || null,
             sortBy: sortBy || 'createdAt',
             sortOrder: sortOrder || 'desc',
         });
@@ -110,6 +113,96 @@ export const createAdminCouponController = ({ adminCouponService }) =>
     };
 
     /**
+     * Lists coupons belonging to the authenticated seller.
+     * GET /seller/coupons
+     */
+    const listSellerCoupons = async (req, res) =>
+    {
+        const sellerId = req.user.id;
+        const { page, limit, search, isActive, scope, targetType } = req.query;
+
+        const result = await adminCouponService.getSellerCoupons({
+            sellerId,
+            page: parseInt(page, 10) || 1,
+            limit: parseInt(limit, 10) || 20,
+            search: search || null,
+            isActive: isActive !== undefined && isActive !== '' ? isActive : null,
+            scope: scope || null,
+            targetType: targetType || null,
+        });
+
+        res.status(200).json({
+            success: true,
+            data: result.data,
+            pagination: {
+                page: result.page,
+                limit: result.limit,
+                total: result.total,
+                totalPages: result.totalPages,
+            },
+        });
+    };
+
+    /**
+     * Seller creates a new coupon (ownerType forced to SELLER).
+     * POST /seller/coupons
+     */
+    const createSellerCoupon = async (req, res) =>
+    {
+        const sellerId = req.user.id;
+        const coupon = await adminCouponService.createSellerCoupon(sellerId, req.body);
+        res.status(201).json({ success: true, data: coupon });
+    };
+
+    /**
+     * Seller updates their own coupon.
+     * PATCH /seller/coupons/:id
+     */
+    const updateSellerCoupon = async (req, res) =>
+    {
+        const sellerId = req.user.id;
+        const { id } = req.params;
+        const coupon = await adminCouponService.updateSellerCoupon(sellerId, id, req.body);
+        res.status(200).json({ success: true, data: coupon });
+    };
+
+    /**
+     * Seller deletes their own coupon.
+     * DELETE /seller/coupons/:id
+     */
+    const deleteSellerCoupon = async (req, res) =>
+    {
+        const sellerId = req.user.id;
+        const { id } = req.params;
+        const result = await adminCouponService.deleteSellerCoupon(sellerId, id);
+        res.status(200).json({ success: true, data: result });
+    };
+
+    /**
+     * Seller enables their own coupon.
+     * PATCH /seller/coupons/:id/enable
+     */
+    const enableSellerCoupon = async (req, res) =>
+    {
+        const sellerId = req.user.id;
+        const { id } = req.params;
+        const coupon = await adminCouponService.enableSellerCoupon(sellerId, id);
+        res.status(200).json({ success: true, data: coupon });
+    };
+
+    /**
+     * Seller disables their own coupon.
+     * PATCH /seller/coupons/:id/disable
+     */
+    const disableSellerCoupon = async (req, res) =>
+    {
+        const sellerId = req.user.id;
+        const { id } = req.params;
+        const coupon = await adminCouponService.disableSellerCoupon(sellerId, id);
+        res.status(200).json({ success: true, data: coupon });
+    };
+
+    /**
      * Returns usage details for a specific coupon.
      * GET /admin/coupons/:id/usage
      */
@@ -130,5 +223,11 @@ export const createAdminCouponController = ({ adminCouponService }) =>
         disableCoupon,
         getStatistics,
         getUsage,
+        listSellerCoupons,
+        createSellerCoupon,
+        updateSellerCoupon,
+        deleteSellerCoupon,
+        enableSellerCoupon,
+        disableSellerCoupon,
     });
 };

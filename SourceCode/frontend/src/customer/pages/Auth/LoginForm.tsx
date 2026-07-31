@@ -1,12 +1,9 @@
-import { Alert, Button, CircularProgress, Snackbar, TextField } from '@mui/material'
+import { Button, CircularProgress, TextField } from '@mui/material'
 import React, { useEffect, useState } from 'react'
 import OTPInput from '../../components/OtpFild/OTPInput'
-import { FormikValues, useFormik } from 'formik';
-import { useDispatch } from 'react-redux';
+import { useFormik } from 'formik';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
-import { sendLoginOtp, verifyLoginOtp } from '../../../Redux Toolkit/Seller/sellerAuthenticationSlice';
 import { useNavigate } from 'react-router-dom';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { sendLoginSignupOtp, signin } from '../../../Redux Toolkit/Customer/AuthSlice';
 import { fetchUserProfile } from "../../../Redux Toolkit/Customer/UserSlice";
 
@@ -15,7 +12,6 @@ const LoginForm = () =>
 
     const navigate = useNavigate();
     const [otp, setOtp] = useState("");
-    const [isOtpSent, setIsOtpSent] = useState(false)
     const [timer, setTimer] = useState<number>(30); // Timer state
     const [isTimerActive, setIsTimerActive] = useState<boolean>(false);
     const dispatch = useAppDispatch();
@@ -74,7 +70,6 @@ const LoginForm = () =>
 
     const handleSentOtp = () =>
     {
-        setIsOtpSent(true);
         handleResendOTP();
     }
 

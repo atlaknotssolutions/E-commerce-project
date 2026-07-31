@@ -5,13 +5,13 @@ import Products from '../seller/pages/Products/Products'
 import ProductForm from '../seller/pages/Products/AddProductForm'
 import Orders from '../seller/pages/Orders/Orders'
 import Profile from '../seller/pages/Account/Profile'
-import Payment from '../seller/pages/Payment/Payment'
-import TransactionTable from '../seller/pages/Payment/TransactionTable'
+import Wallet from '../seller/pages/Wallet/Wallet'
 import Invetory from '../seller/pages/Invetory/Invetory'
 import RequestCategory from '../seller/pages/CategoryRequest/RequestCategory'
 import Returns from '../seller/pages/Returns/Returns'
 import SellerCommissions from '../seller/pages/Commissions/Commissions'
 import SellerBrandRequestPage from '../seller/pages/BrandRequest/SellerBrandRequestPage'
+import SellerCouponPage from '../seller/pages/Coupons/SellerCouponPage'
 
 const SellerRoutes = () => {
   return (
@@ -23,12 +23,12 @@ const SellerRoutes = () => {
         <Route path='/orders' element={<Orders />} />
         <Route path='/invetory' element={<Invetory />} />
         <Route path='/account' element={<Profile />} />
-        <Route path='/payment' element={<Payment />} />
-        <Route path='/transaction' element={<TransactionTable/>} />
+        <Route path='/wallet' element={<Wallet />} />
         <Route path='/request-category' element={<RequestCategory/>} />
         <Route path='/returns' element={<Returns/>} />
         <Route path='/commissions' element={<SellerCommissions/>} />
         <Route path='/request-brand' element={<SellerBrandRequestPage/>} />
+        <Route path='/coupons' element={<SellerCouponPage/>} />
        </Routes>
   )
 }

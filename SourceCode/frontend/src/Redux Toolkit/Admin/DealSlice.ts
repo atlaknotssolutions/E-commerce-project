@@ -100,7 +100,13 @@ export const updateDeal = createAsyncThunk<Deal, { id: number; deal: any }>(
 const dealSlice = createSlice({
   name: "deals",
   initialState,
-  reducers: {},
+  reducers: {
+    clearDealMessages: (state) => {
+      state.dealCreated = false;
+      state.dealUpdated = false;
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
     .addCase(getAllDeals.pending, (state) => {
@@ -167,4 +173,5 @@ const dealSlice = createSlice({
   },
 });
 
+export const { clearDealMessages } = dealSlice.actions;
 export default dealSlice.reducer;

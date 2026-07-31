@@ -4,7 +4,7 @@ import { Cart, CartItem } from "../../types/cartTypes";
 import { api } from "../../Config/Api";
 import { RootState } from "../Store";
 import { applyCoupon } from "./CouponSlice";
-import { sumCartItemMrpPrice, sumCartItemSellingPrice } from "../../util/cartCalculator";
+// cartCalculator imports removed — totals use backend values only
 
 interface CartState
 {
@@ -172,10 +172,6 @@ const cartSlice = createSlice({
           }
 
           state.cart.cartItems.push(action.payload);
-
-          state.cart.totalItem += action.payload.quantity;
-          state.cart.totalMrpPrice += action.payload.mrpPrice;
-          state.cart.totalSellingPrice += action.payload.sellingPrice;
         }
       )
       .addCase(addItemToCart.rejected, (state, action) =>
@@ -197,10 +193,6 @@ const cartSlice = createSlice({
           state.cart.cartItems = state.cart.cartItems.filter(
             (item: CartItem) => item.id !== action.meta.arg.cartItemId
           );
-          const mrpPrice = sumCartItemMrpPrice(state.cart?.cartItems || [])
-          const sellingPrice = sumCartItemSellingPrice(state.cart?.cartItems || [])
-          state.cart.totalSellingPrice = sellingPrice;
-          state.cart.totalMrpPrice = mrpPrice;
         }
 
         state.loading = false;
@@ -229,10 +221,6 @@ const cartSlice = createSlice({
               ...action.payload,
             };
           }
-          const mrpPrice = sumCartItemMrpPrice(state.cart?.cartItems || [])
-          const sellingPrice = sumCartItemSellingPrice(state.cart?.cartItems || [])
-          state.cart.totalSellingPrice = sellingPrice;
-          state.cart.totalMrpPrice = mrpPrice;
         }
         state.loading = false;
       })

@@ -193,7 +193,8 @@ export const createProductController = ({ productService }) =>
             sort,
             stock,
             pageNumber,
-            sizeLimit
+            sizeLimit,
+            sellerId
         } = req.query;
 
         // Extract dynamic attribute filters (attr_color, attr_size, etc.)
@@ -218,6 +219,7 @@ export const createProductController = ({ productService }) =>
             stock: stock || null,
             pageNumber: pageNumber ? parseInt(pageNumber, 10) : 0,
             sizeLimit: sizeLimit ? parseInt(sizeLimit, 10) : 10,
+            sellerId: sellerId || null,
             dynamicFilters,
         });
 

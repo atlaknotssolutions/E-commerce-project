@@ -1,6 +1,6 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '../../Config/Api';
-import { ReturnRequest, ReturnStatus } from '../../types/orderTypes';
+import { ReturnRequest } from '../../types/orderTypes';
 
 interface SellerReturnState {
   returns: ReturnRequest[];

@@ -1,4 +1,4 @@
-export const createSystemSettingsController = ({ systemSettingsService }) => {
+export const createSystemSettingsController = ({ systemSettingsService, cloudinaryClient, createApiError }) => {
 
     const getSettings = async (req, res) => {
         const settings = await systemSettingsService.getSettings();
@@ -50,6 +50,33 @@ export const createSystemSettingsController = ({ systemSettingsService }) => {
         res.status(200).json({ success: true, data: settings });
     };
 
+    const updateInvoicing = async (req, res) => {
+        const settings = await systemSettingsService.updateSection('invoicing', req.body);
+        res.status(200).json({ success: true, data: settings });
+    };
+
+    const uploadLogo = async (req, res) => {
+        const file = req.file;
+        if (!file?.buffer) {
+            throw createApiError({ statusCode: 400, message: 'No image file provided' });
+        }
+        const maxSize = req.body.maxSize
+            ? parseInt(req.body.maxSize, 10) * 1024 * 1024
+            : 2 * 1024 * 1024;
+        if (file.size > maxSize) {
+            throw createApiError({ statusCode: 400, message: `File size exceeds limit of ${Math.round(maxSize / 1024 / 1024)}MB` });
+        }
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
+        if (!allowedTypes.includes(file.mimetype)) {
+            throw createApiError({ statusCode: 400, message: 'Only PNG, JPEG, SVG, and WebP images are allowed' });
+        }
+        const uploadedAsset = await cloudinaryClient.uploadImageBuffer(file.buffer, 'AI_knots_Commerce/branding');
+        const settings = await systemSettingsService.updateSection('appearance', {
+            'brandingAssets.logo': uploadedAsset.secureUrl,
+        });
+        res.status(200).json({ success: true, data: settings, secureUrl: uploadedAsset.secureUrl });
+    };
+
     const resetSettings = async (req, res) => {
         const settings = await systemSettingsService.resetSettings();
         res.status(200).json({ success: true, data: settings });
@@ -66,6 +93,8 @@ export const createSystemSettingsController = ({ systemSettingsService }) => {
         updateSecurity,
         updateMaintenance,
         updateAppearance,
+        updateInvoicing,
+        uploadLogo,
         resetSettings,
     });
 };

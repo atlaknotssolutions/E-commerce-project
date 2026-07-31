@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { Typography, Box, Link } from '@mui/material';
+import { Typography, Box, Link, Button } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PolicyLayout from '../../components/Legal/PolicyLayout';
 import PolicySection from '../../components/Legal/PolicySection';
 import branding from '../../../Config/branding';
+import { useCookieConsent } from '../../../hooks/useCookieConsent';
 
 const toc = [
   { id: 'what-are-cookies', title: 'What Are Cookies' },
@@ -20,6 +21,8 @@ const toc = [
 ];
 
 const CookiePolicy = () => {
+  const { consent, handleChangePreferences, handleWithdraw } = useCookieConsent();
+
   useEffect(() => {
     document.title = 'Cookie Policy | ' + branding.appName;
   }, []);
@@ -419,6 +422,50 @@ const CookiePolicy = () => {
         <Typography variant="body1" sx={{ color: '#4a5568', lineHeight: 1.7 }}>
           Our team will review and respond to your inquiry within 30 days.
         </Typography>
+      </PolicySection>
+
+      <PolicySection id="manage-preferences" title="Manage Your Preferences" defaultExpanded>
+        <Typography variant="body1" sx={{ color: '#4a5568', lineHeight: 1.7, mb: 2 }}>
+          You can manage your cookie preferences at any time. If you have previously consented to non-essential cookies,
+          you can change your preferences or withdraw your consent below.
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            onClick={handleChangePreferences}
+            sx={{
+              backgroundColor: '#00927c',
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '8px',
+              px: 3,
+              '&:hover': { backgroundColor: '#007a6a' },
+            }}
+          >
+            Change Cookie Preferences
+          </Button>
+          {consent && (
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={handleWithdraw}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                borderRadius: '8px',
+                px: 3,
+              }}
+            >
+              Withdraw All Consent
+            </Button>
+          )}
+        </Box>
+        {consent && (
+          <Typography variant="body2" sx={{ color: '#9ca3af', mt: 2, fontSize: '0.8rem' }}>
+            Last consent recorded: {new Date(consent.acceptedAt).toLocaleDateString()} at{' '}
+            {new Date(consent.acceptedAt).toLocaleTimeString()}
+          </Typography>
+        )}
       </PolicySection>
     </PolicyLayout>
   );

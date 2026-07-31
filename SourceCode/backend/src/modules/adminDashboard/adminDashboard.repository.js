@@ -187,7 +187,7 @@ export const createAdminDashboardRepository = ({ User, Seller, Product, Order, R
             todayRevenue: result.todayRevenue,
             thisMonthRevenue: result.thisMonthRevenue,
             averageOrderValue: result.totalPaidOrders > 0
-                ? Math.round(result.totalRevenue / result.totalPaidOrders)
+                ? parseFloat((result.totalRevenue / result.totalPaidOrders).toFixed(2))
                 : 0,
         };
     };

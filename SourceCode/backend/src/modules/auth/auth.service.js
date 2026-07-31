@@ -21,6 +21,8 @@ export const createAuthService = ({
     jwtAccessExpiresIn,
     jwtRefreshSecret, // Injected refresh secrets config settings
     // jwtRefreshExpiresIn,
+    distributionEngine,
+    referralService,
 }) =>
 {
 
@@ -273,6 +275,29 @@ export const createAuthService = ({
         } finally
         {
             await session.endSession();
+        }
+
+        // Generate referral code for new user (non-blocking)
+        try
+        {
+            const UserMongooseModel = mongoose.model('User');
+            let code;
+            let attempts = 0;
+            do
+            {
+                code = crypto.randomBytes(4).toString('hex').toUpperCase();
+                const existing = await UserMongooseModel.findOne({ referralCode: code }).lean();
+                if (!existing) break;
+                attempts++;
+            } while (attempts < 5);
+            await UserMongooseModel.findByIdAndUpdate(onboardedUser._id, { referralCode: code });
+        }
+        catch (err) { /* referral code generation failure should not block signup */ }
+
+        // Trigger welcome coupon distribution (non-blocking)
+        if (distributionEngine)
+        {
+            distributionEngine.onUserRegistered(onboardedUser._id).catch(() => {});
         }
 
         // Generate rotated Access and Refresh tokens

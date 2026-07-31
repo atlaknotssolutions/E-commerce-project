@@ -1,19 +1,11 @@
-import React, { useState } from "react";
-import { useFormik } from "formik";
-import * as Yup from "yup";
-import { Box, Button, TextField, Grid } from "@mui/material";
-import OTPInput from "../../components/OtpFild/OTPInput";
+import React from "react";
+import { Box, TextField } from "@mui/material";
+
 
 // Validation schema
 
 
-const BecomeSellerFormStep1 = ({ formik, handleOtpChange }: any) => {
-
-
-
-    const handleResendOTP = () => {
-        console.log("handle resend otp")
-    }
+const BecomeSellerFormStep1 = ({ formik }: any) => {
 
 
 

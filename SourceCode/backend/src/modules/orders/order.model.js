@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { ORDER_STATUS, PAYMENT_STATUS, SHIPMENT_STATUS, CARRIERS } from '../../constants/enums.js';
+import { ORDER_STATUS, PAYMENT_STATUS, SHIPMENT_STATUS, CARRIERS, COUPON_SCOPE_VALUES, STATUS_HISTORY_ACTOR_VALUES } from '../../constants/enums.js';
 
 /**
  * Subdocument schema for a single status history entry.
@@ -24,7 +24,7 @@ const OrderStatusHistorySchema = new mongoose.Schema({
     changedByModel: {
         type: String,
         required: [true, 'Actor model type is required'],
-        enum: ['User', 'Seller', 'Admin'],
+        enum: STATUS_HISTORY_ACTOR_VALUES,
     },
     changedByRole: {
         type: String,
@@ -63,7 +63,7 @@ const ShipmentHistorySchema = new mongoose.Schema({
     changedByModel: {
         type: String,
         required: [true, 'Actor model type is required'],
-        enum: ['User', 'Seller', 'Admin'],
+        enum: STATUS_HISTORY_ACTOR_VALUES,
     },
     changedByRole: {
         type: String,
@@ -175,9 +175,72 @@ const OrderSchema = new mongoose.Schema({
         required: [true, 'Aggregated invoice Selling Price is required'],
         min: 0,
     },
+    couponPrice: {
+        type: Number,
+        default: 0,
+        min: [0, 'Coupon discount cannot be negative'],
+    },
+    couponSnapshot: {
+        type: new mongoose.Schema({
+            couponId: { type: String, required: true },
+            couponCode: { type: String, required: true },
+            couponName: { type: String, default: '' },
+            ownerType: { type: String, enum: ['PLATFORM', 'SELLER', 'SHARED'], required: true },
+            sellerId: { type: String, default: null },
+            scope: { type: String, enum: COUPON_SCOPE_VALUES, required: true },
+            scopeIds: [{ type: String }],
+            discountType: { type: String, enum: ['PERCENTAGE', 'FLAT'], required: true },
+            discountPercentage: { type: Number, default: 0 },
+            discountValue: { type: Number, default: 0 },
+            maximumDiscount: { type: Number, default: 0 },
+            minimumOrderValue: { type: Number, default: 0 },
+            couponDiscountApplied: { type: Number, required: true, min: 0 },
+            sellerContribution: { type: Number, default: 0, min: 0 },
+            platformContribution: { type: Number, default: 0, min: 0 },
+            appliedAt: { type: Date, default: Date.now },
+            appliedBy: { type: String, default: '' },
+        }, { _id: false }),
+        default: null,
+    },
     discount: {
         type: Number,
         default: 0,
+    },
+    // Settlement Engine fields (populated on delivery)
+    platformContribution: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    sellerContribution: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    couponOwnerType: {
+        type: String,
+        enum: ['PLATFORM', 'SELLER', 'SHARED', null],
+        default: null,
+    },
+    commissionAmount: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    gstAmount: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    settlementAmount: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    netSellerEarnings: {
+        type: Number,
+        default: 0,
+        min: 0,
     },
     orderStatus: {
         type: String,

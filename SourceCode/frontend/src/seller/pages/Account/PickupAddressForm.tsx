@@ -5,7 +5,6 @@ import { TextField, Button } from "@mui/material";
 import { UpdateDetailsFormProps } from "./BussinessDetailsForm";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { updateSeller } from "../../../Redux Toolkit/Seller/sellerSlice";
-import { useDispatch } from "react-redux";
 
 const PickupAddressForm = ({ onClose }: UpdateDetailsFormProps) => {
   const { sellers } = useAppSelector((store) => store);
@@ -45,7 +44,7 @@ const PickupAddressForm = ({ onClose }: UpdateDetailsFormProps) => {
         mobile: sellers.profile.pickupAddress.mobile,
       });
     }
-  }, [sellers.profile]);
+  }, [sellers.profile, formik]);
 
   return (
     <>

@@ -1,0 +1,118 @@
+import { COUPON_TRIGGER_TYPES } from '../../constants/enums.js';
+
+export const DISTRIBUTION_RULES = [
+    {
+        trigger: COUPON_TRIGGER_TYPES.WELCOME_REGISTRATION,
+        couponConfig: {
+            discountType: 'PERCENTAGE',
+            discountValue: 10,
+            maximumDiscount: 500,
+            validityDays: 30,
+            minimumOrderValue: 0,
+            targetType: 'ALL_CUSTOMERS',
+        },
+        isActive: true,
+        maxAssignmentsPerUser: 1,
+    },
+    {
+        trigger: COUPON_TRIGGER_TYPES.BIRTHDAY,
+        couponConfig: {
+            discountType: 'PERCENTAGE',
+            discountValue: 15,
+            maximumDiscount: 1000,
+            validityDays: 15,
+            minimumOrderValue: 0,
+            targetType: 'ALL_CUSTOMERS',
+        },
+        isActive: true,
+        maxAssignmentsPerUser: 1,
+    },
+    {
+        trigger: COUPON_TRIGGER_TYPES.ANNIVERSARY,
+        couponConfig: {
+            discountType: 'PERCENTAGE',
+            discountValue: 20,
+            maximumDiscount: 2000,
+            validityDays: 15,
+            minimumOrderValue: 1000,
+            targetType: 'ALL_CUSTOMERS',
+        },
+        isActive: true,
+        maxAssignmentsPerUser: 1,
+    },
+    {
+        trigger: COUPON_TRIGGER_TYPES.FIRST_PURCHASE,
+        couponConfig: {
+            discountType: 'FLAT',
+            discountValue: 200,
+            validityDays: 60,
+            minimumOrderValue: 500,
+            targetType: 'FIRST_TIME',
+        },
+        isActive: true,
+        maxAssignmentsPerUser: 1,
+    },
+    {
+        trigger: COUPON_TRIGGER_TYPES.REFERRAL,
+        couponConfig: {
+            discountType: 'FLAT',
+            discountValue: 300,
+            validityDays: 60,
+            minimumOrderValue: 0,
+            targetType: 'ALL_CUSTOMERS',
+        },
+        isActive: true,
+        maxAssignmentsPerUser: 0,
+    },
+    {
+        trigger: COUPON_TRIGGER_TYPES.CART_ABANDONMENT,
+        couponConfig: {
+            discountType: 'PERCENTAGE',
+            discountValue: 5,
+            maximumDiscount: 300,
+            validityDays: 7,
+            minimumOrderValue: 0,
+            targetType: 'ALL_CUSTOMERS',
+        },
+        isActive: true,
+        maxAssignmentsPerUser: 0,
+    },
+    {
+        trigger: COUPON_TRIGGER_TYPES.INACTIVE_CUSTOMER,
+        couponConfig: {
+            discountType: 'PERCENTAGE',
+            discountValue: 10,
+            maximumDiscount: 500,
+            validityDays: 14,
+            minimumOrderValue: 0,
+            targetType: 'ALL_CUSTOMERS',
+        },
+        isActive: true,
+        maxAssignmentsPerUser: 0,
+    },
+    {
+        trigger: COUPON_TRIGGER_TYPES.VIP_ACHIEVEMENT,
+        couponConfig: {
+            discountType: 'PERCENTAGE',
+            discountValue: 25,
+            maximumDiscount: 5000,
+            validityDays: 30,
+            minimumOrderValue: 0,
+            targetType: 'ALL_CUSTOMERS',
+        },
+        isActive: true,
+        maxAssignmentsPerUser: 1,
+    },
+    {
+        trigger: COUPON_TRIGGER_TYPES.SELLER_MILESTONE,
+        couponConfig: {
+            discountType: 'FLAT',
+            discountValue: 1000,
+            validityDays: 30,
+            minimumOrderValue: 0,
+            targetType: 'ALL_CUSTOMERS',
+        },
+        isActive: true,
+        maxAssignmentsPerUser: 0,
+    },
+];

@@ -94,7 +94,7 @@ const CartItemCard: React.FC<CartItemProps> = ({ item }) =>
 
                 <div className=' flex items-center gap-2  w-[140px] justify-between'>
 
-                    <Button size='small' disabled={item.quantity == 1} onClick={() => handleUpdateQuantity(-1)} >
+                    <Button size='small' disabled={item.quantity === 1} onClick={() => handleUpdateQuantity(-1)} >
                         <RemoveIcon />
                     </Button>
                     <span className='px-3  font-semibold'>

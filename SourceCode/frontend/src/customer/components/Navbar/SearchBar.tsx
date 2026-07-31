@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   TextField,
   InputAdornment,
@@ -98,11 +98,15 @@ const SearchBar: React.FC = () => {
 
   const debouncedQuery = useDebounce(query, DEBOUNCE_MS);
 
-  const suggestions = debouncedQuery
-    ? TRENDING_SEARCHES.filter((item) =>
-        item.toLowerCase().includes(debouncedQuery.toLowerCase())
-      )
-    : [];
+  const suggestions = useMemo(
+    () =>
+      debouncedQuery
+        ? TRENDING_SEARCHES.filter((item) =>
+            item.toLowerCase().includes(debouncedQuery.toLowerCase())
+          )
+        : [],
+    [debouncedQuery]
+  );
 
   const hasQuery = query.trim().length > 0;
   const showSuggestions = hasQuery && suggestions.length > 0;
@@ -150,6 +154,17 @@ const SearchBar: React.FC = () => {
     setIsOpen(true);
   }, []);
 
+  const getActiveItems = useCallback((): string[] => {
+    const items: string[] = [];
+    if (hasQuery && suggestions.length > 0) {
+      items.push(...suggestions);
+    } else if (!hasQuery) {
+      items.push(...recentSearches);
+      items.push(...TRENDING_SEARCHES.filter((t) => !recentSearches.includes(t)));
+    }
+    return items;
+  }, [hasQuery, suggestions, recentSearches]);
+
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
@@ -162,19 +177,8 @@ const SearchBar: React.FC = () => {
       }
       performSearch(query);
     },
-    [query, activeIndex, performSearch]
+    [query, activeIndex, performSearch, getActiveItems]
   );
-
-  const getActiveItems = useCallback((): string[] => {
-    const items: string[] = [];
-    if (hasQuery && suggestions.length > 0) {
-      items.push(...suggestions);
-    } else if (!hasQuery) {
-      items.push(...recentSearches);
-      items.push(...TRENDING_SEARCHES.filter((t) => !recentSearches.includes(t)));
-    }
-    return items;
-  }, [hasQuery, suggestions, recentSearches]);
 
   useEffect(() => {
     if (debouncedQuery && isOpen) {

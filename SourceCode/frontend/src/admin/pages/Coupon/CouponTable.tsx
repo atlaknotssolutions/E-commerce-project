@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
@@ -15,7 +14,6 @@ import {
     Tab,
     Box,
     TablePagination,
-    CircularProgress,
     Alert,
     IconButton,
     Menu,
@@ -287,11 +285,14 @@ const CouponTable: React.FC = () =>
                     <TableHead>
                         <TableRow>
                             <StyledTableCell>Code</StyledTableCell>
-                            <StyledTableCell>Description</StyledTableCell>
+                            <StyledTableCell>Name</StyledTableCell>
                             <StyledTableCell>Type</StyledTableCell>
+                            <StyledTableCell>Owner</StyledTableCell>
                             <StyledTableCell>Discount</StyledTableCell>
-                            <StyledTableCell>Min Order</StyledTableCell>
-                            <StyledTableCell>Max Discount</StyledTableCell>
+                            <StyledTableCell>Scope</StyledTableCell>
+                            <StyledTableCell>Target</StyledTableCell>
+                            <StyledTableCell>Priority</StyledTableCell>
+                            <StyledTableCell>Stackable</StyledTableCell>
                             <StyledTableCell>Usage</StyledTableCell>
                             <StyledTableCell>Valid Until</StyledTableCell>
                             <StyledTableCell>Status</StyledTableCell>
@@ -299,16 +300,16 @@ const CouponTable: React.FC = () =>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {loading && coupons.length === 0 ? (<LoadingRow colSpan={10} />) :
-                         coupons.length === 0 ? (<EmptyRow colSpan={10} message="No coupons found." />) : (
+                        {loading && coupons.length === 0 ? (<LoadingRow colSpan={13} />) :
+                         coupons.length === 0 ? (<EmptyRow colSpan={13} message="No coupons found." />) : (
                             coupons.map((coupon) => (
                                 <StyledTableRow key={coupon._id}>
                                     <StyledTableCell>
                                         <div className="font-medium text-sm">{coupon.code}</div>
                                     </StyledTableCell>
                                     <StyledTableCell>
-                                        <div className="text-sm max-w-[200px] truncate">
-                                            {coupon.description || '—'}
+                                        <div className="text-sm max-w-[150px] truncate">
+                                            {coupon.name || coupon.code || '—'}
                                         </div>
                                     </StyledTableCell>
                                     <StyledTableCell>
@@ -319,13 +320,44 @@ const CouponTable: React.FC = () =>
                                         />
                                     </StyledTableCell>
                                     <StyledTableCell>
+                                        <Chip
+                                            size="small"
+                                            label={coupon.ownerType === 'SELLER' ? 'Seller' : 'Platform'}
+                                            color={coupon.ownerType === 'SELLER' ? 'warning' : 'default'}
+                                            variant="outlined"
+                                        />
+                                    </StyledTableCell>
+                                    <StyledTableCell>
                                         {coupon.discountType === 'PERCENTAGE'
                                             ? `${coupon.discountPercentage}%`
                                             : formatCurrency(coupon.discountValue)}
                                     </StyledTableCell>
-                                    <StyledTableCell>{formatCurrency(coupon.minimumOrderValue)}</StyledTableCell>
                                     <StyledTableCell>
-                                        {coupon.maximumDiscount > 0 ? formatCurrency(coupon.maximumDiscount) : '—'}
+                                        <Chip
+                                            size="small"
+                                            label={coupon.scope?.replace(/_/g, ' ')}
+                                            color={coupon.scope === 'ALL' || coupon.scope === 'ORDER' ? 'success' : 'info'}
+                                            variant="outlined"
+                                        />
+                                    </StyledTableCell>
+                                    <StyledTableCell>
+                                        <Chip
+                                            size="small"
+                                            label={coupon.targetType?.replace(/_/g, ' ') || 'ALL'}
+                                            color="default"
+                                            variant="outlined"
+                                        />
+                                    </StyledTableCell>
+                                    <StyledTableCell>
+                                        <span className="text-sm">{coupon.priority ?? 0}</span>
+                                    </StyledTableCell>
+                                    <StyledTableCell>
+                                        <Chip
+                                            size="small"
+                                            label={coupon.stackable ? 'Yes' : 'No'}
+                                            color={coupon.stackable ? 'primary' : 'default'}
+                                            variant="outlined"
+                                        />
                                     </StyledTableCell>
                                     <StyledTableCell>
                                         {coupon.usageLimit > 0

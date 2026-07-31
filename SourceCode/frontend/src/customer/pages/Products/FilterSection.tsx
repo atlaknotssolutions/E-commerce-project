@@ -1,20 +1,13 @@
-import {
-  Button,
-  Divider,
-  FormControl,
-  FormControlLabel,
-  FormLabel,
-  Radio,
-  RadioGroup,
-} from "@mui/material";
+import { FormControlLabel, Radio, RadioGroup, Collapse } from "@mui/material";
 import React, { useState, useMemo } from "react";
 import { teal } from "@mui/material/colors";
 import { useSearchParams } from "react-router-dom";
 import { useAppSelector } from "../../../Redux Toolkit/Store";
 import { price } from "../../../data/Filter/price";
 import { discount } from "../../../data/Filter/discount";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 
-// Color hex lookup for color-type attributes (subset of common colors)
 const COLOR_HEX_MAP: Record<string, string> = {
   Black: "#000000", White: "#FFFFFF", Red: "#FF0000", Blue: "#0000FF",
   Green: "#008000", Yellow: "#FFFF00", Orange: "#FFA500", Pink: "#FFC0CB",
@@ -26,305 +19,202 @@ const COLOR_HEX_MAP: Record<string, string> = {
   Turquoise: "#40E0D0", Gold: "#FFD700", Silver: "#C0C0C0", Bronze: "#CD7F32",
   Indigo: "#4B0082", Violet: "#EE82EE", Tan: "#D2B48C", Rust: "#B7410E",
   Cream: "#FFFDD0", Plum: "#8E4585", Rose: "#FF007F", Lime: "#00FF00",
-  Aqua: "#00FFFF", Salmon: "#FA8072", Tomato: "#FF6347", Chocolate: "#D2691E",
+};
+
+interface CollapsibleSectionProps {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+const CollapsibleSection = ({ title, defaultOpen = true, children }: CollapsibleSectionProps) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="mb-4">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between py-2 text-left">
+        <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{title}</span>
+        {open ? <ExpandLessIcon fontSize="small" className="text-gray-400" /> : <ExpandMoreIcon fontSize="small" className="text-gray-400" />}
+      </button>
+      <Collapse in={open}>
+        <div className="pt-1">{children}</div>
+      </Collapse>
+    </div>
+  );
 };
 
 const FilterSection = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { filterMetadata } = useAppSelector((store) => store.products);
-
-  // Track expand/collapse per dynamic attribute
   const [expandedAttrs, setExpandedAttrs] = useState<Record<string, boolean>>({});
+  const [minCustom, setMinCustom] = useState("");
+  const [maxCustom, setMaxCustom] = useState("");
 
-  const toggleExpand = (code: string) => {
-    setExpandedAttrs((prev) => ({ ...prev, [code]: !prev[code] }));
-  };
+  const toggleExpand = (code: string) => setExpandedAttrs((prev) => ({ ...prev, [code]: !prev[code] }));
 
-  // Update a URL search param (set or delete)
   const updateFilterParam = (name: string, value: string) => {
-    if (value) {
-      searchParams.set(name, value);
-    } else {
-      searchParams.delete(name);
-    }
-    setSearchParams(searchParams);
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(name, value);
+    else next.delete(name);
+    setSearchParams(next);
   };
 
-  // Toggle a dynamic attribute value (single-select radio behavior)
   const handleDynamicFilter = (attrCode: string, value: string) => {
     const paramName = `attr_${attrCode}`;
-    const currentValue = searchParams.get(paramName);
-    if (currentValue === value) {
-      searchParams.delete(paramName);
-    } else {
-      searchParams.set(paramName, value);
+    const next = new URLSearchParams(searchParams);
+    const currentValue = next.get(paramName);
+    if (currentValue === value) next.delete(paramName);
+    else next.set(paramName, value);
+    setSearchParams(next);
+  };
+
+  const handleCustomPrice = () => {
+    if (minCustom && maxCustom && Number(minCustom) <= Number(maxCustom)) {
+      updateFilterParam("price", `${minCustom}-${maxCustom}`);
     }
-    setSearchParams(searchParams);
   };
 
-  // Clear all filters
-  const clearAllFilters = () => {
-    const keysToDelete: string[] = [];
-    searchParams.forEach((_value: any, key: any) => {
-      keysToDelete.push(key);
-    });
-    keysToDelete.forEach((key) => searchParams.delete(key));
-    setSearchParams(searchParams);
-  };
+  const clearAllFilters = () => setSearchParams(new URLSearchParams());
 
-  // Determine which filters are currently active
   const hasActiveFilters = useMemo(() => {
     let count = 0;
     searchParams.forEach(() => count++);
     return count > 0;
   }, [searchParams]);
 
-  // Color hex lookup helper
-  const getColorHex = (colorName: string): string | undefined => {
-    return COLOR_HEX_MAP[colorName] || undefined;
-  };
+  const getColorHex = (colorName: string): string | undefined => COLOR_HEX_MAP[colorName];
 
-  // Number of visible items before "show more"
   const INITIAL_VISIBLE_COUNT = 5;
 
   return (
-    <div className="space-y-5 bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between h-[40px] px-9 lg:border-r">
-        <p className="text-lg font-semibold">Filters</p>
-        <Button
-          onClick={clearAllFilters}
-          size="small"
-          disabled={!hasActiveFilters}
-          className="text-teal-600 cursor-pointer font-semibold"
-        >
-          clear all
-        </Button>
+    <div className="bg-white">
+      <div className="flex items-center justify-between px-4 py-3 border-b">
+        <p className="text-base font-semibold text-gray-800">Filters</p>
+        {hasActiveFilters && (
+          <button onClick={clearAllFilters} className="text-xs text-teal-600 hover:text-teal-700 font-medium">
+            Clear all ({hasActiveFilters ? Array.from(searchParams.keys()).length : 0})
+          </button>
+        )}
       </div>
-      <Divider />
 
-      <div className="px-9 space-y-6">
-        {/* ============================== */}
-        {/* DYNAMIC ATTRIBUTE FILTERS      */}
-        {/* ============================== */}
+      <div className="px-4 py-3 space-y-2">
+        {/* DYNAMIC ATTRIBUTES */}
         {filterMetadata?.attributes?.map((attr) => {
           const isExpanded = expandedAttrs[attr.code] || false;
-          const visibleValues = isExpanded
-            ? attr.values
-            : attr.values.slice(0, INITIAL_VISIBLE_COUNT);
+          const visibleValues = isExpanded ? attr.values : attr.values.slice(0, INITIAL_VISIBLE_COUNT);
           const hasMore = attr.values.length > INITIAL_VISIBLE_COUNT;
           const currentParamName = `attr_${attr.code}`;
           const selectedValue = searchParams.get(currentParamName);
 
-          // Color-type: render with swatches
           if (attr.type === "color") {
             return (
-              <section key={attr.code}>
-                <FormControl sx={{ zIndex: 0 }}>
-                  <FormLabel
-                    sx={{
-                      fontSize: "16px",
-                      fontWeight: "bold",
-                      pb: "14px",
-                      color: teal[600],
-                    }}
-                    id={`filter-${attr.code}`}
-                  >
-                    {attr.name}
-                  </FormLabel>
-                  <RadioGroup
-                    onChange={(_e, value) => handleDynamicFilter(attr.code, value)}
-                    aria-labelledby={`filter-${attr.code}`}
-                    value={selectedValue || ""}
-                  >
-                    {visibleValues.map((val) => (
-                      <FormControlLabel
-                        sx={{ fontSize: "12px" }}
-                        key={val}
-                        value={val}
-                        control={<Radio size="small" />}
-                        label={
-                          <div className="flex items-center gap-3">
-                            <p>{val}</p>
-                            {getColorHex(val) && (
-                              <span
-                                style={{ backgroundColor: getColorHex(val) }}
-                                className="h-5 w-5 rounded-full border"
-                              />
-                            )}
-                          </div>
-                        }
-                      />
-                    ))}
-                  </RadioGroup>
-                </FormControl>
+              <CollapsibleSection key={attr.code} title={attr.name}>
+                <RadioGroup onChange={(_, value) => handleDynamicFilter(attr.code, value)} value={selectedValue || ""}>
+                  {visibleValues.map((val) => (
+                    <FormControlLabel key={val} value={val} control={<Radio size="small" sx={{ '&.Mui-checked': { color: teal[600] } }} />}
+                      label={<div className="flex items-center gap-2 text-sm">
+                        <span>{val}</span>
+                        {getColorHex(val) && <span style={{ backgroundColor: getColorHex(val) }} className="h-4 w-4 rounded-full border inline-block" />}
+                      </div>} />
+                  ))}
+                </RadioGroup>
                 {hasMore && (
-                  <button
-                    onClick={() => toggleExpand(attr.code)}
-                    className="text-teal-600 cursor-pointer hover:text-teal-900 flex items-center"
-                  >
-                    {isExpanded
-                      ? "hide"
-                      : `+ ${attr.values.length - INITIAL_VISIBLE_COUNT} more`}
+                  <button onClick={() => toggleExpand(attr.code)} className="text-xs text-teal-600 hover:text-teal-700 mt-1">
+                    {isExpanded ? "Show less" : `+${attr.values.length - INITIAL_VISIBLE_COUNT} more`}
                   </button>
                 )}
-                <Divider sx={{ mt: 1 }} />
-              </section>
+              </CollapsibleSection>
             );
           }
 
-          // Select/multi_select/text/number types: render as radio list
           return (
-            <section key={attr.code}>
-              <FormControl>
-                <FormLabel
-                  sx={{
-                    fontSize: "16px",
-                    fontWeight: "bold",
-                    pb: "14px",
-                    color: teal[600],
-                  }}
-                  id={`filter-${attr.code}`}
-                >
-                  {attr.name}
-                </FormLabel>
-                <RadioGroup
-                  onChange={(_e, value) => handleDynamicFilter(attr.code, value)}
-                  aria-labelledby={`filter-${attr.code}`}
-                  value={selectedValue || ""}
-                >
-                  {visibleValues.map((val) => (
-                    <FormControlLabel
-                      key={val}
-                      value={val}
-                      control={<Radio size="small" />}
-                      label={val}
-                    />
-                  ))}
-                </RadioGroup>
-              </FormControl>
+            <CollapsibleSection key={attr.code} title={attr.name}>
+              <RadioGroup onChange={(_, value) => handleDynamicFilter(attr.code, value)} value={selectedValue || ""}>
+                {visibleValues.map((val) => (
+                  <FormControlLabel key={val} value={val} control={<Radio size="small" sx={{ '&.Mui-checked': { color: teal[600] } }} />}
+                    label={<span className="text-sm">{val}</span>} />
+                ))}
+              </RadioGroup>
               {hasMore && (
-                <button
-                  onClick={() => toggleExpand(attr.code)}
-                  className="text-teal-600 cursor-pointer hover:text-teal-900 flex items-center"
-                >
-                  {isExpanded
-                    ? "hide"
-                    : `+ ${attr.values.length - INITIAL_VISIBLE_COUNT} more`}
+                <button onClick={() => toggleExpand(attr.code)} className="text-xs text-teal-600 hover:text-teal-700 mt-1">
+                  {isExpanded ? "Show less" : `+${attr.values.length - INITIAL_VISIBLE_COUNT} more`}
                 </button>
               )}
-              <Divider sx={{ mt: 1 }} />
-            </section>
+            </CollapsibleSection>
           );
         })}
 
-        {/* ============================== */}
-        {/* PRICE FILTER (hardcoded ranges) */}
-        {/* ============================== */}
-        <section>
-          <FormControl>
-            <FormLabel
-              sx={{
-                fontSize: "16px",
-                fontWeight: "bold",
-                pb: "14px",
-                color: teal[600],
-              }}
-              id="filter-price"
-            >
-              Price
-            </FormLabel>
-            <RadioGroup
-              name="price"
-              onChange={(e) => updateFilterParam("price", e.target.value)}
-              aria-labelledby="filter-price"
-              value={searchParams.get("price") || ""}
-            >
-              {price.map((item) => (
-                <FormControlLabel
-                  key={item.name}
-                  value={item.value}
-                  control={<Radio size="small" />}
-                  label={item.name}
-                />
-              ))}
-            </RadioGroup>
-          </FormControl>
-        </section>
-        <Divider />
+        {/* PRICE */}
+        <CollapsibleSection title="Price">
+          <RadioGroup name="price" onChange={(e) => updateFilterParam("price", e.target.value)}
+            value={searchParams.get("price") || ""}>
+            {price.map((item) => (
+              <FormControlLabel key={item.name} value={item.value} control={<Radio size="small" sx={{ '&.Mui-checked': { color: teal[600] } }} />}
+                label={<span className="text-sm">{item.name}</span>} />
+            ))}
+          </RadioGroup>
+          <div className="flex items-center gap-2 mt-2">
+            <input type="number" placeholder="Min" value={minCustom} onChange={(e) => setMinCustom(e.target.value)}
+              className="w-full border rounded px-2 py-1 text-sm outline-none focus:border-teal-500" />
+            <span className="text-gray-400">-</span>
+            <input type="number" placeholder="Max" value={maxCustom} onChange={(e) => setMaxCustom(e.target.value)}
+              className="w-full border rounded px-2 py-1 text-sm outline-none focus:border-teal-500" />
+            <button onClick={handleCustomPrice} disabled={!minCustom || !maxCustom}
+              className="px-3 py-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed">
+              Go
+            </button>
+          </div>
+        </CollapsibleSection>
 
-        {/* ============================== */}
-        {/* DISCOUNT FILTER (hardcoded)     */}
-        {/* ============================== */}
-        <section>
-          <FormControl>
-            <FormLabel
-              sx={{
-                fontSize: "16px",
-                fontWeight: "bold",
-                pb: "14px",
-                color: teal[600],
-              }}
-              id="filter-discount"
-            >
-              Discount
-            </FormLabel>
-            <RadioGroup
-              name="discount"
-              onChange={(e) => updateFilterParam("discount", e.target.value)}
-              aria-labelledby="filter-discount"
-              value={searchParams.get("discount") || ""}
-            >
-              {discount.map((item) => (
-                <FormControlLabel
-                  key={item.name}
-                  value={item.value}
-                  control={<Radio size="small" />}
-                  label={item.name}
-                />
-              ))}
-            </RadioGroup>
-          </FormControl>
-        </section>
+        {/* DISCOUNT */}
+        <CollapsibleSection title="Discount">
+          <RadioGroup name="discount" onChange={(e) => updateFilterParam("discount", e.target.value)}
+            value={searchParams.get("discount") || ""}>
+            {discount.map((item) => (
+              <FormControlLabel key={item.name} value={String(item.value)} control={<Radio size="small" sx={{ '&.Mui-checked': { color: teal[600] } }} />}
+                label={<span className="text-sm">{item.name}</span>} />
+            ))}
+          </RadioGroup>
+        </CollapsibleSection>
 
-        {/* ============================== */}
-        {/* RATING FILTER                  */}
-        {/* ============================== */}
-        <section>
-          <FormControl>
-            <FormLabel
-              sx={{
-                fontSize: "16px",
-                fontWeight: "bold",
-                pb: "14px",
-                color: teal[600],
-              }}
-              id="filter-rating"
-            >
-              Customer Rating
-            </FormLabel>
-            <RadioGroup
-              name="rating"
-              onChange={(e) => updateFilterParam("rating", e.target.value)}
-              aria-labelledby="filter-rating"
-              value={searchParams.get("rating") || ""}
-            >
-              {[
-                { name: "4★ & above", value: "4" },
-                { name: "3★ & above", value: "3" },
-                { name: "2★ & above", value: "2" },
-                { name: "1★ & above", value: "1" },
-              ].map((item) => (
-                <FormControlLabel
-                  key={item.name}
-                  value={item.value}
-                  control={<Radio size="small" />}
-                  label={item.name}
-                />
+        {/* CUSTOMER RATING */}
+        <CollapsibleSection title="Customer Rating">
+          <RadioGroup name="rating" onChange={(e) => updateFilterParam("rating", e.target.value)}
+            value={searchParams.get("rating") || ""}>
+            {[
+              { name: "4★ & above", value: "4" },
+              { name: "3★ & above", value: "3" },
+              { name: "2★ & above", value: "2" },
+              { name: "1★ & above", value: "1" },
+            ].map((item) => (
+              <FormControlLabel key={item.name} value={item.value} control={<Radio size="small" sx={{ '&.Mui-checked': { color: teal[600] } }} />}
+                label={<span className="text-sm">{item.name}</span>} />
+            ))}
+          </RadioGroup>
+        </CollapsibleSection>
+
+        {/* AVAILABILITY */}
+        <CollapsibleSection title="Availability">
+          <RadioGroup name="stock" onChange={(e) => updateFilterParam("stock", e.target.value)}
+            value={searchParams.get("stock") || ""}>
+            <FormControlLabel value="in_stock" control={<Radio size="small" sx={{ '&.Mui-checked': { color: teal[600] } }} />}
+              label={<span className="text-sm">In Stock Only</span>} />
+            <FormControlLabel value="" control={<Radio size="small" sx={{ '&.Mui-checked': { color: teal[600] } }} />}
+              label={<span className="text-sm">All</span>} />
+          </RadioGroup>
+        </CollapsibleSection>
+
+        {/* BRAND (from metadata) */}
+        {filterMetadata?.brands && filterMetadata.brands.length > 0 && (
+          <CollapsibleSection title="Brand">
+            <RadioGroup name="brand" onChange={(e) => updateFilterParam("brand", e.target.value)}
+              value={searchParams.get("brand") || ""}>
+              {filterMetadata.brands.map((brand) => (
+                <FormControlLabel key={brand} value={brand} control={<Radio size="small" sx={{ '&.Mui-checked': { color: teal[600] } }} />}
+                  label={<span className="text-sm capitalize">{brand}</span>} />
               ))}
             </RadioGroup>
-          </FormControl>
-        </section>
+          </CollapsibleSection>
+        )}
       </div>
     </div>
   );

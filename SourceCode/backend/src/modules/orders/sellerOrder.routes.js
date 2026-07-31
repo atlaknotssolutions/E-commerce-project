@@ -15,6 +15,14 @@ export const createSellerOrderRoutes = ({
     // SECURED SELLER ORDER GATEWAYS (/seller/orders/*)
     // ==========================================
 
+    // Seller Endpoint: Export orders as CSV or Excel (Authentication & ROLE_SELLER required)
+    router.get(
+        '/seller/orders/export',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(sellerOrderController.exportSellerOrders)
+    );
+
     // Seller Endpoint: Retrieve own store items catalog list chronologically newest first (Authentication & ROLE_SELLER required)
     router.get(
         '/seller/orders',
@@ -45,6 +53,14 @@ export const createSellerOrderRoutes = ({
         authenticate,
         authorizeRoles('ROLE_SELLER'),
         asyncHandler(sellerOrderController.deleteOrder)
+    );
+
+    // Seller Endpoint: Returns the complete transition rules map for seller order status workflows
+    router.get(
+        '/seller/orders/transition-rules',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(sellerOrderController.getSellerTransitionRules)
     );
 
     return router;

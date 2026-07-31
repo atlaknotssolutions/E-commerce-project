@@ -1,8 +1,5 @@
 import { api } from "../Config/Api";
 import {
-    Brand,
-    BrandRequest,
-    BrandStats,
     CreateBrandPayload,
     UpdateBrandPayload,
     CreateBrandRequestPayload,

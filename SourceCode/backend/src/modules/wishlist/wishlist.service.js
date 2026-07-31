@@ -5,6 +5,8 @@
 export const createWishlistService = ({
     wishlistRepository,
     productRepository,
+    mapProduct,
+    mapProducts,
     createApiError
 }) =>
 {
@@ -22,6 +24,11 @@ export const createWishlistService = ({
         {
             await wishlistRepository.createWishlist({ userId });
             wishlist = await wishlistRepository.findByUserId({ userId });
+        }
+
+        if (wishlist && wishlist.products)
+        {
+            wishlist.products = mapProducts(wishlist.products);
         }
 
         return wishlist;
@@ -57,12 +64,15 @@ export const createWishlistService = ({
 
         if (isCurrentlySaved)
         {
-            // Scenario A: Product exists -> Trigger atomic remove/pull pipeline
             updatedWishlist = await wishlistRepository.removeProductFromWishlist({ userId, productId });
         } else
         {
-            // Scenario B: Product is absent -> Trigger atomic add/addToSet pipeline
             updatedWishlist = await wishlistRepository.addProductToWishlist({ userId, productId });
+        }
+
+        if (updatedWishlist && updatedWishlist.products)
+        {
+            updatedWishlist.products = mapProducts(updatedWishlist.products);
         }
 
         return updatedWishlist;

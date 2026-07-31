@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
 import { api } from '../../Config/Api';
 
 // Define the base URL for the API

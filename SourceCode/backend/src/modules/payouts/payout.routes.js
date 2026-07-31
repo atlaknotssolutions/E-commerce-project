@@ -41,6 +41,20 @@ export const createPayoutRoutes = ({
         asyncHandler(controller.requestPayout)
     );
 
+    router.post(
+        '/seller/payouts/bank-details',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(controller.updateBankDetails)
+    );
+
+    router.get(
+        '/seller/payouts/fund-account',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(controller.getFundAccountStatus)
+    );
+
     // Admin routes
     router.get(
         '/admin/payouts/statistics',
@@ -82,6 +96,13 @@ export const createPayoutRoutes = ({
         authenticate,
         authorizeRoles('ROLE_ADMIN'),
         asyncHandler(controller.disbursePayout)
+    );
+
+    router.post(
+        '/admin/payouts/batch',
+        authenticate,
+        authorizeRoles('ROLE_ADMIN'),
+        asyncHandler(controller.processBatchPayouts)
     );
 
     return Object.freeze(router);

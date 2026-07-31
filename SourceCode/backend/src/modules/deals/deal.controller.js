@@ -3,6 +3,7 @@ import
     mapDeal,
     mapDeals,
 } from "../../utils/mappers/deal.mapper.js";
+import { emitToAdmin } from "../../services/socket.service.js";
 
 /**
  * Pure function-based factory representing the Deal campaigns HTTP API Controllers.
@@ -59,6 +60,8 @@ export const createDealController = ({ dealService }) =>
             categoryId: resolvedCategoryId,
         });
 
+        emitToAdmin('deal:created', mapDeal(newDeal));
+
         res.status(202).json(
             mapDeal(newDeal)
         );
@@ -77,6 +80,9 @@ export const createDealController = ({ dealService }) =>
             id,
             discount,
         });
+
+        emitToAdmin('deal:updated', mapDeal(updatedDeal));
+
         res.status(200).json(
             mapDeal(updatedDeal)
         );

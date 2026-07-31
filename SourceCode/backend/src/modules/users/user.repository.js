@@ -219,6 +219,29 @@ export const createUserRepository = ({ User }) =>
         );
     };
 
+    const findByReferralCode = async (referralCode, options = {}) =>
+    {
+        return User.findOne({ referralCode }, null, options).lean();
+    };
+
+    const updateReferral = async ({ userId, referredBy }, options = {}) =>
+    {
+        return User.findByIdAndUpdate(
+            userId,
+            { $set: { referredBy } },
+            { new: true, runValidators: true, ...options }
+        );
+    };
+
+    const findUsersWithBirthdayToday = async (todayStart, todayEnd, options = {}) =>
+    {
+        return User.find(
+            { birthDate: { $gte: todayStart, $lte: todayEnd } },
+            null,
+            options
+        ).lean();
+    };
+
     return Object.freeze({
         findByEmail,
         findById,
@@ -229,5 +252,8 @@ export const createUserRepository = ({ User }) =>
         setDefaultAddress,
         updateProfileImage,
         updateUsedCoupons,
+        findByReferralCode,
+        updateReferral,
+        findUsersWithBirthdayToday,
     });
 };

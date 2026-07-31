@@ -1,26 +1,37 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef } from 'react'
 import AdminRoutes from '../../../routes/AdminRoutes'
 // import DrawerList from './DrawerList'
 import Navbar from '../../../admin seller/components/navbar/Navbar'
 import AdminDrawerList from '../../components/DrawerList'
-import { Alert, Snackbar } from '@mui/material'
-import { useAppSelector } from '../../../Redux Toolkit/Store'
+import { notification } from '../../../services/notificationService'
+import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store'
+import { clearDealMessages } from '../../../Redux Toolkit/Admin/DealSlice'
+import { clearMessages } from '../../../Redux Toolkit/Admin/AdminSlice'
 import { useLocation } from 'react-router-dom'
 
 const AdminDashboard = () => {
+  const dispatch = useAppDispatch();
   const { adminDeals: deal, admin } = useAppSelector(store => store)
-  const [snackbarOpen, setOpenSnackbar] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
-  const handleCloseSnackbar = () => {
-    setOpenSnackbar(false);
-  }
   useEffect(() => {
     if (deal.dealCreated || deal.dealUpdated || deal.error || admin.categoryUpdated) {
-      setOpenSnackbar(true)
+      if (deal.error) {
+        notification.error(deal.error);
+        dispatch(clearDealMessages());
+      } else if (deal.dealCreated) {
+        notification.success("Deal created successfully");
+        dispatch(clearDealMessages());
+      } else if (deal.dealUpdated) {
+        notification.success("Deal updated successfully");
+        dispatch(clearDealMessages());
+      } else if (admin.categoryUpdated) {
+        notification.success("Category Updated successfully");
+        dispatch(clearMessages());
+      }
     }
-  }, [deal.dealCreated, deal.dealUpdated, deal.error, admin.categoryUpdated])
+  }, [deal.dealCreated, deal.dealUpdated, deal.error, admin.categoryUpdated, dispatch])
 
   useEffect(() => {
     if (contentRef.current) {
@@ -40,26 +51,8 @@ const AdminDashboard = () => {
             <AdminRoutes />
           </div>
         </section>
-
       </div>
-      <Snackbar
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        open={snackbarOpen} autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={deal.error ? "error" : "success"}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {deal.error ? deal.error : deal.dealCreated ? "Deal created successfully" : deal.dealUpdated ? "deal updated successfully" : admin.categoryUpdated?"Category Updated successfully": ""}
-        </Alert>
-      </Snackbar>
     </>
-
-
-
   )
 }
 

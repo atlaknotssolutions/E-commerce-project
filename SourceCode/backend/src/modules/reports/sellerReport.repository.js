@@ -37,7 +37,7 @@ export const createSellerReportRepository = ({ SellerReport }) =>
      * Atomically increments financial sales and order volume counters inside database.
      * Employs $inc operator to prevent write-race conditions on high traffic checkouts.
      */
-    const applyPaymentSuccess = async ({ sellerId, earnings, sales }, options = {}) =>
+    const applyPaymentSuccess = async ({ sellerId, earnings, sales, commission = 0, gst = 0 }, options = {}) =>
     {
         return SellerReport.findOneAndUpdate(
             { seller: sellerId },
@@ -45,12 +45,14 @@ export const createSellerReportRepository = ({ SellerReport }) =>
                 $inc: {
                     totalEarnings: parseFloat(earnings),
                     totalSales: parseFloat(sales),
-                    netEarnings: parseFloat(earnings), // Gross net increases proportionally
+                    netEarnings: parseFloat(earnings),
                     totalOrders: 1,
                     totalTransactions: 1,
+                    totalCommission: parseFloat(commission),
+                    totalGst: parseFloat(gst),
                 }
             },
-            { ...options, new: true, upsert: true } // Upsert: true guarantees document creation if missing
+            { ...options, new: true, upsert: true }
         ).lean();
     };
 
@@ -72,9 +74,30 @@ export const createSellerReportRepository = ({ SellerReport }) =>
         ).lean();
     };
 
+    /**
+     * Reverses seller earnings and sales when a refund is processed.
+     * Maintains the invariant: sum(sellerPostCouponEarnings) = customerPaid.
+     */
+    const applyRefund = async ({ sellerId, earnings, sales }, options = {}) =>
+    {
+        return SellerReport.findOneAndUpdate(
+            { seller: sellerId },
+            {
+                $inc: {
+                    totalEarnings: -parseFloat(earnings),
+                    totalSales: -parseFloat(sales),
+                    netEarnings: -parseFloat(earnings),
+                    totalRefunds: parseFloat(earnings),
+                }
+            },
+            { ...options, new: true, upsert: true }
+        ).lean();
+    };
+
     return Object.freeze({
         getOrCreateReport,
         applyPaymentSuccess,
         applyCancellation,
+        applyRefund,
     });
 };

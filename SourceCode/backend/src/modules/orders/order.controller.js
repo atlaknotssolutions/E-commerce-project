@@ -1,3 +1,5 @@
+import { emitToUser } from '../../services/socket.service.js';
+
 /**
  * Pure function-based factory representing the Sales Order HTTP API Controllers.
  * Strictly enforces thin controller design principles, avoiding classes and context leaks.
@@ -43,16 +45,35 @@ export const createOrderController = ({ orderService, paymentService, createApiE
         }
         catch (gatewayError)
         {
-            await orderService.reverseCheckout({
-                orderIds: splitOrders.map((o) => o._id),
-                paymentOrderId: paymentOrder._id,
-            });
+            console.error('[CHECKOUT ERROR] Gateway payment failed:', gatewayError);
 
-            throw createApiError({
-                statusCode: 502,
-                code: 'PAYMENT_GATEWAY_FAILED',
-                message: 'Payment gateway is currently unavailable. Your order has been cancelled and stock has been released.'
-            });
+            // Reverse the checkout (best-effort — must not mask the original error)
+            try
+            {
+                await orderService.reverseCheckout({
+                    orderIds: splitOrders.map((o) => o._id),
+                    paymentOrderId: paymentOrder._id,
+                });
+            }
+            catch (revertError)
+            {
+                console.error('[CHECKOUT REVERT FAILED]', revertError);
+            }
+
+            // Only actual gateway SDK errors (Razorpay/Stripe) become PAYMENT_GATEWAY_FAILED.
+            // Gateway errors have an `error` property with `code`/`description` from the provider.
+            // Our own createApiError has `isOperational: true` — these propagate with real codes.
+            // Native errors (TypeError, ReferenceError, etc.) also propagate as-is.
+            if (gatewayError.error && typeof gatewayError.error === 'object')
+            {
+                throw createApiError({
+                    statusCode: 502,
+                    code: 'PAYMENT_GATEWAY_FAILED',
+                    message: 'Payment gateway is currently unavailable. Your order has been cancelled and stock has been released.'
+                });
+            }
+
+            throw gatewayError;
         }
     };
 
@@ -114,6 +135,8 @@ export const createOrderController = ({ orderService, paymentService, createApiE
             orderId,
             userId,
         });
+
+        emitToUser(userId, 'order:cancelled', { orderId, order: cancelledOrder });
 
         res.status(200).json(cancelledOrder);
     };

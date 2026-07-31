@@ -58,24 +58,48 @@ export const createSellerController = ({ sellerService, sellerReportRepository }
 
         const profile = await sellerService.getSellerProfile({ sellerId: id });
 
-        res.status(200).json(
-            mapSeller(profile)
-        );
+        res.status(200).json({
+            success: true,
+            data: mapSeller(profile),
+            message: 'Seller retrieved successfully.',
+        });
     };
 
     /**
      * Administrative CRUD: Displays all registered merchant profiles (Optionally filtered by status).
+     * Supports search and pagination when search param is provided.
+     * Returns standardized { success, data, pagination, message } format.
      * Maps exactly to: GET /sellers
      */
     const listSellers = async (req, res) =>
     {
-        const { status } = req.query;
+        const { status, search, page, limit } = req.query;
 
-        const sellersList = await sellerService.listSellers({ status });
+        let result;
 
-        res.status(200).json(
-            mapSellerList(sellersList)
-        );
+        if (search !== undefined && search !== null)
+        {
+            result = await sellerService.searchSellers({
+                search,
+                page: parseInt(page, 10) || 1,
+                limit: parseInt(limit, 10) || 20,
+            });
+        }
+        else
+        {
+            const sellersList = await sellerService.listSellers({ status });
+            result = {
+                data: mapSellerList(sellersList),
+                pagination: null,
+            };
+        }
+
+        res.status(200).json({
+            success: true,
+            data: result.data,
+            pagination: result.pagination,
+            message: 'Sellers retrieved successfully.',
+        });
     };
 
     /**

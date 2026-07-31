@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import {
@@ -6,16 +6,15 @@ import {
   Button,
   Box,
   Grid,
-  Alert,
-  Snackbar,
   CircularProgress,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import dayjs, { Dayjs } from "dayjs";
+import { Dayjs } from "dayjs";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { createCoupon } from "../../../Redux Toolkit/Admin/AdminCouponSlice";
+import { notification } from "../../../services/notificationService";
 
 interface CouponFormValues {
   code: string;
@@ -28,7 +27,6 @@ interface CouponFormValues {
 const CouponForm: React.FC = () => {
   const dispatch = useAppDispatch();
   const { loading, actionSuccess, error } = useAppSelector((store) => store.adminCoupon);
-  const [snackbarOpen, setOpenSnackbar] = useState(false);
 
   const formik = useFormik<CouponFormValues>({
     initialValues: {
@@ -82,15 +80,14 @@ const CouponForm: React.FC = () => {
     },
   });
 
-  const handleCloseSnackbar = () => {
-    setOpenSnackbar(false);
-  };
-
   useEffect(() => {
     if (actionSuccess) {
-      setOpenSnackbar(true);
+      notification.success("Coupon created successfully");
     }
-  }, [actionSuccess]);
+    if (error) {
+      notification.error(error);
+    }
+  }, [actionSuccess, error]);
 
   return (
     <div className="max-w-3xl">
@@ -195,21 +192,6 @@ const CouponForm: React.FC = () => {
           </Grid>
         </Box>
       </LocalizationProvider>
-      <Snackbar
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={error ? "error" : "success"}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {error ? error : "Coupon created successfully"}
-        </Alert>
-      </Snackbar>
     </div>
   );
 };

@@ -1,4 +1,9 @@
 import { toCartDto, toCartItemDto } from "../../utils/mappers/cart.mapper.js";
+import {
+    computeCartTotals,
+    computeItemLine,
+    resolveVariantPricing,
+} from "../../utils/financialEngine.js";
 
 /**
  * Pure function-based factory representing the Shopping Cart Business Service.
@@ -13,42 +18,10 @@ export const createCartService = ({
 
     /**
      * Core Mathematical Recalculation Engine.
-     * Recalculates all embedded items line-totals using fresh populated database prices.
-     * Never trusts client-side prices to eliminate price tampering vulnerabilities.
+     * Delegates to centralized financial engine for consistent calculations.
      */
-    const computeCartTotals = (items, couponPrice = 0) =>
-    {
-        let totalItem = 0;
-        let totalMrpPrice = 0;
-        let totalSellingPrice = 0;
-
-        for (const item of items)
-        {
-            totalItem += Number(item.quantity);
-            totalMrpPrice += Number(item.mrpPrice);
-            totalSellingPrice += Number(item.sellingPrice);
-        }
-
-        const finalSellingPrice = Math.max(
-            0,
-            totalSellingPrice - Number(couponPrice || 0)
-        );
-
-        const discount =
-            totalMrpPrice > 0
-                ? Math.round(
-                    ((totalMrpPrice - finalSellingPrice) / totalMrpPrice) * 100
-                )
-                : 0;
-
-        return {
-            items,
-            totalItem,
-            totalMrpPrice,
-            totalSellingPrice: finalSellingPrice,
-            discount,
-        };
-    };
+    const recalculateCart = (items, couponPrice = 0) =>
+        computeCartTotals(items, couponPrice);
 
     /**
      * Retrieves and automatically recalculates customer's shopping cart values.
@@ -68,7 +41,7 @@ export const createCartService = ({
         }
 
         // Cascade Recalculations: Secures active totals before displaying cards to user
-        const recalculatedData = computeCartTotals(cart.items, cart.couponPrice);
+        const recalculatedData = recalculateCart(cart.items, cart.couponPrice);
 
         // Commits calculated states into database cleanly
         const updatedCart = await cartRepository.updateCart({
@@ -123,36 +96,24 @@ export const createCartService = ({
         }
 
         // 2. Resolve pricing from variant if variantId is provided
-        let itemMrpPrice = product.mrpPrice;
-        let itemSellingPrice = product.sellingPrice;
-
-        if (variantId)
-        {
-            const variant = product.variants.find(
-                (v) => v._id.toString() === variantId.toString()
-            );
-            if (variant)
-            {
-                itemMrpPrice = variant.mrpPrice;
-                itemSellingPrice = variant.price;
-            }
-        }
+        const { mrpPrice: itemMrpPrice, sellingPrice: itemSellingPrice } = resolveVariantPricing(product, variantId);
 
         // 3. Assemble and push new item snapshot into list
+        const lineTotals = computeItemLine(itemMrpPrice, itemSellingPrice, quantity);
         const newItemLine = {
             product: product._id,
             variantId: variantId || undefined,
             size,
             quantity,
-            mrpPrice: itemMrpPrice * quantity,
-            sellingPrice: itemSellingPrice * quantity,
+            mrpPrice: lineTotals.mrpPrice,
+            sellingPrice: lineTotals.sellingPrice,
             userId,
         };
 
         const updatedItemsCollection = [...cart.items, newItemLine];
 
         // 4. Trigger calculations engine with newly updated lists
-        const recalculatedData = computeCartTotals(updatedItemsCollection, cart.couponPrice);
+        const recalculatedData = recalculateCart(updatedItemsCollection, cart.couponPrice);
 
         // 5. Commit state updates to database
         const finalCart = await cartRepository.updateCart({ userId, cartData: recalculatedData });
@@ -202,26 +163,14 @@ export const createCartService = ({
         const product = await productRepository.findById(targetItem.product);
 
         // Resolve pricing: use variant pricing if variantId is present
-        let itemMrpPrice = product.mrpPrice;
-        let itemSellingPrice = product.sellingPrice;
-
-        if (targetItem.variantId && product.variants)
-        {
-            const variant = product.variants.find(
-                (v) => v._id.toString() === targetItem.variantId.toString()
-            );
-            if (variant)
-            {
-                itemMrpPrice = variant.mrpPrice;
-                itemSellingPrice = variant.price;
-            }
-        }
+        const { mrpPrice: itemMrpPrice, sellingPrice: itemSellingPrice } = resolveVariantPricing(product, targetItem.variantId);
 
         targetItem.quantity = newQuantity;
-        targetItem.mrpPrice = itemMrpPrice * newQuantity;
-        targetItem.sellingPrice = itemSellingPrice * newQuantity;
+        const lineTotals = computeItemLine(itemMrpPrice, itemSellingPrice, newQuantity);
+        targetItem.mrpPrice = lineTotals.mrpPrice;
+        targetItem.sellingPrice = lineTotals.sellingPrice;
 
-        const recalculatedData = computeCartTotals(cart.items, cart.couponPrice);
+        const recalculatedData = recalculateCart(cart.items, cart.couponPrice);
         const finalCart = await cartRepository.updateCart({ userId, cartData: recalculatedData });
 
         const item = finalCart.items.find(
@@ -263,7 +212,7 @@ export const createCartService = ({
         );
 
         // 3. Re-evaluate sums of residue lists
-        const recalculatedData = computeCartTotals(filteredItemsCollection, cart.couponPrice);
+        const recalculatedData = recalculateCart(filteredItemsCollection, cart.couponPrice);
         await cartRepository.updateCart({ userId, cartData: recalculatedData });
 
         return { success: true, message: 'Item successfully removed from cart.' };

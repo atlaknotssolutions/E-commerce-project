@@ -1,13 +1,16 @@
 import { COMMISSION_STATUS } from '../../constants/enums.js';
+import { createCouponFacade } from '../../utils/couponEngine/CouponFacade.js';
+import { computeSellerEarningsBase } from '../settlementEngine/contributionEngine.js';
 
 export const createCommissionService = ({
     commissionRepository,
     orderRepository,
-    systemSettingsRepository,
+    configurationService,
     createApiError,
     mapCommission,
     mapCommissions,
 }) => {
+    const couponFacade = createCouponFacade();
     const VALID_TRANSITIONS = {
         [COMMISSION_STATUS.CALCULATED]: [COMMISSION_STATUS.APPROVED, COMMISSION_STATUS.CANCELLED],
         [COMMISSION_STATUS.APPROVED]: [COMMISSION_STATUS.SETTLED, COMMISSION_STATUS.CANCELLED],
@@ -16,13 +19,7 @@ export const createCommissionService = ({
     };
 
     const getCommissionConfig = async () => {
-        const settings = await systemSettingsRepository.getSettings();
-        const marketplace = settings.marketplace || {};
-        return {
-            commissionPercentage: marketplace.commissionPercentage ?? 10,
-            gstPercentage: marketplace.gstPercentage ?? 18,
-            currency: settings.general?.currency || 'INR',
-        };
+        return await configurationService.getCommissionConfig();
     };
 
     const calculateCommission = async ({ orderId }) => {
@@ -38,10 +35,22 @@ export const createCommissionService = ({
 
         const config = await getCommissionConfig();
 
-        const orderAmount = order.totalSellingPrice;
+        // Use configured commission base (default: pre-coupon sellingPrice)
+        const orderAmount = config.commissionBase === 'post_coupon'
+            ? couponFacade.computeSellerEarnings(order.totalSellingPrice, order.couponPrice)
+            : order.totalSellingPrice;
         const commissionAmount = parseFloat((orderAmount * config.commissionPercentage / 100).toFixed(2));
-        const gstAmount = parseFloat((commissionAmount * config.gstPercentage / 100).toFixed(2));
-        const sellerAmount = parseFloat((orderAmount - commissionAmount - gstAmount).toFixed(2));
+        const gstAmount = config.gstEnabled
+            ? parseFloat((commissionAmount * config.gstPercentage / 100).toFixed(2))
+            : 0;
+
+        // Use sellerEarningsBase to correctly account for coupon ownership
+        const sellerEarningsBase = computeSellerEarningsBase(
+            Number(order.totalSellingPrice) || 0,
+            Number(order.couponPrice) || 0,
+            order.couponSnapshot?.ownerType || null
+        );
+        const sellerAmount = parseFloat(Math.max(0, sellerEarningsBase - commissionAmount - gstAmount).toFixed(2));
 
         const commissionData = {
             order: order._id,

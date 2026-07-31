@@ -1,13 +1,15 @@
 export const mapBrandRequest = (request) =>
 {
     if (!request) return null;
+    const sellerRef = request.requestedBy || request.seller;
     return {
         id: request._id,
-        seller: request.seller ? {
-            id: request.seller._id || request.seller,
-            name: request.seller.name || undefined,
-            email: request.seller.email || undefined,
-        } : { id: request.seller },
+        seller: sellerRef ? {
+            id: sellerRef._id || sellerRef,
+            name: sellerRef.sellerName || sellerRef.name || undefined,
+            email: sellerRef.email || undefined,
+            businessName: sellerRef.businessDetails?.businessName || undefined,
+        } : null,
         name: request.name,
         description: request.description || '',
         logo: request.logo || '',

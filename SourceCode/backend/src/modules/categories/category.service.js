@@ -509,48 +509,81 @@ export const createCategoryService = ({ categoryRepository, createApiError }) =>
 
     /**
  * Returns category hierarchy.
+ * When sellerId is provided, only includes categories that have products belonging to that seller.
+ * Parent categories are automatically included if any descendant has products.
  */
-    const getCategoryTree = async () =>
+    const getCategoryTree = async ({ sellerId } = {}) =>
     {
-
         const categories =
             await categoryRepository.findAllForTree();
 
-        const map = {};
-
-        categories.forEach(category =>
+        if (!sellerId)
         {
-            map[category._id.toString()] = {
-                ...category,
-                children: [],
-            };
+            // Return full tree when no seller filter
+            return buildTree(categories);
+        }
+
+        const ProductModel = mongoose.model('Product');
+        const productCategoryIds = await ProductModel.distinct('category', { seller: sellerId });
+        const validIds = new Set(productCategoryIds.map((id) => id.toString()));
+
+        // Walk up from each valid leaf to include all ancestors
+        const includeIds = new Set();
+        const idToParent = {};
+        categories.forEach((cat) =>
+        {
+            if (cat.parentCategory)
+            {
+                idToParent[cat._id.toString()] = cat.parentCategory.toString();
+            }
+        });
+
+        // For each valid category, include it and all ancestors
+        validIds.forEach((id) =>
+        {
+            includeIds.add(id);
+            let current = id;
+            while (idToParent[current])
+            {
+                includeIds.add(idToParent[current]);
+                current = idToParent[current];
+            }
+        });
+
+        const filtered = categories.filter(
+            (cat) => includeIds.has(cat._id.toString())
+        );
+
+        return buildTree(filtered);
+    };
+
+    /**
+     * Builds a nested tree from a flat list of categories.
+     */
+    const buildTree = (categories) =>
+    {
+        const map = {};
+        categories.forEach((cat) =>
+        {
+            map[cat._id.toString()] = { ...cat, children: [] };
         });
 
         const tree = [];
-
-        categories.forEach(category =>
+        categories.forEach((cat) =>
         {
-
-            if (!category.parentCategory)
+            const node = map[cat._id.toString()];
+            if (!cat.parentCategory)
             {
-
-                tree.push(
-                    map[category._id.toString()]
-                );
-
-                return;
+                tree.push(node);
             }
-
-            const parent =
-                map[category.parentCategory.toString()];
-
-            if (parent)
+            else
             {
-                parent.children.push(
-                    map[category._id.toString()]
-                );
+                const parent = map[cat.parentCategory.toString()];
+                if (parent)
+                {
+                    parent.children.push(node);
+                }
             }
-
         });
 
         return tree;
@@ -567,5 +600,6 @@ export const createCategoryService = ({ categoryRepository, createApiError }) =>
         deleteCategory,
         buildCategoryId,
         getCategoryTree,
+        buildTree,
     });
 };

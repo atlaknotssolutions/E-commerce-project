@@ -11,7 +11,7 @@ import SellerVerificationTable from './components/SellerVerificationTable';
 const AdminSellerVerificationPage: React.FC = () =>
 {
     const dispatch = useAppDispatch();
-    const { loading, error, stats } = useAppSelector(
+    const { error, stats } = useAppSelector(
         (store) => store.sellerVerification
     );
 

@@ -39,7 +39,7 @@ const DealsTable = () => {
   return (
     <>
 
-      <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+      <TableContainer component={Paper} sx={{ maxHeight: "calc(100vh - 210px)" }}>
         <Table stickyHeader sx={{ minWidth: 700 }} aria-label="customized table">
           <TableHead>
             <TableRow>

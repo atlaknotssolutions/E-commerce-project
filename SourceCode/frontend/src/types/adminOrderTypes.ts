@@ -17,7 +17,9 @@ export interface AdminOrder {
     };
     totalMrpPrice: number;
     totalSellingPrice: number;
+    couponPrice?: number;
     discount: number;
+    couponDiscount?: number;
     orderStatus: string;
     totalItem: number;
     paymentStatus: string;

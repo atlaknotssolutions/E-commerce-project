@@ -1,6 +1,5 @@
 // src/slices/authSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import axios from 'axios';
 import
     {
         AuthResponse,
@@ -122,6 +121,12 @@ const authSlice = createSlice({
             state.role = null;
             localStorage.clear()
         },
+        clearOtpSent: (state) => {
+            state.otpSent = false;
+        },
+        clearAuthError: (state) => {
+            state.error = null;
+        },
     },
     extraReducers: (builder) =>
     {
@@ -204,7 +209,7 @@ const authSlice = createSlice({
     },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, clearOtpSent, clearAuthError } = authSlice.actions;
 
 export default authSlice.reducer;
 

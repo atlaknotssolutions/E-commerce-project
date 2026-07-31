@@ -1,16 +1,16 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import {
-    Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-    MenuItem, Snackbar, Alert, TextField, TablePagination,
+    Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
+    MenuItem, TextField, TablePagination,
     CircularProgress, Typography
 } from '@mui/material';
+import { notification } from '../../../services/notificationService';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
 import {
     fetchSellerReturns, approveReturn, rejectReturn,
@@ -65,9 +65,6 @@ const ReturnTable = () => {
 
     const [rejectNote, setRejectNote] = useState('');
     const [approveNote, setApproveNote] = useState('');
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-        open: false, message: '', severity: 'success'
-    });
 
     const jwt = auth.jwt || localStorage.getItem("jwt") || "";
 
@@ -110,7 +107,7 @@ const ReturnTable = () => {
         }));
         setApproveDialog(null);
         setApproveNote('');
-        setSnackbar({ open: true, message: 'Return approved', severity: 'success' });
+        notification.success('Return approved');
     };
 
     const handleReject = async () => {
@@ -122,7 +119,7 @@ const ReturnTable = () => {
         }));
         setRejectDialog(null);
         setRejectNote('');
-        setSnackbar({ open: true, message: 'Return rejected', severity: 'success' });
+        notification.success('Return rejected');
     };
 
     const handleReceive = async () => {
@@ -132,7 +129,7 @@ const ReturnTable = () => {
             returnId: receiveDialog.id,
         }));
         setReceiveDialog(null);
-        setSnackbar({ open: true, message: 'Item received — inventory restocked', severity: 'success' });
+        notification.success('Item received — inventory restocked');
     };
 
     const handleRefund = async () => {
@@ -142,7 +139,7 @@ const ReturnTable = () => {
             returnId: refundDialog.id,
         }));
         setRefundDialog(null);
-        setSnackbar({ open: true, message: 'Refund processed', severity: 'success' });
+        notification.success('Refund processed');
     };
 
     const renderActions = (row: ReturnRequest) => {
@@ -448,21 +445,6 @@ const ReturnTable = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Snackbar */}
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            >
-                <Alert
-                    onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-                    severity={snackbar.severity}
-                    variant="filled"
-                >
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </>
     );
 };

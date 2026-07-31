@@ -31,7 +31,9 @@ export interface Order
     payment?: PaymentInfo | null;   
     totalMrpPrice: number;
     totalSellingPrice?: number; // Optional field
+    couponPrice?: number; // Coupon discount allocated to this order
     discount?: number; // Optional field
+    couponDiscount?: number;
     orderStatus: OrderStatus;
     totalItem: number;
     deliverDate: string;

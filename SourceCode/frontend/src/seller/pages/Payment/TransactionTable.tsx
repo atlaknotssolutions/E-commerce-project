@@ -87,7 +87,7 @@ const TransactionTable = () => {
 
   return (
     <>
-      <TableContainer component={Paper} elevation={2} sx={{ maxHeight: "calc(100vh - 290px)" }}>
+      <TableContainer component={Paper} elevation={2} sx={{ maxHeight: "calc(100vh - 210px)" }}>
         <Table stickyHeader sx={{ minWidth: 1100 }}>
           <TableHead>
             <TableRow>

@@ -149,6 +149,23 @@ const SellerSchema = new mongoose.Schema({
         type: BankDetailsSchema,
         required: [true, 'Bank routing details are required'],
     },
+
+    // RazorpayX integration fields
+    razorpayxContactId: {
+        type: String,
+        trim: true,
+        default: null,
+    },
+    razorpayxFundAccountId: {
+        type: String,
+        trim: true,
+        default: null,
+    },
+    razorpayxFundAccountStatus: {
+        type: String,
+        enum: ['ACTIVE', 'INACTIVE', 'PENDING', 'FAILED'],
+        default: null,
+    },
     pickupAddress: {
         type: PickupAddressSchema,
         required: [true, 'Pickup inventory address is required'],

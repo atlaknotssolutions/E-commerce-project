@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    Table, TableBody, TableContainer, TableHead, TableRow,
     Paper, IconButton, Chip, Typography, Box, TablePagination, Menu, MenuItem,
     ListItemIcon, ListItemText,
 } from '@mui/material';

@@ -13,6 +13,7 @@ export const createSystemSettingsService = ({
         const validSections = [
             'general', 'marketplace', 'orders', 'returns',
             'coupons', 'notifications', 'security', 'maintenance', 'appearance',
+            'invoicing',
         ];
         if (!validSections.includes(section)) {
             createApiError(`Invalid settings section: ${section}`, 400);

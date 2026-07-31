@@ -48,6 +48,10 @@ import { Payout } from './modules/payouts/payout.model.js';
 import { GatewayEvent } from './modules/gateway/gatewayEvent.model.js';
 import { Brand } from './modules/brands/brand.model.js';
 import { BrandRequest } from './modules/brandRequests/brandRequest.model.js';
+import { CookieConsent } from './modules/cookieConsent/cookieConsent.model.js';
+import { CouponAssignment } from './modules/couponDistribution/couponAssignment.model.js';
+import { Settlement } from './modules/settlements/settlement.model.js';
+import { LedgerEntry } from './modules/settlementEngine/ledger.model.js';
 
 // Persistence Repositories Factories
 import { createUserRepository } from './modules/users/user.repository.js';
@@ -84,6 +88,16 @@ import { createAdminOrderRoutes } from './modules/adminOrder/adminOrder.routes.j
 import { createAdminCouponService } from './modules/adminCoupon/adminCoupon.service.js';
 import { createAdminCouponController } from './modules/adminCoupon/adminCoupon.controller.js';
 import { createAdminCouponRoutes } from './modules/adminCoupon/adminCoupon.routes.js';
+import { CustomerMetric } from './modules/customerSegmentation/customerMetric.model.js';
+import { createCustomerMetricRepository } from './modules/customerSegmentation/customerMetric.repository.js';
+import { createCustomerSegmentService } from './modules/customerSegmentation/customerSegment.service.js';
+import { createCustomerSegmentController } from './modules/customerSegmentation/customerSegment.controller.js';
+import { createCustomerSegmentRoutes } from './modules/customerSegmentation/customerSegment.routes.js';
+import { SellerMetric } from './modules/sellerSegmentation/sellerMetric.model.js';
+import { createSellerMetricRepository } from './modules/sellerSegmentation/sellerMetric.repository.js';
+import { createSellerSegmentService } from './modules/sellerSegmentation/sellerSegment.service.js';
+import { createSellerSegmentController } from './modules/sellerSegmentation/sellerSegment.controller.js';
+import { createSellerSegmentRoutes } from './modules/sellerSegmentation/sellerSegment.routes.js';
 import { createAdminReportsRepository } from './modules/adminReports/adminReports.repository.js';
 import { createAdminReportsService } from './modules/adminReports/adminReports.service.js';
 import { createAdminReportsController } from './modules/adminReports/adminReports.controller.js';
@@ -102,8 +116,13 @@ import { createPayoutRepository } from './modules/payouts/payout.repository.js';
 import { createGatewayEventRepository } from './modules/gateway/gatewayEvent.repository.js';
 import { createBrandRepository } from './modules/brands/brand.repository.js';
 import { createBrandRequestRepository } from './modules/brandRequests/brandRequest.repository.js';
+import { createCookieConsentRepository } from './modules/cookieConsent/cookieConsent.repository.js';
+import { createCouponAssignmentRepository } from './modules/couponDistribution/couponAssignment.repository.js';
+import { createSettlementRepository } from './modules/settlements/settlement.repository.js';
+import { createLedgerRepository } from './modules/settlementEngine/ledger.repository.js';
 import { mapCommission, mapCommissions } from './modules/commissions/commission.mapper.js';
 import { mapPayout, mapPayouts } from './modules/payouts/payout.mapper.js';
+import { mapSettlement, mapSettlements } from './modules/settlements/settlement.mapper.js';
 import { mapBrand, mapBrands } from './modules/brands/brand.mapper.js';
 import { mapBrandRequest, mapBrandRequests } from './modules/brandRequests/brandRequest.mapper.js';
 import { createCommissionService } from './modules/commissions/commission.service.js';
@@ -112,15 +131,47 @@ import { createCommissionRoutes } from './modules/commissions/commission.routes.
 import { createPayoutService } from './modules/payouts/payout.service.js';
 import { createPayoutController } from './modules/payouts/payout.controller.js';
 import { createPayoutRoutes } from './modules/payouts/payout.routes.js';
+import { createSettlementService } from './modules/settlements/settlement.service.js';
+import { createSettlementController } from './modules/settlements/settlement.controller.js';
+import { createSettlementRoutes } from './modules/settlements/settlement.routes.js';
+import { createSettlementEngineService } from './modules/settlementEngine/settlementEngine.service.js';
+import { createSettlementEngineController } from './modules/settlementEngine/settlementEngine.controller.js';
+import { createSettlementEngineRoutes } from './modules/settlementEngine/settlementEngine.routes.js';
+import { createSellerCouponService } from './modules/sellerCoupon/sellerCoupon.service.js';
+import { createSellerCouponController } from './modules/sellerCoupon/sellerCoupon.controller.js';
+import { createSellerCouponRoutes } from './modules/sellerCoupon/sellerCoupon.routes.js';
 import { createGatewayService } from './modules/gateway/gateway.service.js';
 import { createGatewayController } from './modules/gateway/gateway.controller.js';
 import { createGatewayRoutes } from './modules/gateway/gateway.routes.js';
 import { createRazorpayXMockGateway } from './integrations/payment/gateways/razorpayx.mock.gateway.js';
 import { createRazorpayMockGateway } from './integrations/payment/gateways/razorpay.mock.gateway.js';
+import { createRazorpayXGateway } from './integrations/razorpayx/razorpayx.client.js';
 import { createPaymentGatewayFactory } from './integrations/payment/paymentGatewayFactory.js';
 import * as gatewayUtils from './integrations/payment/gatewayUtils.js';
 import { seedHomeCategories } from "./database/seedHomeCategories.js"; // ---- seed  home data
 import { createInventoryHelper } from './modules/orders/orderInventoryHelper.js';
+
+// Coupon Distribution Engine
+import { createCouponDistributionRulesService } from './modules/couponDistribution/couponDistributionRules.service.js';
+import { createCouponDistributionEngine } from './modules/couponDistribution/CouponDistributionEngine.js';
+import { createCouponDistributionController } from './modules/couponDistribution/couponDistribution.controller.js';
+import { createCouponDistributionRoutes } from './modules/couponDistribution/couponDistribution.routes.js';
+
+// Referral System
+import { createReferralService } from './modules/referrals/referral.service.js';
+import { createReferralController } from './modules/referrals/referral.controller.js';
+import { createReferralRoutes } from './modules/referrals/referral.routes.js';
+
+// Configuration Service
+import { createConfigurationService } from './services/configuration.service.js';
+
+// Invoice System
+import { createInvoiceService } from './modules/invoice/invoice.service.js';
+import { createInvoiceController } from './modules/invoice/invoice.controller.js';
+import { createInvoiceRoutes } from './modules/invoice/invoice.routes.js';
+
+// Scheduler Service
+import { createSchedulerService } from './services/scheduler.service.js';
 
 // Integration Adapters Factories
 import { createEmailClient } from './integrations/email/nodemailer.client.js';
@@ -159,6 +210,7 @@ import { createSellerVerificationService } from './modules/sellerVerification/se
 import { createProductModerationService } from './modules/productModeration/productModeration.service.js';
 import { createBrandService } from './modules/brands/brand.service.js';
 import { createBrandRequestService } from './modules/brandRequests/brandRequest.service.js';
+import { createCookieConsentService } from './modules/cookieConsent/cookieConsent.service.js';
 
 // HTTP Controllers Factories
 import { createAuthController } from './modules/auth/auth.controller.js';
@@ -193,6 +245,7 @@ import { createSellerVerificationController } from './modules/sellerVerification
 import { createProductModerationController } from './modules/productModeration/productModeration.controller.js';
 import { createBrandController } from './modules/brands/brand.controller.js';
 import { createBrandRequestController } from './modules/brandRequests/brandRequest.controller.js';
+import { createCookieConsentController } from './modules/cookieConsent/cookieConsent.controller.js';
 
 // Routing Gateway Compilers
 import { createAuthRoutes } from './modules/auth/auth.routes.js';
@@ -224,6 +277,7 @@ import { createSellerVerificationRoutes } from './modules/sellerVerification/sel
 import { createProductModerationRoutes } from './modules/productModeration/productModeration.routes.js';
 import { createBrandRoutes } from './modules/brands/brand.routes.js';
 import { createBrandRequestRoutes } from './modules/brandRequests/brandRequest.routes.js';
+import { createCookieConsentRoutes } from './modules/cookieConsent/cookieConsent.routes.js';
 
 
 // mapper import 
@@ -328,6 +382,10 @@ export const createApp = async ({ env, dbManager }) =>
     const brandRepository = createBrandRepository({ Brand, Product });
     const brandRequestRepository = createBrandRequestRepository({ BrandRequest });
 
+    const cookieConsentRepository = createCookieConsentRepository({ CookieConsent });
+
+    const couponAssignmentRepository = createCouponAssignmentRepository({ CouponAssignment });
+
     const adminReportsRepository = createAdminReportsRepository({
         Order, Product, User, Seller, PaymentOrder, ReturnRequest, Refund, Coupon,
     });
@@ -340,6 +398,10 @@ export const createApp = async ({ env, dbManager }) =>
         SystemSettings,
     });
 
+    const configurationService = createConfigurationService({
+        systemSettingsRepository,
+    });
+
     const commissionRepository = createCommissionRepository({
         Commission,
     });
@@ -350,6 +412,14 @@ export const createApp = async ({ env, dbManager }) =>
 
     const gatewayEventRepository = createGatewayEventRepository({
         GatewayEvent,
+    });
+
+    const settlementRepository = createSettlementRepository({
+        Settlement,
+    });
+
+    const ledgerRepository = createLedgerRepository({
+        LedgerEntry,
     });
 
     await seedHomeCategories({
@@ -424,6 +494,22 @@ export const createApp = async ({ env, dbManager }) =>
     const wishlistService = createWishlistService({
         wishlistRepository,
         productRepository,
+        mapProduct,
+        mapProducts,
+        createApiError,
+    });
+
+    const customerMetricRepository = createCustomerMetricRepository({ CustomerMetric });
+    const customerSegmentService = createCustomerSegmentService({
+        customerMetricRepository,
+        orderModel: Order,
+        createApiError,
+    });
+
+    const sellerMetricRepository = createSellerMetricRepository({ SellerMetric });
+    const sellerSegmentService = createSellerSegmentService({
+        sellerMetricRepository,
+        sellerModel: Seller,
         createApiError,
     });
 
@@ -432,6 +518,8 @@ export const createApp = async ({ env, dbManager }) =>
         cartRepository,
         userRepository,
         createApiError,
+        customerSegmentService,
+        sellerSegmentService,
     });
 
     // Enterprise Notification Channel Providers
@@ -472,7 +560,7 @@ export const createApp = async ({ env, dbManager }) =>
     const commissionService = createCommissionService({
         commissionRepository,
         orderRepository,
-        systemSettingsRepository,
+        configurationService,
         createApiError,
         mapCommission,
         mapCommissions,
@@ -489,14 +577,44 @@ export const createApp = async ({ env, dbManager }) =>
         mockGatewaysConfig: env.mockGateways,
     });
 
+    const razorpayXGateway = env.razorpayx?.keyId && env.razorpayx?.keySecret
+        ? createRazorpayXGateway({
+            gatewayEventRepository,
+            razorpayxConfig: env.razorpayx,
+            createApiError,
+        })
+        : null;
+
     const paymentGatewayFactory = createPaymentGatewayFactory();
     paymentGatewayFactory.register('mock_razorpayx', razorpayXMockGateway);
     paymentGatewayFactory.register('mock_razorpay', razorpayMockGateway);
+    paymentGatewayFactory.register('RAZORPAYX', razorpayXGateway);
+
+    const settlementService = createSettlementService({
+        settlementRepository,
+        payoutRepository,
+        sellerRepository,
+        createApiError,
+        mapSettlement,
+        mapSettlements,
+    });
+
+    const settlementEngineService = createSettlementEngineService({
+        orderRepository,
+        commissionRepository,
+        ledgerRepository,
+        configurationService,
+        notificationService,
+        createApiError,
+    });
 
     const payoutService = createPayoutService({
         payoutRepository,
         commissionRepository,
         sellerReportRepository,
+        settlementService,
+        sellerRepository,
+        razorpayXGateway,
         paymentGatewayFactory,
         gatewayEventRepository,
         gatewayUtils,
@@ -518,21 +636,6 @@ export const createApp = async ({ env, dbManager }) =>
         createApiError,
     });
 
-    const orderService = createOrderService({
-        orderRepository,
-        paymentOrderRepository,
-        cartRepository,
-        userRepository,
-        sellerReportRepository,
-        productRepository,
-        notificationService,
-        commissionService,
-        createApiError,
-        mapOrder,
-        mapOrders,
-        mapOrderItem,
-    });
-
     const paymentService = createPaymentService({
         paymentOrderRepository,
         orderRepository,
@@ -540,6 +643,8 @@ export const createApp = async ({ env, dbManager }) =>
         sellerReportRepository,
         cartRepository,
         productRepository,
+        couponRepository,
+        userRepository,
         razorpayClient,
         stripeClient,
         createApiError,
@@ -684,6 +789,47 @@ export const createApp = async ({ env, dbManager }) =>
         createApiError,
     });
 
+    const cookieConsentService = createCookieConsentService({
+        cookieConsentRepository,
+        createApiError,
+    });
+
+    // Coupon Distribution Engine
+    const couponDistributionRulesService = createCouponDistributionRulesService();
+    const distributionEngine = createCouponDistributionEngine({
+        couponAssignmentRepository,
+        couponRepository,
+        rulesService: couponDistributionRulesService,
+        userRepository,
+        notificationService,
+        createApiError,
+    });
+
+    // Order Service
+    const orderService = createOrderService({
+        orderRepository,
+        paymentOrderRepository,
+        cartRepository,
+        userRepository,
+        couponRepository,
+        sellerReportRepository,
+        productRepository,
+        notificationService,
+        commissionService,
+        settlementEngineService,
+        distributionEngine,
+        createApiError,
+        mapOrder,
+        mapOrders,
+        mapOrderItem,
+    });
+
+    // Referral Service
+    const referralService = createReferralService({
+        userRepository,
+        createApiError,
+    });
+
     const adminOrderService = createAdminOrderService({
         Order,
         orderRepository,
@@ -698,6 +844,11 @@ export const createApp = async ({ env, dbManager }) =>
     const adminCouponService = createAdminCouponService({
         couponRepository,
         notificationService,
+        createApiError,
+    });
+
+    const sellerCouponService = createSellerCouponService({
+        couponRepository,
         createApiError,
     });
 
@@ -717,6 +868,15 @@ export const createApp = async ({ env, dbManager }) =>
         mapSystemSettings,
     });
 
+    const invoiceService = createInvoiceService({
+        configurationService,
+        orderRepository,
+        paymentOrderRepository,
+        commissionRepository,
+        ledgerRepository,
+        createApiError,
+    });
+
     // E. Setup Thin HTTP Controllers
     const authController = createAuthController({ authService });
     const sellerAuthController = createSellerAuthController({ sellerAuthService });
@@ -725,7 +885,13 @@ export const createApp = async ({ env, dbManager }) =>
     const wishlistController = createWishlistController({ wishlistService });
     const couponController = createCouponController({ couponService });
     const orderController = createOrderController({ orderService, paymentService, createApiError });
-    const sellerOrderController = createSellerOrderController({ orderService });
+    const sellerOrderController = createSellerOrderController({
+        orderService,
+        orderRepository,
+        paymentOrderRepository,
+        configurationService,
+        createApiError,
+    });
     const paymentController = createPaymentController({ paymentService });
     const revenueController = createRevenueController({ revenueService });
     // const adminController = createAdminController({ sellerService, homeService, });
@@ -770,21 +936,44 @@ export const createApp = async ({ env, dbManager }) =>
         asyncHandler,
     });
 
+    const cookieConsentController = createCookieConsentController({ cookieConsentService });
+
     const adminOrderController = createAdminOrderController({ adminOrderService });
 
     const adminCouponController = createAdminCouponController({ adminCouponService });
+    const sellerCouponController = createSellerCouponController({ sellerCouponService });
+    const customerSegmentController = createCustomerSegmentController({ customerSegmentService });
+    const sellerSegmentController = createSellerSegmentController({ sellerSegmentService });
 
     const adminReportsController = createAdminReportsController({ adminReportsService });
 
     const adminNotificationController = createAdminNotificationController({ adminNotificationService });
 
-    const systemSettingsController = createSystemSettingsController({ systemSettingsService });
+    const systemSettingsController = createSystemSettingsController({
+        systemSettingsService,
+        cloudinaryClient,
+        createApiError,
+    });
 
     const commissionController = createCommissionController({ commissionService });
 
     const payoutController = createPayoutController({ payoutService });
 
+    const settlementController = createSettlementController({ settlementService });
+
     const gatewayController = createGatewayController({ gatewayService });
+
+    const couponDistributionController = createCouponDistributionController({ distributionEngine });
+
+    const settlementEngineController = createSettlementEngineController({ settlementEngineService });
+
+    const referralController = createReferralController({ referralService });
+
+    const invoiceController = createInvoiceController({
+        invoiceService,
+        orderRepository,
+        createApiError,
+    });
 
     // F. Assembly Routes
     const rawAuthRouterInstance = express.Router();
@@ -1056,6 +1245,15 @@ export const createApp = async ({ env, dbManager }) =>
         asyncHandler,
     });
 
+    const rawCookieConsentRouter = express.Router();
+    const cookieConsentRoutes = createCookieConsentRoutes({
+        router: rawCookieConsentRouter,
+        controller: cookieConsentController,
+        authenticate,
+        authorizeRoles,
+        asyncHandler,
+    });
+
     const rawAdminOrderRouter = express.Router();
     const adminOrderRoutes = createAdminOrderRoutes({
         router: rawAdminOrderRouter,
@@ -1069,6 +1267,33 @@ export const createApp = async ({ env, dbManager }) =>
     const adminCouponRoutes = createAdminCouponRoutes({
         router: rawAdminCouponRouter,
         adminCouponController,
+        authenticate,
+        authorizeRoles,
+        asyncHandler,
+    });
+
+    const rawSellerCouponRouter = express.Router();
+    const sellerCouponRoutes = createSellerCouponRoutes({
+        router: rawSellerCouponRouter,
+        sellerCouponController,
+        authenticate,
+        authorizeRoles,
+        asyncHandler,
+    });
+
+    const rawCustomerSegmentRouter = express.Router();
+    const customerSegmentRoutes = createCustomerSegmentRoutes({
+        router: rawCustomerSegmentRouter,
+        customerSegmentController,
+        authenticate,
+        authorizeRoles,
+        asyncHandler,
+    });
+
+    const rawSellerSegmentRouter = express.Router();
+    const sellerSegmentRoutes = createSellerSegmentRoutes({
+        router: rawSellerSegmentRouter,
+        sellerSegmentController,
         authenticate,
         authorizeRoles,
         asyncHandler,
@@ -1099,6 +1324,7 @@ export const createApp = async ({ env, dbManager }) =>
         authenticate,
         authorizeRoles,
         asyncHandler,
+        upload,
     });
 
     const rawCommissionRouter = express.Router();
@@ -1127,6 +1353,50 @@ export const createApp = async ({ env, dbManager }) =>
         authorizeRoles,
         asyncHandler,
         webhookSecret: env.mockGateways.webhookSecret,
+        razorpayXWebhookSecret: env.razorpayx.webhookSecret,
+    });
+
+    const rawSettlementRouter = express.Router();
+    const settlementRoutes = createSettlementRoutes({
+        router: rawSettlementRouter,
+        controller: settlementController,
+        authenticate,
+        authorizeRoles,
+        asyncHandler,
+    });
+
+    const rawCouponDistributionRouter = express.Router();
+    const couponDistributionRoutes = createCouponDistributionRoutes({
+        router: rawCouponDistributionRouter,
+        controller: couponDistributionController,
+        authenticate,
+        asyncHandler,
+    });
+
+    const rawSettlementEngineRouter = express.Router();
+    const settlementEngineRoutes = createSettlementEngineRoutes({
+        router: rawSettlementEngineRouter,
+        controller: settlementEngineController,
+        authenticate,
+        authorizeRoles,
+        asyncHandler,
+    });
+
+    const rawReferralRouter = express.Router();
+    const referralRoutes = createReferralRoutes({
+        router: rawReferralRouter,
+        controller: referralController,
+        authenticate,
+        asyncHandler,
+    });
+
+    const rawInvoiceRouter = express.Router();
+    const invoiceRoutes = createInvoiceRoutes({
+        router: rawInvoiceRouter,
+        controller: invoiceController,
+        authenticate,
+        authorizeRoles,
+        asyncHandler,
     });
 
     // =========================================================================
@@ -1249,11 +1519,22 @@ export const createApp = async ({ env, dbManager }) =>
     // Mount brand request management pathways
     app.use(brandRequestRoutes);
 
+    // Mount cookie consent management pathways
+    app.use(cookieConsentRoutes);
+
     // Mount admin order management pathways
     app.use(adminOrderRoutes);
 
     // Mount admin coupon management pathways
+    app.use(sellerCouponRoutes);
+
     app.use(adminCouponRoutes);
+
+    // Mount customer segmentation pathways
+    app.use(customerSegmentRoutes);
+
+    // Mount seller segmentation pathways
+    app.use(sellerSegmentRoutes);
 
     // Mount admin reports & analytics pathways
     app.use(adminReportsRoutes);
@@ -1272,6 +1553,32 @@ export const createApp = async ({ env, dbManager }) =>
 
     // Mount gateway webhook and admin dashboard pathways
     app.use(gatewayRoutes);
+
+    // Mount settlement history pathways
+    app.use(settlementRoutes);
+
+    // Mount settlement engine / financial ledger pathways
+    app.use(settlementEngineRoutes);
+
+    // Mount coupon distribution wallet pathways
+    app.use(couponDistributionRoutes);
+
+    // Mount referral system pathways
+    app.use(referralRoutes);
+
+    // Mount invoice generation pathways
+    app.use(invoiceRoutes);
+
+    // Initialize background scheduler for automatic coupon distribution
+    const schedulerService = createSchedulerService({
+        distributionEngine,
+        userRepository,
+        userModel: User,
+        customerMetricModel: CustomerMetric,
+        sellerMetricModel: SellerMetric,
+        cartModel: Cart,
+    });
+    schedulerService.start();
 
     // Wildcard Fallback Route for non-existent system paths
     app.use((req, res, next) =>

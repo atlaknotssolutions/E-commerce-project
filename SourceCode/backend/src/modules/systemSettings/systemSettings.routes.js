@@ -4,6 +4,7 @@ export const createSystemSettingsRoutes = ({
     authenticate,
     authorizeRoles,
     asyncHandler,
+    upload,
 }) => {
 
     router.get(
@@ -74,6 +75,21 @@ export const createSystemSettingsRoutes = ({
         authenticate,
         authorizeRoles('ROLE_ADMIN'),
         asyncHandler(controller.updateAppearance)
+    );
+
+    router.patch(
+        '/admin/settings/invoicing',
+        authenticate,
+        authorizeRoles('ROLE_ADMIN'),
+        asyncHandler(controller.updateInvoicing)
+    );
+
+    router.post(
+        '/admin/settings/logo',
+        authenticate,
+        authorizeRoles('ROLE_ADMIN'),
+        upload.single('logo'),
+        asyncHandler(controller.uploadLogo)
     );
 
     router.post(

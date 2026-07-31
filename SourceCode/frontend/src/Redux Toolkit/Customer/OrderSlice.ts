@@ -187,6 +187,27 @@ export const requestReturn = createAsyncThunk<
   }
 );
 
+export const downloadInvoice = createAsyncThunk<void, { orderId: string; jwt: string }>(
+  'orders/downloadInvoice',
+  async ({ orderId, jwt }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/api/invoice/customer/${orderId}`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `invoice-${orderId}.pdf`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to download invoice');
+    }
+  }
+);
+
 export const fetchMyReturns = createAsyncThunk<
   ReturnRequest[],
   string,
@@ -212,7 +233,14 @@ export const fetchMyReturns = createAsyncThunk<
 const orderSlice = createSlice({
   name: "orders",
   initialState,
-  reducers: {},
+  reducers: {
+    clearOrderCanceled: (state) => {
+      state.orderCanceled = false;
+    },
+    clearOrderError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       // Fetch user order history
@@ -340,6 +368,7 @@ const orderSlice = createSlice({
   },
 });
 
+export const { clearOrderCanceled, clearOrderError } = orderSlice.actions;
 export default orderSlice.reducer;
 
 export const selectOrders = (state: RootState) => state.orders.orders;

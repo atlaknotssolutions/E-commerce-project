@@ -1,29 +1,14 @@
 import * as React from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { Button, FormControl, InputLabel, Menu, MenuItem, Select, TableFooter, TablePagination } from '@mui/material';
-import TablePaginationActions from '@mui/material/TablePagination/TablePaginationActions';
+import { Button, FormControl, Menu, MenuItem, Select } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
 import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
-import { fetchSellers, selectSellers, updateSellerAccountStatus } from '../../../Redux Toolkit/Seller/sellerSlice';
-
-function createData(
-    name: string,
-    calories: number,
-    fat: number,
-    carbs: number,
-    protein: number,
-)
-{
-    return { name, calories, fat, carbs, protein };
-}
-
-
+import { fetchSellers, updateSellerAccountStatus } from '../../../Redux Toolkit/Seller/sellerSlice';
 
 const accountStatuses = [
     { status: 'PENDING_VERIFICATION', title: 'Pending Verification', description: 'Account is created but not yet verified' },
@@ -37,7 +22,6 @@ const accountStatuses = [
 
 export default function SellersTable()
 {
-    const [page, setPage] = React.useState(0);
     const [accountStatus, setAccountStatus] = React.useState("ACTIVE")
     const { sellers } = useAppSelector(store => store)
 
@@ -46,7 +30,7 @@ export default function SellersTable()
     React.useEffect(() =>
     {
         dispatch(fetchSellers(accountStatus))
-    }, [accountStatus])
+    }, [dispatch, accountStatus])
 
     const handleAccountStatusChange = (event: any) =>
     {

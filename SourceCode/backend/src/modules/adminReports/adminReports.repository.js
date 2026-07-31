@@ -96,11 +96,18 @@ export const createAdminReportsRepository = ({
     ]);
 
     const couponData = await Order.aggregate([
-      { $match: { ...match, discount: { $gt: 0 } } },
+      { $match: { ...match, couponPrice: { $gt: 0 } } },
+      {
+        $addFields: {
+          effectiveCouponDiscount: {
+            $ifNull: ['$couponSnapshot.couponDiscountApplied', '$couponPrice'],
+          },
+        },
+      },
       {
         $group: {
           _id: null,
-          totalCouponDiscount: { $sum: '$discount' },
+          totalCouponDiscount: { $sum: '$effectiveCouponDiscount' },
         },
       },
     ]);
@@ -524,9 +531,16 @@ export const createAdminReportsRepository = ({
     const couponRevenue = await Order.aggregate([
       { $match: orderMatch },
       {
+        $addFields: {
+          effectiveCouponDiscount: {
+            $ifNull: ['$couponSnapshot.couponDiscountApplied', '$couponPrice'],
+          },
+        },
+      },
+      {
         $group: {
           _id: null,
-          totalCouponDiscount: { $sum: '$discount' },
+          totalCouponDiscount: { $sum: '$effectiveCouponDiscount' },
           ordersWithCoupon: { $sum: 1 },
         },
       },

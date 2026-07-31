@@ -7,9 +7,17 @@ import
         PAYMENT_STATUS,
         SHIPMENT_STATUS,
         CARRIERS,
+        STATUS_HISTORY_ACTOR,
     } from "../../constants/enums.js";
 import { isValidTransition, canCustomerCancel, getSellerTransitions } from "../../constants/orderTransitions.js";
 import { createInventoryHelper } from "./orderInventoryHelper.js";
+import {
+    computeItemLine,
+    aggregateItemTotals,
+    resolveVariantPricing,
+    computeOrderDiscount,
+} from "../../utils/financialEngine.js";
+import { createCouponFacade } from "../../utils/couponEngine/CouponFacade.js";
 
 const RESERVATION_TTL_MINUTES = 30;
 
@@ -22,10 +30,13 @@ export const createOrderService = ({
     paymentOrderRepository,
     cartRepository,
     userRepository,
+    couponRepository,
     sellerReportRepository,
     productRepository,
     notificationService,
     commissionService,
+    settlementEngineService,
+    distributionEngine,
     createApiError,
     mapOrder,
     mapOrders,
@@ -59,6 +70,12 @@ export const createOrderService = ({
         {
             await session.withTransaction(async () =>
             {
+                const couponFacade = createCouponFacade();
+                const Product = mongoose.model('Product');
+                const SellerModel = mongoose.model('Seller');
+                const CategoryModel = mongoose.model('Category');
+                const OrderModel = mongoose.model('Order');
+
                 // 1. Retrieve and verify user shopping cart
                 const cart = await cartRepository.findByUserId({ userId });
                 if (!cart || cart.items.length === 0)
@@ -70,30 +87,147 @@ export const createOrderService = ({
                     });
                 }
 
-                // 2. Multi-Vendor Split Algorithm: Group cart items by their associated seller ID
-                const groupedBySeller = {};
-                cart.items.forEach((item) =>
+                // ——— CART REVALIDATION ———
+                // Reload ALL products from DB (anti-tampering)
+                const productIds = cart.items.map((item) => item.product._id);
+                const freshProducts = await Product.find({ _id: { $in: productIds } }).lean();
+                const productMap = {};
+                for (const p of freshProducts)
                 {
-                    if (!item.product || !item.product.seller)
+                    productMap[p._id.toString()] = p;
+                }
+
+                for (const item of cart.items)
+                {
+                    const freshProduct = productMap[item.product._id.toString()];
+                    if (!freshProduct)
                     {
+                        throw createApiError({ statusCode: 400, code: 'PRODUCT_NOT_FOUND', message: `Checkout rejected: Product '${item.product.title || 'Unknown'}' no longer exists.` });
+                    }
+                    if (freshProduct.isDeleted)
+                    {
+                        throw createApiError({ statusCode: 400, code: 'PRODUCT_DELETED', message: `Checkout rejected: '${freshProduct.title}' has been removed.` });
+                    }
+
+                    // Validate variant still exists
+                    if (item.variantId)
+                    {
+                        const variantExists = (freshProduct.variants || []).some(
+                            (v) => v._id.toString() === item.variantId.toString()
+                        );
+                        if (!variantExists)
+                        {
+                            throw createApiError({ statusCode: 400, code: 'VARIANT_REMOVED', message: `Checkout rejected: Selected variant for '${freshProduct.title}' is no longer available.` });
+                        }
+                    }
+
+                    // Price integrity check — compare cart price with DB price
+                    const { sellingPrice: dbSelling } = resolveVariantPricing(freshProduct, item.variantId);
+                    const cartSelling = item.product.sellingPrice
+                        ? Number(item.product.sellingPrice)
+                        : (Number(item.sellingPrice) / Number(item.quantity));
+                    if (Math.abs(Number(dbSelling) - cartSelling) > 0.01)
+                    {
+                        console.log('[PRICE_CHANGED DEBUG]', {
+                            productTitle: freshProduct.title,
+                            dbSelling,
+                            cartSelling,
+                            diff: Number(dbSelling) - cartSelling,
+                            itemProductType: typeof item.product,
+                            itemProductIsMongooseDoc: item.product?.constructor?.name,
+                            itemProductId: item.product?._id?.toString(),
+                            itemSellingPrice: item.sellingPrice,
+                            itemQuantity: item.quantity,
+                            variantId: item.variantId?.toString(),
+                            cartCouponCode: cart.couponCode,
+                            cartCouponPrice: cart.couponPrice,
+                        });
+                        throw createApiError({ statusCode: 400, code: 'PRICE_CHANGED', message: `Checkout rejected: Price for '${freshProduct.title}' has changed. Please refresh your cart.` });
+                    }
+
+                    // Attach fresh product for downstream use
+                    item.product = freshProduct;
+                }
+
+                // Validate all sellers are active
+                const sellerIds = [...new Set(cart.items.map((item) =>
+                {
+                    const sellerRef = item.product.seller;
+                    return sellerRef._id ? sellerRef._id.toString() : sellerRef.toString();
+                }))];
+                const freshSellers = await SellerModel.find({ _id: { $in: sellerIds } }).lean();
+                const sellerMap = {};
+                for (const s of freshSellers)
+                {
+                    sellerMap[s._id.toString()] = s;
+                }
+                for (const sellerIdStr of sellerIds)
+                {
+                    const seller = sellerMap[sellerIdStr];
+                    if (!seller)
+                    {
+                        throw createApiError({ statusCode: 400, code: 'SELLER_NOT_FOUND', message: 'Checkout rejected: A seller in your cart is no longer available.' });
+                    }
+                    if (seller.accountStatus && seller.accountStatus !== 'ACTIVE')
+                    {
+                        throw createApiError({ statusCode: 400, code: 'SELLER_INACTIVE', message: 'Checkout rejected: A seller in your cart is currently inactive.' });
+                    }
+                }
+
+                // Compute fresh selling sum from DB prices (for coupon validation)
+                const freshSum = cart.items.reduce((sum, item) =>
+                {
+                    const { sellingPrice } = resolveVariantPricing(item.product, item.variantId);
+                    return sum + Number(sellingPrice) * Number(item.quantity);
+                }, 0);
+
+                // ——— COUPON CHECKOUT-TIME REVALIDATION ———
+                let freshCoupon = null;
+                let validatedCouponPrice = 0;
+
+                if (cart.couponCode)
+                {
+                    freshCoupon = await couponRepository.findByCode(cart.couponCode);
+                    const user = await userRepository.findById(userId);
+
+                    const userOrderCount = await OrderModel.countDocuments({ user: userId });
+
+                    const { valid, errors } = await couponFacade.validateEligibility({
+                        coupon: freshCoupon,
+                        user,
+                        cartSellingSum: freshSum,
+                        sellerModel: SellerModel,
+                        productModel: Product,
+                        categoryModel: CategoryModel,
+                        userOrderCount,
+                        cartItemSellerIds: sellerIds,
+                    });
+
+                    if (!valid)
+                    {
+                        const firstError = errors[0];
                         throw createApiError({
                             statusCode: 400,
-                            code: 'PRODUCT_DATA_INCOMPLETE',
-                            message: `Checkout failed: Incomplete metadata found on product catalog item '${item.product ? item.product.title : 'Unknown'}'.`
+                            code: firstError.code,
+                            message: `Checkout rejected: ${firstError.message}`,
                         });
                     }
 
-                    const sellerIdStr =
-                        item.product.seller?._id
-                            ? item.product.seller._id.toString()
-                            : item.product.seller.toString();
+                    validatedCouponPrice = couponFacade.computeDiscount(freshSum, freshCoupon);
+                }
 
+                // 2. Multi-Vendor Split Algorithm: Group cart items by their associated seller ID
+                const groupedBySeller = {};
+                for (const item of cart.items)
+                {
+                    const sellerRef = item.product.seller;
+                    const sellerIdStr = sellerRef._id ? sellerRef._id.toString() : sellerRef.toString();
                     if (!groupedBySeller[sellerIdStr])
                     {
                         groupedBySeller[sellerIdStr] = [];
                     }
                     groupedBySeller[sellerIdStr].push(item);
-                });
+                }
 
                 const splitOrdersList = [];
 
@@ -116,23 +250,13 @@ export const createOrderService = ({
                 {
                     const sellerItems = groupedBySeller[sellerIdStr];
 
-                    let totalMrpPrice = 0;
-                    let totalSellingPrice = 0;
-                    let totalItem = 0;
-
                     const orderItemsSnapshots = sellerItems.map((item) =>
                     {
-                        const lineMrp = item.product.mrpPrice * item.quantity;
-                        const lineSelling = item.product.sellingPrice * item.quantity;
+                        const { mrpPrice: unitMrp, sellingPrice: unitSelling } = resolveVariantPricing(item.product, item.variantId);
+                        const lineTotals = computeItemLine(unitMrp, unitSelling, item.quantity);
+                        const { mrpPrice: resolvedMrp, sellingPrice: resolvedSelling } = lineTotals;
 
-                        totalMrpPrice += lineMrp;
-                        totalSellingPrice += lineSelling;
-                        totalItem += item.quantity;
-
-                        let resolvedMrp = lineMrp;
-                        let resolvedSelling = lineSelling;
                         let variantAttributes = null;
-
                         if (item.variantId && item.product.variants)
                         {
                             const matchedVariant = item.product.variants.find(
@@ -140,14 +264,9 @@ export const createOrderService = ({
                             );
                             if (matchedVariant)
                             {
-                                resolvedMrp = matchedVariant.mrpPrice * item.quantity;
-                                resolvedSelling = matchedVariant.price * item.quantity;
                                 variantAttributes = matchedVariant.attributes;
                             }
                         }
-
-                        totalMrpPrice = totalMrpPrice - lineMrp + resolvedMrp;
-                        totalSellingPrice = totalSellingPrice - lineSelling + resolvedSelling;
 
                         return {
                             product: item.product._id,
@@ -161,6 +280,8 @@ export const createOrderService = ({
                         };
                     });
 
+                    const { totalItem, totalMrpPrice, totalSellingPrice } = aggregateItemTotals(orderItemsSnapshots);
+
                     const orderPayload = {
                         orderId: generateBusinessOrderId(),
                         user: userId,
@@ -169,7 +290,7 @@ export const createOrderService = ({
                         shippingAddress,
                         totalMrpPrice,
                         totalSellingPrice,
-                        discount: totalMrpPrice - totalSellingPrice,
+                        discount: computeOrderDiscount(totalMrpPrice, totalSellingPrice),
                         totalItem,
                         orderStatus: ORDER_STATUS.PENDING,
                         paymentStatus: PAYMENT_STATUS.PENDING,
@@ -183,7 +304,7 @@ export const createOrderService = ({
                             fromStatus: ORDER_STATUS.PENDING,
                             toStatus: ORDER_STATUS.PENDING,
                             changedBy: userId,
-                            changedByModel: 'User',
+                            changedByModel: STATUS_HISTORY_ACTOR.USER,
                             changedByRole: ROLES.CUSTOMER,
                             changedAt: now,
                             note: 'Order placed',
@@ -194,10 +315,57 @@ export const createOrderService = ({
                     splitOrdersList.push(savedOrder);
                 }
 
-                const totalPayableSellingPrice = splitOrdersList.reduce((sum, o) => sum + o.totalSellingPrice, 0);
-                const finalAmountAfterCoupons = Math.max(0, totalPayableSellingPrice - cart.couponPrice);
+                // 6. Compute proportional coupon allocation across split orders (using validated price)
+                const couponAllocations = couponFacade.computeProportionalAllocation(splitOrdersList, validatedCouponPrice);
 
-                // 6. Create payment record inside the same transaction
+                // 7. Persist each order's coupon share and build immutable snapshot
+                for (const alloc of couponAllocations)
+                {
+                    const order = splitOrdersList[alloc.orderIndex];
+                    if (alloc.couponShare > 0 && freshCoupon)
+                    {
+                        const snapshot = couponFacade.createSnapshot(freshCoupon, alloc.couponShare, {
+                            appliedAt: new Date(),
+                            appliedBy: userId,
+                        });
+                        await orderRepository.updateOrder(order._id, {
+                            couponPrice: alloc.couponShare,
+                            couponSnapshot: snapshot,
+                        }, { session });
+                        order.couponPrice = alloc.couponShare;
+                        order.couponSnapshot = snapshot;
+                    }
+                }
+
+                // 8. Record coupon usage inside the transaction (atomic with order creation)
+                if (cart.couponCode && freshCoupon)
+                {
+                    const couponId = freshCoupon._id || freshCoupon.id;
+                    await couponRepository.updateCoupon(couponId, {
+                        $inc: { usageCount: 1 },
+                        $push: { usedByUsers: userId },
+                    }, { session });
+
+                    const UserModel = mongoose.model('User');
+                    await UserModel.findByIdAndUpdate(
+                        userId,
+                        { $push: { usedCoupons: couponId } },
+                        { session }
+                    );
+                }
+
+                const { finalAmount: finalAmountAfterCoupons } = couponFacade.computeSplitPayable(splitOrdersList, validatedCouponPrice);
+
+                console.log('[CHECKOUT AMOUNT DEBUG]', {
+                    freshSum,
+                    couponCode: cart.couponCode,
+                    validatedCouponPrice,
+                    orderCount: splitOrdersList.length,
+                    orderTotals: splitOrdersList.map(o => ({ id: o._id, selling: o.totalSellingPrice, coupon: o.couponPrice })),
+                    finalAmountAfterCoupons,
+                });
+
+                // 9. Create payment record inside the same transaction
                 const ordersList = splitOrdersList.map((order) => order._id);
                 const paymentOrder = await paymentOrderRepository.createPaymentOrder({
                     amount: finalAmountAfterCoupons,
@@ -226,6 +394,23 @@ export const createOrderService = ({
                 code: 'CHECKOUT_FAILED',
                 message: 'Checkout could not be completed. Please try again.'
             });
+        }
+
+        // Trigger coupon distribution on successful order completion (non-blocking)
+        if (distributionEngine)
+        {
+            const user = await userRepository.findById(userId).catch(() => null);
+            let isFirstOrder = false;
+            if (user)
+            {
+                const userOrders = await orderRepository.findByUser({ userId }).catch(() => []);
+                isFirstOrder = userOrders.length <= 1;
+            }
+            distributionEngine.onOrderCompleted({
+                userId,
+                order: { user },
+                isFirstOrder,
+            }).catch(() => {});
         }
 
         return result;
@@ -271,7 +456,7 @@ export const createOrderService = ({
                                 fromStatus: currentOrder.orderStatus,
                                 toStatus: ORDER_STATUS.CANCELLED,
                                 changedBy: currentOrder.user,
-                                changedByModel: 'System',
+                                changedByModel: STATUS_HISTORY_ACTOR.SYSTEM,
                                 changedByRole: ROLES.ADMIN,
                                 changedAt: new Date(),
                                 note: 'Automatic cancellation: checkout compensation after gateway failure',
@@ -302,6 +487,27 @@ export const createOrderService = ({
         for (const item of cancelledOrderItems)
         {
             await inventory.releaseOrderInventory([item]);
+        }
+
+        // Coupon rollback via CouponRollbackService (single source of truth)
+        if (orderIds && orderIds.length > 0)
+        {
+            const couponFacade = createCouponFacade();
+            const firstOrder = await orderRepository.findById(orderIds[0]);
+            if (firstOrder)
+            {
+                const userId = firstOrder.user._id || firstOrder.user;
+                const cart = await cartRepository.findByUserId({ userId });
+                if (cart && cart.couponCode)
+                {
+                    await couponFacade.rollbackByCart({
+                        cart,
+                        userId,
+                        couponRepository,
+                        userRepository,
+                    });
+                }
+            }
         }
     };
 
@@ -466,13 +672,14 @@ export const createOrderService = ({
                 fromStatus: order.shipmentStatus,
                 toStatus: order.shipmentStatus,
                 changedBy: sellerId,
-                changedByModel: 'Seller',
+                changedByModel: STATUS_HISTORY_ACTOR.SELLER,
                 changedByRole: ROLES.SELLER,
                 changedAt: new Date(),
                 note: `Tracking number ${trackingNumber.trim()} assigned via ${carrier}`,
             },
         });
 
+        await attachPaymentInfo(updatedOrder);
         return mapOrder(updatedOrder);
     };
 
@@ -527,7 +734,7 @@ export const createOrderService = ({
                     fromStatus: order.shipmentStatus,
                     toStatus: shipmentStatus,
                     changedBy: sellerId,
-                    changedByModel: 'Seller',
+                    changedByModel: STATUS_HISTORY_ACTOR.SELLER,
                     changedByRole: ROLES.SELLER,
                     changedAt: now,
                     note: `Order status changed to ${orderStatus}`,
@@ -542,7 +749,7 @@ export const createOrderService = ({
                 fromStatus: order.orderStatus,
                 toStatus: orderStatus,
                 changedBy: sellerId,
-                changedByModel: 'Seller',
+                changedByModel: STATUS_HISTORY_ACTOR.SELLER,
                 changedByRole: ROLES.SELLER,
                 changedAt: now,
             },
@@ -618,13 +825,62 @@ export const createOrderService = ({
     };
 
     /**
+     * Attaches payment info and coupon discount to individual orders.
+     * Reads couponDiscountApplied from the immutable couponSnapshot (STEP 7).
+     * Falls back to computed value for backward compatibility with existing orders.
+     */
+    const attachPaymentInfo = async (order) =>
+    {
+        if (!order) return order;
+
+        const payment = await paymentOrderRepository.findByOrderId(order.id || order._id);
+        if (payment)
+        {
+            order.payment = {
+                method: payment.paymentMethod,
+                status: payment.status,
+                amount: payment.amount,
+                transactionId: payment.providerPaymentId,
+                paymentLinkId: payment.paymentLinkId,
+            };
+
+            // Read from snapshot (STEP 7) — never recalculate
+            if (order.couponSnapshot)
+            {
+                order.couponDiscount = order.couponSnapshot.couponDiscountApplied;
+            }
+            else
+            {
+                // Backward compatibility: fallback for pre-snapshot orders
+                const isSingleSeller = !payment.orders || payment.orders.length <= 1;
+                order.couponDiscount = isSingleSeller
+                    ? Math.max(0, (order.totalSellingPrice || 0) - (payment.amount || 0))
+                    : 0;
+            }
+        }
+        else
+        {
+            order.couponDiscount = 0;
+        }
+
+        return order;
+    };
+
+    /**
      * Retrieves purchase history of a customer.
      */
     const getUserOrders = async ({ userId }) =>
     {
         const orders = await orderRepository.findByUser({ userId });
 
-        return mapOrders(orders);
+        const mapped = mapOrders(orders);
+
+        for (const order of mapped)
+        {
+            await attachPaymentInfo(order);
+        }
+
+        return mapped;
     };
 
     /**
@@ -634,7 +890,14 @@ export const createOrderService = ({
     {
         const orders = await orderRepository.findBySeller({ sellerId });
 
-        return mapOrders(orders);
+        const mapped = mapOrders(orders);
+
+        for (const order of mapped)
+        {
+            await attachPaymentInfo(order);
+        }
+
+        return mapped;
     };
 
     /**
@@ -686,6 +949,19 @@ export const createOrderService = ({
             }
             : null;
 
+        // Read from immutable snapshot (STEP 7), fallback for legacy orders
+        if (response.couponSnapshot)
+        {
+            response.couponDiscount = response.couponSnapshot.couponDiscountApplied;
+        }
+        else
+        {
+            const isSingleSeller = !payment || !payment.orders || payment.orders.length <= 1;
+            response.couponDiscount = payment && isSingleSeller
+                ? Math.max(0, (response.totalSellingPrice || 0) - (payment.amount || 0))
+                : 0;
+        }
+
         return response;
     };
 
@@ -730,7 +1006,7 @@ export const createOrderService = ({
                         fromStatus: order.orderStatus,
                         toStatus: ORDER_STATUS.CANCELLED,
                         changedBy: userId,
-                        changedByModel: 'User',
+                        changedByModel: STATUS_HISTORY_ACTOR.USER,
                         changedByRole: ROLES.CUSTOMER,
                         changedAt: new Date(),
                         note: reason || 'Cancelled by customer',
@@ -795,7 +1071,7 @@ export const createOrderService = ({
                 fromStatus: order.orderStatus,
                 toStatus: orderStatus,
                 changedBy: sellerId,
-                changedByModel: 'Seller',
+                changedByModel: STATUS_HISTORY_ACTOR.SELLER,
                 changedByRole: ROLES.SELLER,
                 changedAt: now,
             },
@@ -813,7 +1089,7 @@ export const createOrderService = ({
                     fromStatus: order.shipmentStatus,
                     toStatus: shipmentStatus,
                     changedBy: sellerId,
-                    changedByModel: 'Seller',
+                    changedByModel: STATUS_HISTORY_ACTOR.SELLER,
                     changedByRole: ROLES.SELLER,
                     changedAt: now,
                     note: `Order status changed to ${orderStatus}`,
@@ -833,12 +1109,21 @@ export const createOrderService = ({
             orderId: order.orderId,
         });
 
-        if (orderStatus === ORDER_STATUS.DELIVERED && commissionService)
+        if (orderStatus === ORDER_STATUS.DELIVERED)
         {
-            try { await commissionService.calculateCommission({ orderId: updatedOrder._id || updatedOrder.id || orderId }); }
-            catch (err) { /* commission calculation is non-blocking */ }
+            if (settlementEngineService)
+            {
+                try { await settlementEngineService.calculateAndRecordSettlement({ orderId: updatedOrder._id || updatedOrder.id || orderId }); }
+                catch (err) { /* settlement calculation is non-blocking */ }
+            }
+            else if (commissionService)
+            {
+                try { await commissionService.calculateCommission({ orderId: updatedOrder._id || updatedOrder.id || orderId }); }
+                catch (err) { /* commission calculation fallback */ }
+            }
         }
 
+        await attachPaymentInfo(updatedOrder);
         return mapOrder(updatedOrder);
     };
 
@@ -875,7 +1160,7 @@ export const createOrderService = ({
                 fromStatus: order.orderStatus,
                 toStatus: ORDER_STATUS.CANCELLED,
                 changedBy: sellerId,
-                changedByModel: 'Seller',
+                changedByModel: STATUS_HISTORY_ACTOR.SELLER,
                 changedByRole: ROLES.SELLER,
                 changedAt: new Date(),
                 note: 'Cancelled by seller',

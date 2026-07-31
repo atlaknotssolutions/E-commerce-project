@@ -49,6 +49,16 @@ const SellerReportSchema = new mongoose.Schema({
         default: 0, // Total successful transactions.
         min: 0,
     },
+    totalCommission: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    totalGst: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
 }, {
     // Automatically adds createdAt and updatedAt fields.
     timestamps: true,

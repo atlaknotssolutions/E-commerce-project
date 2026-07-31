@@ -20,6 +20,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import PaymentIcon from '@mui/icons-material/Payment';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import CookieIcon from '@mui/icons-material/Cookie';
 import LogoutIcon from '@mui/icons-material/Logout';
 const menu = [
     {
@@ -123,6 +124,12 @@ const menu = [
         path: "/admin/payouts",
         icon: <PaymentIcon className="text-primary-color" />,
         activeIcon: <PaymentIcon className="text-white" />,
+    },
+    {
+        name: "Cookie Consent",
+        path: "/admin/cookie-consent",
+        icon: <CookieIcon className="text-primary-color" />,
+        activeIcon: <CookieIcon className="text-white" />,
     },
     {
         name: "System Settings",

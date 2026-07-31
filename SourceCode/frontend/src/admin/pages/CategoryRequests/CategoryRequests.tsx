@@ -19,8 +19,6 @@ import {
     TableHead,
     TableRow,
     CircularProgress,
-    Alert,
-    Snackbar,
     Tooltip,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -35,6 +33,7 @@ import {
 } from "../../../Redux Toolkit/Admin/AdminCategoryRequestSlice";
 import { fetchCategoryTree } from "../../../Redux Toolkit/Admin/AdminCategorySlice";
 import { StyledTableCell, StyledTableRow, EmptyRow } from '../../../components/shared/Table';
+import { notification } from '../../../services/notificationService';
 import { Category } from "../../../types/categoryTypes";
 
 const statusColors: Record<string, "warning" | "success" | "error"> = {
@@ -79,12 +78,6 @@ const CategoryRequests = () => {
         id: "",
         reason: "",
     });
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
-        open: false,
-        message: "",
-        severity: "success",
-    });
-
     useEffect(() => {
         dispatch(fetchAllRequests());
         dispatch(fetchCategoryTree());
@@ -92,7 +85,7 @@ const CategoryRequests = () => {
 
     useEffect(() => {
         if (error) {
-            setSnackbar({ open: true, message: error, severity: "error" });
+            notification.error(error);
             dispatch(clearError());
         }
     }, [error, dispatch]);
@@ -104,14 +97,14 @@ const CategoryRequests = () => {
     const handleDirectApprove = async (id: string) => {
         const result = await dispatch(approveRequest(id));
         if (approveRequest.fulfilled.match(result)) {
-            setSnackbar({ open: true, message: "Request approved. Category created.", severity: "success" });
+            notification.success("Request approved. Category created.");
         }
     };
 
     const handleDialogApprove = async () => {
         const result = await dispatch(approveRequest(approveDialog.id));
         if (approveRequest.fulfilled.match(result)) {
-            setSnackbar({ open: true, message: "Request approved. Category created.", severity: "success" });
+            notification.success("Request approved. Category created.");
             setApproveDialog({ open: false, id: "" });
         }
     };
@@ -120,7 +113,7 @@ const CategoryRequests = () => {
         if (!rejectDialog.reason.trim()) return;
         const result = await dispatch(rejectRequest({ id: rejectDialog.id, rejectionReason: rejectDialog.reason }));
         if (rejectRequest.fulfilled.match(result)) {
-            setSnackbar({ open: true, message: "Request rejected.", severity: "success" });
+            notification.success("Request rejected.");
             setRejectDialog({ open: false, id: "", reason: "" });
         }
     };
@@ -327,16 +320,6 @@ const CategoryRequests = () => {
                 </DialogActions>
             </Dialog>
 
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar({ ...snackbar, open: false })}
-                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-            >
-                <Alert severity={snackbar.severity} variant="filled">
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </Box>
     );
 };

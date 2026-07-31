@@ -1,3 +1,4 @@
+import { STATUS_HISTORY_ACTOR } from '../../constants/enums.js';
 import { getValidTransitions } from '../../constants/orderTransitions.js';
 
 /**
@@ -143,7 +144,7 @@ export const createAdminOrderService = ({
                 fromStatus: order.orderStatus,
                 toStatus: orderStatus,
                 changedBy: adminId,
-                changedByModel: 'Admin',
+                changedByModel: STATUS_HISTORY_ACTOR.ADMIN,
                 changedByRole: 'ROLE_ADMIN',
                 changedAt: now,
                 note: adminNote || `Status updated by admin to ${orderStatus}`,
@@ -165,7 +166,7 @@ export const createAdminOrderService = ({
                     fromStatus: order.shipmentStatus,
                     toStatus: shipmentStatus,
                     changedBy: adminId,
-                    changedByModel: 'Admin',
+                    changedByModel: STATUS_HISTORY_ACTOR.ADMIN,
                     changedByRole: 'ROLE_ADMIN',
                     changedAt: now,
                     note: adminNote || `Order status changed to ${orderStatus} by admin`,
@@ -195,6 +196,17 @@ export const createAdminOrderService = ({
             catch (err) { /* commission calculation is non-blocking */ }
         }
 
+        const payment = await paymentOrderRepository.findByOrderId(updatedOrder._id || updatedOrder.id || orderId);
+        if (payment)
+        {
+            updatedOrder.payment = {
+                method: payment.paymentMethod,
+                status: payment.status,
+                amount: payment.amount,
+                transactionId: payment.providerPaymentId,
+                paymentLinkId: payment.paymentLinkId,
+            };
+        }
         return mapOrder(updatedOrder);
     };
 

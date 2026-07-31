@@ -5,10 +5,8 @@ import { fetchSellerReport } from "../../../Redux Toolkit/Seller/sellerSlice";
 import ReportCard from "./Report/ReportCard";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import {
-  Box,
   FormControl,
   InputLabel,
-  Menu,
   MenuItem,
   Select,
   SelectChangeEvent,

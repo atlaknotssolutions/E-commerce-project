@@ -1,11 +1,11 @@
 import * as React from "react";
 import { useEffect, useState, useCallback } from "react";
 import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Table, TableBody, TableContainer, TableHead, TableRow,
   Paper, Box, IconButton, Modal, Button, TextField, MenuItem,
   Autocomplete,
   Chip, Switch, Typography, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Alert, Snackbar, TablePagination, Skeleton,
+  DialogActions, CircularProgress, TablePagination, Skeleton,
 } from "@mui/material";
 
 import EditIcon from "@mui/icons-material/Edit";
@@ -27,6 +27,7 @@ import {
 } from "../../../Redux Toolkit/Admin/AdminSlice";
 import { fetchCategoryTree } from "../../../Redux Toolkit/Customer/Customer/AsyncThunk";
 import { StyledTableCell, StyledTableRow } from '../../../components/shared/Table';
+import { notification } from '../../../services/notificationService';
 import UpdateHomeCategoryForm from "./UpdateHomeCategoryForm";
 import ImageUpload from "../../components/ImageUpload";
 
@@ -78,9 +79,6 @@ function HomeCategoryTable({ section }: Props) {
   const [bulkAction, setBulkAction] = useState<string | null>(null);
   const [moveSection, setMoveSection] = useState<string>("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
-    open: false, message: "", severity: "success",
-  });
 
   useEffect(() => {
     dispatch(fetchHomeCategories());
@@ -94,23 +92,23 @@ function HomeCategoryTable({ section }: Props) {
 
   useEffect(() => {
     if (categoryCreated) {
-      setSnackbar({ open: true, message: "Category created successfully.", severity: "success" });
+      notification.success("Category created successfully.");
       dispatch(clearMessages());
       handleCloseCreate();
       dispatch(fetchHomeCategories());
     }
     if (categoryDeleted) {
-      setSnackbar({ open: true, message: "Category deleted successfully.", severity: "success" });
+      notification.success("Category deleted successfully.");
       dispatch(clearMessages());
       setDeleteTarget(null);
       dispatch(fetchHomeCategories());
     }
     if (categoryUpdated || categoryStatusUpdated) {
-      setSnackbar({ open: true, message: "Category updated successfully.", severity: "success" });
+      notification.success("Category updated successfully.");
       dispatch(clearMessages());
     }
     if (error) {
-      setSnackbar({ open: true, message: friendlyError(error), severity: "error" });
+      notification.error(friendlyError(error));
       dispatch(clearMessages());
     }
   }, [categoryCreated, categoryDeleted, categoryUpdated, categoryStatusUpdated, error, dispatch]);
@@ -177,16 +175,16 @@ function HomeCategoryTable({ section }: Props) {
     const ids = Array.from(selectedIds);
     if (action === "enable") {
       ids.forEach((id) => dispatch(toggleHomeCategoryStatus({ id, isActive: true })));
-      setSnackbar({ open: true, message: `${ids.length} item(s) enabled.`, severity: "success" });
+      notification.success(`${ids.length} item(s) enabled.`);
     } else if (action === "disable") {
       ids.forEach((id) => dispatch(toggleHomeCategoryStatus({ id, isActive: false })));
-      setSnackbar({ open: true, message: `${ids.length} item(s) disabled.`, severity: "success" });
+      notification.success(`${ids.length} item(s) disabled.`);
     } else if (action === "delete") {
       ids.forEach((id) => dispatch(deleteHomeCategory(id)));
-      setSnackbar({ open: true, message: `${ids.length} item(s) deleted.`, severity: "success" });
+      notification.success(`${ids.length} item(s) deleted.`);
     } else if (action === "move" && moveSection) {
       ids.forEach((id) => dispatch(updateHomeCategory({ id, data: { section: moveSection } })));
-      setSnackbar({ open: true, message: `${ids.length} item(s) moved to ${moveSection}.`, severity: "success" });
+      notification.success(`${ids.length} item(s) moved to ${moveSection}.`);
       setMoveSection("");
     }
     setSelectedIds(new Set());
@@ -583,11 +581,6 @@ function HomeCategoryTable({ section }: Props) {
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
-      </Snackbar>
     </>
   );
 }

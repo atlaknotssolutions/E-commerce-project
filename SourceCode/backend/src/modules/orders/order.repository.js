@@ -70,7 +70,7 @@ export const createOrderRepository = ({ Order }) =>
             .populate("seller", "sellerName email mobile businessDetails")
             .populate({
                 path: "orderItems.product",
-                select: "title images sellingPrice color"
+                select: "title images sellingPrice color variants.sku"
             })
             .lean();
     };
@@ -227,6 +227,15 @@ export const createOrderRepository = ({ Order }) =>
                 select: "title images sellingPrice color",
             })
             .lean();
+    };
+
+    const updateOrder = async (orderId, data, options = {}) =>
+    {
+        return Order.findByIdAndUpdate(
+            orderId,
+            { $set: data },
+            { ...options, new: true, runValidators: true }
+        ).lean();
     };
 
     const findOrdersByIds = async (orderIds, options = {}) =>
@@ -415,6 +424,7 @@ export const createOrderRepository = ({ Order }) =>
         updateStatus,
         updateStatusWithHistory,
         updatePaymentStatus,
+        updateOrder,
         findOrderItemById,
         appendStatusHistory,
         findOrdersByIds,

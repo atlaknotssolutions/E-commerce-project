@@ -12,6 +12,7 @@ import {
     SecuritySettings,
     MaintenanceSettings,
     AppearanceSettings,
+    InvoiceSettings,
 } from '../../types/adminSystemSettingsTypes';
 
 const API_URL = '/admin/settings';
@@ -222,6 +223,46 @@ export const updateAppearanceSettings = createAsyncThunk<
     }
 );
 
+export const updateInvoiceSettings = createAsyncThunk<
+    SystemSettings,
+    Partial<InvoiceSettings>,
+    { rejectValue: string }
+>(
+    'adminSystemSettings/updateInvoice',
+    async (data, { rejectWithValue }) => {
+        try {
+            const response = await api.patch<{ success: boolean; data: SystemSettings }>(
+                `${API_URL}/invoicing`, data
+            );
+            return response.data.data;
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message || 'Failed to update invoice settings'
+            );
+        }
+    }
+);
+
+export const uploadLogo = createAsyncThunk<
+    SystemSettings,
+    FormData,
+    { rejectValue: string }
+>(
+    'adminSystemSettings/uploadLogo',
+    async (formData, { rejectWithValue }) => {
+        try {
+            const response = await api.post<{ success: boolean; data: SystemSettings }>(
+                `${API_URL}/logo`, formData
+            );
+            return response.data.data;
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message || 'Failed to upload logo'
+            );
+        }
+    }
+);
+
 export const resetSettings = createAsyncThunk<
     SystemSettings,
     void,
@@ -383,6 +424,30 @@ const adminSystemSettingsSlice = createSlice({
                 state.actionSuccess = true;
             })
             .addCase(updateAppearanceSettings.rejected, handleRejected)
+
+            .addCase(updateInvoiceSettings.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+                state.actionSuccess = false;
+            })
+            .addCase(updateInvoiceSettings.fulfilled, (state, action) => {
+                state.loading = false;
+                state.settings = action.payload;
+                state.actionSuccess = true;
+            })
+            .addCase(updateInvoiceSettings.rejected, handleRejected)
+
+            .addCase(uploadLogo.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+                state.actionSuccess = false;
+            })
+            .addCase(uploadLogo.fulfilled, (state, action) => {
+                state.loading = false;
+                state.settings = action.payload;
+                state.actionSuccess = true;
+            })
+            .addCase(uploadLogo.rejected, handleRejected)
 
             .addCase(resetSettings.pending, (state) => {
                 state.loading = true;

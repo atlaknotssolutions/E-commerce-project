@@ -1,55 +1,63 @@
-
-
-
-  .card {
-    @apply relative w-[250px] sm:w-full md:w-full lg:w-full h-[350px] overflow-hidden;
-  }
- 
-  .card-media {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    transition: transform 0.5s ease-in-out;
-    cursor: pointer;
-    object-fit: cover;
-  }
-  
-  .indicator {
-    position: absolute;
-    bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    /* display: flex;
-    gap: 8px; */
-  }
-  
-  .indicator-button {
-    width: 10px;
-    height: 10px;
-    background-color: rgba(255, 255, 255, 0.5);
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-  }
-  
-  .indicator-button.active {
-    background-color: rgba(255, 255, 255, 1);
-  }
-
-  .thin-line-through {
-    text-decoration: line-through;
-    text-decoration-thickness: 1px; /* Adjust the thickness as needed */
-  }
-  
-  /* styles.css */
-.group-hover-effect {
-  padding: 1rem; /* Equivalent to p-4 */
-  transition: transform 0.3s; /* Equivalent to transition-transform duration-300 */
+.thin-line-through {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
 }
 
-.group:hover .group-hover-effect {
-  transform: translateY(0.25rem); /* Equivalent to translate-y-1 */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Equivalent to shadow-md */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-card-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.10) 50%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.group:hover .product-card-hover-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.product-card-hover-btn {
+  opacity: 0;
+  transform: translateY(20px) scale(0.9);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.group:hover .product-card-hover-btn {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.product-card-hover-btn-delay-1 {
+  transition-delay: 0ms;
+}
+
+.product-card-hover-btn-delay-2 {
+  transition-delay: 80ms;
+}
+
+.product-card-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.product-card-dot.active {
+  width: 16px;
+  border-radius: 4px;
+  background-color: #00927c;
+}
+
+.product-card-dot.inactive {
+  background-color: rgba(255, 255, 255, 0.55);
 }

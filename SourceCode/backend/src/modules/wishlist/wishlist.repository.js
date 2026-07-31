@@ -25,8 +25,14 @@ export const createWishlistRepository = ({ Wishlist }) =>
     const findByUserId = async ({ userId }, options = {}) =>
     {
         return Wishlist.findOne({ user: userId }, null, options)
-            .populate('products') // Populates full product details inside array reference list
-            .lean(); // Returns weightless standard plain Javascript memory objects
+            .populate({
+                path: 'products',
+                populate: [
+                    { path: 'category' },
+                    { path: 'seller', select: 'sellerName email mobile businessDetails.businessName pickupAddress' }
+                ]
+            })
+            .lean();
     };
 
     /**
@@ -37,25 +43,33 @@ export const createWishlistRepository = ({ Wishlist }) =>
     {
         return Wishlist.findOneAndUpdate(
             { user: userId },
-            { $addToSet: { products: productId } }, // Native MongoDB unique insertion operator
-            { ...options, new: true } // Returns newly updated document
+            { $addToSet: { products: productId } },
+            { ...options, new: true }
         )
-            .populate('products')
+            .populate({
+                path: 'products',
+                populate: [
+                    { path: 'category' },
+                    { path: 'seller', select: 'sellerName email mobile businessDetails.businessName pickupAddress' }
+                ]
+            })
             .lean();
     };
 
-    /**
-     * Erases a specific product ID cleanly from customer's favorites array.
-     * Employs $pull to atomically remove single reference keys.
-     */
     const removeProductFromWishlist = async ({ userId, productId }, options = {}) =>
     {
         return Wishlist.findOneAndUpdate(
             { user: userId },
-            { $pull: { products: productId } }, // Native MongoDB atomic array extraction operator
+            { $pull: { products: productId } },
             { ...options, new: true }
         )
-            .populate('products')
+            .populate({
+                path: 'products',
+                populate: [
+                    { path: 'category' },
+                    { path: 'seller', select: 'sellerName email mobile businessDetails.businessName pickupAddress' }
+                ]
+            })
             .lean();
     };
 

@@ -38,7 +38,15 @@ const CookieSettingsModal = ({ open, onClose, onSave, onRejectAll, onAcceptAll }
           setAnalytics(!!prefs.analytics);
           setMarketing(!!prefs.marketing);
           setPreferences(!!prefs.preferences);
-        } catch { /* keep defaults */ }
+        } catch {
+          setAnalytics(false);
+          setMarketing(false);
+          setPreferences(false);
+        }
+      } else {
+        setAnalytics(false);
+        setMarketing(false);
+        setPreferences(false);
       }
     }
   }, [open]);

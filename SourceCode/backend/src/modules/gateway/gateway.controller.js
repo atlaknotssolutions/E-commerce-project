@@ -36,6 +36,11 @@ export const createGatewayController = ({ gatewayService }) => {
         res.status(200).json({ success: true, data: timeline });
     };
 
+    const handleRazorpayXWebhook = async (req, res) => {
+        const result = await gatewayService.handleRazorpayXWebhook(req.body);
+        res.status(200).json({ success: true, data: result });
+    };
+
     const retryPayout = async (req, res) => {
         const result = await gatewayService.retryPayout(req.params.id);
         res.status(200).json({ success: true, data: result });
@@ -49,6 +54,7 @@ export const createGatewayController = ({ gatewayService }) => {
     return Object.freeze({
         handlePayoutWebhook,
         handleRefundWebhook,
+        handleRazorpayXWebhook,
         getDashboard,
         getEvents,
         getTimeline,

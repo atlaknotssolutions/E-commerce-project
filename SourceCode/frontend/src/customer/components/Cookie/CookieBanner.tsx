@@ -1,41 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, IconButton, Slide } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import React, { useState } from 'react';
+import { Box, Button, Typography, Slide } from '@mui/material';
 import CookieSettingsModal from './CookieSettingsModal';
-
-const COOKIE_PREF_KEY = 'aiknots_cookie_consent';
+import { useCookieConsent } from '../../../hooks/useCookieConsent';
 
 const CookieBanner = () => {
-  const [visible, setVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const {
+    bannerVisible,
+    handleAcceptAll,
+    handleRejectOptional,
+    handleSaveCustom,
+  } = useCookieConsent();
 
-  useEffect(() => {
-    const pref = localStorage.getItem(COOKIE_PREF_KEY);
-    if (!pref) {
-      const timer = setTimeout(() => setVisible(true), 1500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
+  const handleCustomizeOpen = () => setSettingsOpen(true);
+  const handleCustomizeClose = () => setSettingsOpen(false);
 
-  const savePreferences = (prefs: { necessary: boolean; analytics: boolean; marketing: boolean; preferences: boolean }) => {
-    localStorage.setItem(COOKIE_PREF_KEY, JSON.stringify({ ...prefs, timestamp: Date.now() }));
-    setVisible(false);
+  const handleSaveSettings = (prefs: { necessary: boolean; analytics: boolean; marketing: boolean; preferences: boolean }) => {
+    handleSaveCustom(prefs);
     setSettingsOpen(false);
   };
 
-  const handleAcceptAll = () => {
-    savePreferences({ necessary: true, analytics: true, marketing: true, preferences: true });
-  };
-
-  const handleRejectNonEssential = () => {
-    savePreferences({ necessary: true, analytics: false, marketing: false, preferences: false });
-  };
-
-  if (!visible) return null;
+  if (!bannerVisible) return null;
 
   return (
     <>
-      <Slide direction="up" in={visible} mountOnEnter unmountOnExit>
+      <Slide direction="up" in={bannerVisible} mountOnEnter unmountOnExit>
         <Box
           sx={{
             position: 'fixed',
@@ -65,7 +54,7 @@ const CookieBanner = () => {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => setSettingsOpen(true)}
+                  onClick={handleCustomizeOpen}
                   sx={{
                     borderColor: '#d1d5db',
                     color: '#6c757d',
@@ -80,7 +69,7 @@ const CookieBanner = () => {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={handleRejectNonEssential}
+                  onClick={handleRejectOptional}
                   sx={{
                     borderColor: '#d1d5db',
                     color: '#6c757d',
@@ -115,9 +104,9 @@ const CookieBanner = () => {
 
       <CookieSettingsModal
         open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onSave={savePreferences}
-        onRejectAll={handleRejectNonEssential}
+        onClose={handleCustomizeClose}
+        onSave={handleSaveSettings}
+        onRejectAll={handleRejectOptional}
         onAcceptAll={handleAcceptAll}
       />
     </>

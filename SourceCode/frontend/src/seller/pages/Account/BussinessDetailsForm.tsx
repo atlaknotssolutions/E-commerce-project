@@ -42,7 +42,7 @@ const BusinessDetailsForm = ({ onClose }: UpdateDetailsFormProps) => {
         accountStatus: sellers.profile?.accountStatus ?? "",
       });
     }
-  }, [sellers.profile]);
+  }, [sellers.profile, formik]);
 
   return (
     <>

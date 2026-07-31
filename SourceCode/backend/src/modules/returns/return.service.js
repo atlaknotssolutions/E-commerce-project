@@ -7,7 +7,9 @@ import
         REFUND_STATUS,
         REFUND_METHOD,
         GATEWAY_REFUND_STATUS,
+        STATUS_HISTORY_ACTOR,
     } from '../../constants/enums.js';
+import { createCouponFacade } from '../../utils/couponEngine/CouponFacade.js';
 
 /**
  * Maximum number of days after delivery within which a return can be requested.
@@ -143,7 +145,8 @@ export const createReturnService = ({
             });
         }
 
-        const refundAmount = orderItem.sellingPrice * orderItem.quantity;
+        // sellingPrice already represents the line total (unitPrice * quantity)
+        const refundAmount = orderItem.sellingPrice;
 
         const returnRequest = await returnRequestRepository.create({
             returnId: generateReturnId(),
@@ -163,7 +166,7 @@ export const createReturnService = ({
                     fromStatus: null,
                     toStatus: RETURN_STATUS.REQUESTED,
                     changedBy: customerId,
-                    changedByModel: 'User',
+                    changedByModel: STATUS_HISTORY_ACTOR.USER,
                     changedByRole: 'ROLE_CUSTOMER',
                     note: `Return requested for reason: ${reason}`,
                 }),
@@ -245,7 +248,7 @@ export const createReturnService = ({
                 fromStatus: RETURN_STATUS.REQUESTED,
                 toStatus: RETURN_STATUS.APPROVED,
                 changedBy: sellerId,
-                changedByModel: 'Seller',
+                changedByModel: STATUS_HISTORY_ACTOR.SELLER,
                 changedByRole: 'ROLE_SELLER',
                 note: sellerNote || 'Return request approved.',
             }),
@@ -307,7 +310,7 @@ export const createReturnService = ({
                 fromStatus: RETURN_STATUS.REQUESTED,
                 toStatus: RETURN_STATUS.REJECTED,
                 changedBy: sellerId,
-                changedByModel: 'Seller',
+                changedByModel: STATUS_HISTORY_ACTOR.SELLER,
                 changedByRole: 'ROLE_SELLER',
                 note: sellerNote || 'Return request rejected.',
             }),
@@ -386,7 +389,7 @@ export const createReturnService = ({
                 fromStatus: RETURN_STATUS.APPROVED,
                 toStatus: RETURN_STATUS.ITEM_RECEIVED,
                 changedBy: sellerId,
-                changedByModel: 'Seller',
+                changedByModel: STATUS_HISTORY_ACTOR.SELLER,
                 changedByRole: 'ROLE_SELLER',
                 note: 'Returned item received and inventory restocked.',
             }),
@@ -424,6 +427,54 @@ export const createReturnService = ({
                 code: 'INVALID_STATUS_TRANSITION',
                 message: `Cannot process refund for a return request in "${returnRequest.returnStatus}" status.`,
             });
+        }
+
+        const order = await orderRepository.findById(returnRequest.order._id || returnRequest.order);
+        if (!order)
+        {
+            throw createApiError({
+                statusCode: 404,
+                code: 'ORDER_NOT_FOUND',
+                message: 'Order not found for this return.',
+            });
+        }
+
+        // Compute proportional post-coupon earnings to reverse
+        const orderItem = order.orderItems.find(
+            (item) => item._id.toString() === returnRequest.orderItemId.toString()
+        );
+        const itemSellingPrice = orderItem ? Number(orderItem.sellingPrice) : 0;
+        const itemMrpPrice = orderItem ? Number(orderItem.mrpPrice) : 0;
+        const orderTotalSelling = Number(order.totalSellingPrice) || 1;
+        const couponFacade = createCouponFacade();
+        const itemEarningsShare = orderTotalSelling > 0
+            ? (itemSellingPrice / orderTotalSelling) * couponFacade.computeSellerEarnings(order.totalSellingPrice, order.couponPrice)
+            : 0;
+
+        // Reverse seller earnings for this refund
+        try
+        {
+            await sellerReportRepository.applyRefund({
+                sellerId: returnRequest.seller._id || returnRequest.seller,
+                earnings: itemEarningsShare,
+                sales: itemMrpPrice,
+            });
+        }
+        catch (err)
+        {
+            // Refund reconciliation is non-blocking for the refund flow
+        }
+
+        // Cancel commission for this order if it exists
+        try
+        {
+            await commissionService.cancelCommissionForRefund(
+                returnRequest.order._id || returnRequest.order
+            );
+        }
+        catch (err)
+        {
+            // Commission cancellation is non-blocking
         }
 
         const paymentOrder = await paymentOrderRepository.findByOrderId({
@@ -480,7 +531,7 @@ export const createReturnService = ({
                 fromStatus: RETURN_STATUS.ITEM_RECEIVED,
                 toStatus: RETURN_STATUS.ITEM_RECEIVED,
                 changedBy: null,
-                changedByModel: 'System',
+                changedByModel: STATUS_HISTORY_ACTOR.SYSTEM,
                 changedByRole: 'ROLE_SYSTEM',
                 note: `Refund of amount ${returnRequest.refundAmount} initiated via ${refundMethod}. Awaiting gateway confirmation.`,
             }),

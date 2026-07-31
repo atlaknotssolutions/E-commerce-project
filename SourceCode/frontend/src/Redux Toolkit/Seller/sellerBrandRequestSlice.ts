@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { api } from "../../Config/Api";
 import {
     BrandRequest,
@@ -34,7 +34,8 @@ export const fetchSellerBrandRequests = createAsyncThunk<
 >("sellerBrandRequest/fetchAll", async (_, { rejectWithValue }) => {
     try {
         const response = await api.get(API_URL);
-        return response.data.data;
+        const raw = response.data.data;
+        return Array.isArray(raw) ? raw : [];
     } catch (error: any) {
         return rejectWithValue(
             error.response?.data?.message || "Failed to fetch brand requests"
@@ -102,7 +103,7 @@ const sellerBrandRequestSlice = createSlice({
             })
             .addCase(fetchSellerBrandRequests.fulfilled, (state, action) => {
                 state.loading = false;
-                state.requests = action.payload;
+                state.requests = Array.isArray(action.payload) ? action.payload : [];
                 state.requestsLoaded = true;
             })
             .addCase(fetchSellerBrandRequests.rejected, (state, action) => {

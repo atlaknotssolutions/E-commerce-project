@@ -562,6 +562,7 @@ export const createProductRepository = ({ Product }) =>
         minDiscount = 0,
         sort = 'newest',
         stock = null,
+        sellerId = null,
         pageNumber = 0,
         sizeLimit = 10,
         dynamicFilters = {}
@@ -602,6 +603,12 @@ export const createProductRepository = ({ Product }) =>
             {
                 filterQuery.quantity = 0;
             }
+        }
+
+        // C1. Seller filter — restricts products to a specific seller
+        if (sellerId)
+        {
+            filterQuery.seller = sellerId;
         }
 
         // D. Mathematical Ranges validations filters (Prices & Discounts caps)
@@ -899,6 +906,24 @@ export const createProductRepository = ({ Product }) =>
         ).lean();
     };
 
+    /**
+     * Returns distinct category ObjectIds for products belonging to a seller.
+     * Used by coupon system to restrict category selection per seller.
+     */
+    const findDistinctCategoriesBySeller = async (sellerId) =>
+    {
+        const result = await Product.distinct('category', { seller: sellerId });
+        return result;
+    };
+
+    /**
+     * Returns total product count for a seller.
+     */
+    const countBySeller = async (sellerId) =>
+    {
+        return Product.countDocuments({ seller: sellerId });
+    };
+
     return Object.freeze({
         create,
         findById,
@@ -908,6 +933,8 @@ export const createProductRepository = ({ Product }) =>
         searchProducts,
         getAllProducts,
         getFilterMetadata,
+        findDistinctCategoriesBySeller,
+        countBySeller,
         addVariant,
         updateVariant,
         removeVariant,

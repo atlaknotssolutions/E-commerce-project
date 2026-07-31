@@ -8,16 +8,14 @@ import {
     Paper,
     Table,
     TableBody,
-    TableCell,
     TableContainer,
     TableHead,
     TableRow,
     Chip,
     CircularProgress,
-    Alert,
-    Snackbar,
     Grid,
 } from "@mui/material";
+import { notification } from "../../../services/notificationService";
 import { useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import {
@@ -55,12 +53,6 @@ const RequestCategory = () => {
         reason: "",
     });
     const [parentInputValue, setParentInputValue] = useState(locationState?.parentCategoryName || "");
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
-        open: false,
-        message: "",
-        severity: "success",
-    });
-
     useEffect(() => {
         if (!requestsLoaded) dispatch(fetchMyRequests());
         if (!treeLoaded) dispatch(fetchCategoryTree());
@@ -68,7 +60,7 @@ const RequestCategory = () => {
 
     useEffect(() => {
         if (error) {
-            setSnackbar({ open: true, message: error, severity: "error" });
+            notification.error(error);
             dispatch(clearError());
         }
     }, [error, dispatch]);
@@ -102,7 +94,7 @@ const RequestCategory = () => {
         if (form.reason.trim()) payload.reason = form.reason.trim();
         const result = await dispatch(createRequest(payload));
         if (createRequest.fulfilled.match(result)) {
-            setSnackbar({ open: true, message: "Request submitted successfully.", severity: "success" });
+            notification.success("Request submitted successfully.");
             setForm({ requestedName: "", parentCategory: "", reason: "" });
             setParentInputValue("");
             dispatch(fetchMyRequests());
@@ -235,16 +227,6 @@ const RequestCategory = () => {
                 </TableContainer>
             )}
 
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar({ ...snackbar, open: false })}
-                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-            >
-                <Alert severity={snackbar.severity} variant="filled">
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </Box>
     );
 };

@@ -1,6 +1,7 @@
 export interface ReviewUserRef {
     id: string;
     fullName: string;
+    profileImage?: string | null;
 }
 
 export interface ReviewProductRef {

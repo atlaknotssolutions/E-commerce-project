@@ -11,8 +11,6 @@ import {
   Switch,
   FormControlLabel,
   Tooltip,
-  Snackbar,
-  Alert,
   FormControl,
   InputLabel,
   Select,
@@ -27,6 +25,7 @@ import {
   FormLabel,
   CircularProgress,
 } from "@mui/material";
+import { notification } from "../../services/notificationService";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -85,11 +84,6 @@ const VariantManager: React.FC<VariantManagerProps> = ({ product, jwt }) => {
   const [addingNew, setAddingNew] = useState(false);
   const [customAttrKey, setCustomAttrKey] = useState("");
   const [customAttrValue, setCustomAttrValue] = useState("");
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error";
-  }>({ open: false, message: "", severity: "success" });
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkPriceDialogOpen, setBulkPriceDialogOpen] = useState(false);
@@ -125,11 +119,7 @@ const VariantManager: React.FC<VariantManagerProps> = ({ product, jwt }) => {
 
   const handleAddVariant = async () => {
     if (newVariant.price <= 0) {
-      setSnackbar({
-        open: true,
-        message: "Price must be greater than 0",
-        severity: "error",
-      });
+      notification.error("Price must be greater than 0");
       return;
     }
 
@@ -143,19 +133,11 @@ const VariantManager: React.FC<VariantManagerProps> = ({ product, jwt }) => {
           jwt,
         })
       ).unwrap();
-      setSnackbar({
-        open: true,
-        message: "Variant added successfully",
-        severity: "success",
-      });
+      notification.success("Variant added successfully");
       setNewVariant(createEmptyVariant(variantAttrs));
       setAddingNew(false);
     } catch (err: any) {
-      setSnackbar({
-        open: true,
-        message: err?.message || "Failed to add variant",
-        severity: "error",
-      });
+      notification.error(err?.message || "Failed to add variant");
     }
   };
 
@@ -172,17 +154,9 @@ const VariantManager: React.FC<VariantManagerProps> = ({ product, jwt }) => {
           jwt,
         })
       ).unwrap();
-      setSnackbar({
-        open: true,
-        message: "Variant updated",
-        severity: "success",
-      });
+      notification.success("Variant updated");
     } catch (err: any) {
-      setSnackbar({
-        open: true,
-        message: err?.message || "Failed to update variant",
-        severity: "error",
-      });
+      notification.error(err?.message || "Failed to update variant");
     }
   };
 
@@ -196,18 +170,10 @@ const VariantManager: React.FC<VariantManagerProps> = ({ product, jwt }) => {
           jwt,
         })
       ).unwrap();
-      setSnackbar({
-        open: true,
-        message: "Variant removed",
-        severity: "success",
-      });
+      notification.success("Variant removed");
       if (expandedId === variantId) setExpandedId(null);
     } catch (err: any) {
-      setSnackbar({
-        open: true,
-        message: err?.message || "Failed to remove variant",
-        severity: "error",
-      });
+      notification.error(err?.message || "Failed to remove variant");
     }
   };
 
@@ -252,12 +218,12 @@ const VariantManager: React.FC<VariantManagerProps> = ({ product, jwt }) => {
           jwt,
         })
       ).unwrap();
-      setSnackbar({ open: true, message: `Updated pricing for ${selectedIds.size} variant(s)`, severity: "success" });
+      notification.success(`Updated pricing for ${selectedIds.size} variant(s)`);
       setSelectedIds(new Set());
       setBulkPriceDialogOpen(false);
       setBulkPrices({ price: "", mrpPrice: "" });
     } catch (err: any) {
-      setSnackbar({ open: true, message: err?.message || "Bulk price update failed", severity: "error" });
+      notification.error(err?.message || "Bulk price update failed");
     } finally {
       setBulkLoading(false);
     }
@@ -276,12 +242,12 @@ const VariantManager: React.FC<VariantManagerProps> = ({ product, jwt }) => {
           jwt,
         })
       ).unwrap();
-      setSnackbar({ open: true, message: `Updated stock for ${selectedIds.size} variant(s)`, severity: "success" });
+      notification.success(`Updated stock for ${selectedIds.size} variant(s)`);
       setSelectedIds(new Set());
       setBulkStockDialogOpen(false);
       setBulkStock({ operation: "set", quantity: "" });
     } catch (err: any) {
-      setSnackbar({ open: true, message: err?.message || "Bulk stock update failed", severity: "error" });
+      notification.error(err?.message || "Bulk stock update failed");
     } finally {
       setBulkLoading(false);
     }
@@ -299,11 +265,11 @@ const VariantManager: React.FC<VariantManagerProps> = ({ product, jwt }) => {
           jwt,
         })
       ).unwrap();
-      setSnackbar({ open: true, message: `Updated status for ${selectedIds.size} variant(s)`, severity: "success" });
+      notification.success(`Updated status for ${selectedIds.size} variant(s)`);
       setSelectedIds(new Set());
       setBulkStatusDialogOpen(false);
     } catch (err: any) {
-      setSnackbar({ open: true, message: err?.message || "Bulk status update failed", severity: "error" });
+      notification.error(err?.message || "Bulk status update failed");
     } finally {
       setBulkLoading(false);
     }
@@ -1079,20 +1045,6 @@ const VariantManager: React.FC<VariantManagerProps> = ({ product, jwt }) => {
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-      >
-        <Alert
-          severity={snackbar.severity}
-          variant="filled"
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

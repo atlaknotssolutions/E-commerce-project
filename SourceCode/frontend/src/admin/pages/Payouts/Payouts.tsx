@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     Container, Typography, Box, Paper, TextField, MenuItem, Button,
-    Grid, Card, CardContent, Snackbar, Alert,
+    Grid, Card, CardContent, Alert,
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
 import {
     fetchAllPayouts,
@@ -18,6 +17,7 @@ import { AdminPayoutFilters as PayoutFiltersType, AdminPayout } from '../../../t
 import PayoutTable from './components/PayoutTable';
 import PayoutDetailDialog from './components/PayoutDetailDialog';
 import ConfirmActionDialog from './components/ConfirmActionDialog';
+import { notification } from '../../../services/notificationService';
 
 const AdminPayouts: React.FC = () => {
     const dispatch = useAppDispatch();
@@ -41,12 +41,11 @@ const AdminPayouts: React.FC = () => {
     const [confirmTarget, setConfirmTarget] = useState<AdminPayout | null>(null);
     const [rejectReason, setRejectReason] = useState('');
 
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-        open: false, message: '', severity: 'success',
-    });
+    const filtersRef = useRef(filters);
+    filtersRef.current = filters;
 
     useEffect(() => {
-        dispatch(fetchAllPayouts(filters));
+        dispatch(fetchAllPayouts(filtersRef.current));
         dispatch(fetchPayoutStatistics());
     }, [dispatch, filters.page, filters.limit]);
 
@@ -86,31 +85,31 @@ const AdminPayouts: React.FC = () => {
             dispatch(approvePayoutAdmin(id))
                 .unwrap()
                 .then(() => {
-                    setSnackbar({ open: true, message: 'Payout approved successfully', severity: 'success' });
+                    notification.success('Payout approved successfully');
                     setConfirmOpen(false);
                 })
                 .catch((err: any) => {
-                    setSnackbar({ open: true, message: err || 'Failed to approve payout', severity: 'error' });
+                    notification.error(err || 'Failed to approve payout');
                 });
         } else if (confirmAction === 'reject') {
             dispatch(rejectPayoutAdmin({ id, reason: rejectReason }))
                 .unwrap()
                 .then(() => {
-                    setSnackbar({ open: true, message: 'Payout rejected successfully', severity: 'success' });
+                    notification.success('Payout rejected successfully');
                     setConfirmOpen(false);
                 })
                 .catch((err: any) => {
-                    setSnackbar({ open: true, message: err || 'Failed to reject payout', severity: 'error' });
+                    notification.error(err || 'Failed to reject payout');
                 });
         } else if (confirmAction === 'pay') {
             dispatch(markPayoutPaidAdmin(id))
                 .unwrap()
                 .then(() => {
-                    setSnackbar({ open: true, message: 'Payout marked as paid', severity: 'success' });
+                    notification.success('Payout marked as paid');
                     setConfirmOpen(false);
                 })
                 .catch((err: any) => {
-                    setSnackbar({ open: true, message: err || 'Failed to mark payout as paid', severity: 'error' });
+                    notification.error(err || 'Failed to mark payout as paid');
                 });
         }
     }, [dispatch, confirmAction, confirmTarget, rejectReason]);
@@ -246,16 +245,6 @@ const AdminPayouts: React.FC = () => {
                 loading={loading}
             />
 
-            {/* Snackbar */}
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-            >
-                <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </Container>
     );
 };

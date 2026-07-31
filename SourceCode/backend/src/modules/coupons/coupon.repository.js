@@ -69,8 +69,9 @@ export const createCouponRepository = ({ Coupon }) =>
 
     /**
      * Discovers all coupons with search, filters, and pagination.
+     * Supports enterprise fields: targetType, scope, priority.
      */
-    const findAllWithFilters = async ({ page = 1, limit = 20, search, isActive, discountType, sortBy = 'createdAt', sortOrder = 'desc' } = {}) =>
+    const findAllWithFilters = async ({ page = 1, limit = 20, search, isActive, discountType, ownerType, sellerId, scope, targetType, sortBy = 'createdAt', sortOrder = 'desc' } = {}) =>
     {
         const filter = {};
 
@@ -82,10 +83,27 @@ export const createCouponRepository = ({ Coupon }) =>
         {
             filter.discountType = discountType;
         }
+        if (ownerType)
+        {
+            filter.ownerType = ownerType;
+        }
+        if (sellerId)
+        {
+            filter.sellerId = sellerId;
+        }
+        if (scope)
+        {
+            filter.scope = scope;
+        }
+        if (targetType)
+        {
+            filter.targetType = targetType;
+        }
         if (search)
         {
             filter.$or = [
                 { code: { $regex: search, $options: 'i' } },
+                { name: { $regex: search, $options: 'i' } },
                 { description: { $regex: search, $options: 'i' } },
             ];
         }
@@ -194,6 +212,75 @@ export const createCouponRepository = ({ Coupon }) =>
             .lean();
     };
 
+    /**
+     * Returns coupons owned by a specific owner type and seller.
+     */
+    const findByOwnerAndSeller = async ({ ownerType, sellerId, page = 1, limit = 20, search, isActive } = {}) =>
+    {
+        const filter = { ownerType };
+        if (sellerId) filter.sellerId = sellerId;
+        if (isActive !== undefined && isActive !== null && isActive !== '')
+        {
+            filter.isActive = isActive === 'true' || isActive === true;
+        }
+        if (search)
+        {
+            filter.$or = [
+                { code: { $regex: search, $options: 'i' } },
+                { name: { $regex: search, $options: 'i' } },
+            ];
+        }
+
+        const skip = (page - 1) * limit;
+        const [data, total] = await Promise.all([
+            Coupon.find(filter, null, { lean: true })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Coupon.countDocuments(filter),
+        ]);
+
+        return { data, page, limit, total, totalPages: Math.ceil(total / limit) };
+    };
+
+    /**
+     * Returns stackable coupons sorted by priority (highest first).
+     */
+    const findStackableCoupons = async ({ ownerType, sellerId, cartSellingSum, userId } = {}) =>
+    {
+        const now = new Date();
+        const filter = {
+            isActive: true,
+            stackable: true,
+            validityStartDate: { $lte: now },
+            validityEndDate: { $gte: now },
+            minimumOrderValue: { $lte: cartSellingSum || 0 },
+            usedByUsers: { $ne: userId },
+        };
+        if (ownerType) filter.ownerType = ownerType;
+        if (sellerId) filter.sellerId = sellerId;
+
+        return Coupon.find(filter)
+            .sort({ priority: -1, createdAt: -1 })
+            .lean();
+    };
+
+    /**
+     * Returns coupons matching a specific target type.
+     */
+    const findByTargetType = async (targetType, options = {}) =>
+    {
+        const now = new Date();
+        return Coupon.find({
+            targetType,
+            isActive: true,
+            validityStartDate: { $lte: now },
+            validityEndDate: { $gte: now },
+        })
+            .sort({ priority: -1 })
+            .lean();
+    };
+
     return Object.freeze({
         findByCode,
         createCoupon,
@@ -208,5 +295,8 @@ export const createCouponRepository = ({ Coupon }) =>
         findUsageById,
         findAvailableForCustomer,
         findUsedByCustomer,
+        findByOwnerAndSeller,
+        findStackableCoupons,
+        findByTargetType,
     });
 };

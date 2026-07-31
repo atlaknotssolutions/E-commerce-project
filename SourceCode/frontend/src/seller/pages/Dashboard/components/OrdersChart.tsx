@@ -15,7 +15,6 @@ const COLORS = ['#F97316', '#3B82F6', '#22C55E', '#EF4444', '#8B5CF6', '#F59E0B'
 const OrdersChart: React.FC = () => {
     const orders = useAppSelector((state) => state.sellerDashboard.orders);
     const loading = useAppSelector((state) => state.sellerDashboard.loading);
-    const refreshing = useAppSelector((state) => state.sellerDashboard.refreshing);
 
     const chartData = useMemo(() => {
         if (!orders?.statusDistribution) return [];

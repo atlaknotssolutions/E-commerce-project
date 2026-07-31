@@ -1,5 +1,5 @@
 import React from 'react'
-import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store'
+import { useAppSelector } from '../../../Redux Toolkit/Store'
 import WishlistProductCard from './WishlistProductCard';
 import { Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';

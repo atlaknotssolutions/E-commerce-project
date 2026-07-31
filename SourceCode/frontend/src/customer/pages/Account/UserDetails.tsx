@@ -1,15 +1,13 @@
 import {
-  Alert,
   Avatar,
   Box,
-  Button,
   Divider,
   IconButton,
-  Snackbar,
 } from "@mui/material";
 import React, { useRef, useState } from "react";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
+import { notification } from "../../../services/notificationService";
 import { updateProfilePhoto } from "../../../Redux Toolkit/Customer/UserSlice";
 import ProfileFildCard from "../../../seller/pages/Account/ProfileFildCard";
 
@@ -18,25 +16,18 @@ const UserDetails = () => {
   const dispatch = useAppDispatch();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMsg, setSnackbarMsg] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setSnackbarMsg("Please select a valid image file.");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
+      notification.error("Please select a valid image file.");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setSnackbarMsg("Image must be less than 5MB.");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
+      notification.error("Image must be less than 5MB.");
       return;
     }
 
@@ -46,13 +37,9 @@ const UserDetails = () => {
     setUploading(true);
     try {
       await dispatch(updateProfilePhoto({ jwt, file })).unwrap();
-      setSnackbarMsg("Profile photo updated successfully.");
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true);
+      notification.success("Profile photo updated successfully.");
     } catch (err: any) {
-      setSnackbarMsg(err || "Failed to update profile photo.");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
+      notification.error(err || "Failed to update profile photo.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -115,21 +102,6 @@ const UserDetails = () => {
         </div>
       </div>
 
-      <Snackbar
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        open={snackbarOpen}
-        autoHideDuration={4000}
-        onClose={() => setSnackbarOpen(false)}
-      >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity={snackbarSeverity}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {snackbarMsg}
-        </Alert>
-      </Snackbar>
     </div>
   );
 };

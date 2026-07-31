@@ -58,6 +58,13 @@ const configuration = {
         publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     },
 
+    razorpayx: {
+        keyId: process.env.RAZORPAYX_KEY_ID,
+        keySecret: process.env.RAZORPAYX_KEY_SECRET,
+        accountNumber: process.env.RAZORPAYX_ACCOUNT_NUMBER || null,
+        webhookSecret: process.env.RAZORPAYX_WEBHOOK_SECRET || '',
+    },
+
     jwt: {
         accessSecret:
             process.env.JWT_ACCESS_SECRET ||

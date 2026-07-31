@@ -4,11 +4,8 @@ import BecomeSellerFormStep1 from "./BecomeSellerFormStep1";
 import BecomeSellerFormStep3 from "./BecomeSellerFormStep3";
 import BecomeSellerFormStep2 from "./BecomeSellerFormStep2";
 import { useFormik } from "formik";
-import * as Yup from "yup";
 import BecomeSellerFormStep4 from "./BecomeSellerFormStep4";
-import { useDispatch } from "react-redux";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
-import SellerLoginForm from "./SellerLoginForm";
 import { createSeller } from "../../../Redux Toolkit/Seller/sellerAuthenticationSlice";
 
 const steps = [
@@ -28,7 +25,7 @@ const SellerAccountForm = () => {
     setActiveStep(activeStep + value);
   };
 
-  const [otp, setOpt] = useState<any>();
+  const [, setOpt] = useState<any>();
  
   const formik = useFormik({
     initialValues: {

@@ -1,7 +1,6 @@
 import { Button } from '@mui/material'
 import React, { useState } from 'react'
 import DealsTable from './DealsTable'
-import { useAppSelector } from '../../../Redux Toolkit/Store'
 import DealsCategoryTable from './DealsCategoryTable'
 import CreateDealForm from './CreateDealForm'
 const tab = [
@@ -11,7 +10,6 @@ const tab = [
 ]
 const Deal = () => {
     const [activeTab, setActiveTab] = useState(tab[0].name);
-    const { sellers } = useAppSelector((store) => store);
 
     const handleActiveTab = (item: any) => {
         setActiveTab(item.name);

@@ -13,7 +13,6 @@ import {
     TableRow,
     Paper,
     TablePagination,
-    Chip,
     IconButton,
     Menu,
     MenuItem,
@@ -24,11 +23,7 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    Snackbar,
-    Alert,
-    Tooltip,
     Switch,
-    FormControlLabel,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -49,6 +44,7 @@ import {
 import { Brand } from "../../../types/brandTypes";
 import AdminBrandForm from "./AdminBrandForm";
 import { StyledTableCell, StyledTableRow, EmptyRow } from '../../../components/shared/Table';
+import { notification } from '../../../services/notificationService';
 
 const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return "N/A";
@@ -82,12 +78,6 @@ const AdminBrandTable: React.FC = () => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [menuBrand, setMenuBrand] = useState<Brand | null>(null);
 
-    const [snackbar, setSnackbar] = useState<{
-        open: boolean;
-        message: string;
-        severity: "success" | "error";
-    }>({ open: false, message: "", severity: "success" });
-
     const fetchPage = useCallback(() => {
         const params: any = {
             page: page + 1,
@@ -110,7 +100,7 @@ const AdminBrandTable: React.FC = () => {
 
     useEffect(() => {
         if (error) {
-            setSnackbar({ open: true, message: error, severity: "error" });
+            notification.error(error);
             dispatch(clearAdminBrandError());
         }
     }, [error, dispatch]);
@@ -120,11 +110,7 @@ const AdminBrandTable: React.FC = () => {
             updateBrandStatus({ id: brand._id, isActive: !brand.isActive })
         );
         if (updateBrandStatus.fulfilled.match(result)) {
-            setSnackbar({
-                open: true,
-                message: `Brand ${brand.isActive ? "deactivated" : "activated"} successfully.`,
-                severity: "success",
-            });
+            notification.success(`Brand ${brand.isActive ? "deactivated" : "activated"} successfully.`);
         }
     };
 
@@ -133,11 +119,7 @@ const AdminBrandTable: React.FC = () => {
             updateBrandFeatured({ id: brand._id, isFeatured: !brand.isFeatured })
         );
         if (updateBrandFeatured.fulfilled.match(result)) {
-            setSnackbar({
-                open: true,
-                message: `Brand ${brand.isFeatured ? "unfeatured" : "featured"} successfully.`,
-                severity: "success",
-            });
+            notification.success(`Brand ${brand.isFeatured ? "unfeatured" : "featured"} successfully.`);
         }
     };
 
@@ -145,7 +127,7 @@ const AdminBrandTable: React.FC = () => {
         if (!deleteDialog.brand) return;
         const result = await dispatch(deleteBrand({ id: deleteDialog.brand._id }));
         if (deleteBrand.fulfilled.match(result)) {
-            setSnackbar({ open: true, message: "Brand deleted successfully.", severity: "success" });
+            notification.success("Brand deleted successfully.");
             setDeleteDialog({ open: false, brand: null });
         }
     };
@@ -153,7 +135,7 @@ const AdminBrandTable: React.FC = () => {
     const handleRestore = async (brand: Brand) => {
         const result = await dispatch(restoreBrand({ id: brand._id }));
         if (restoreBrand.fulfilled.match(result)) {
-            setSnackbar({ open: true, message: "Brand restored successfully.", severity: "success" });
+            notification.success("Brand restored successfully.");
         }
     };
 
@@ -176,7 +158,7 @@ const AdminBrandTable: React.FC = () => {
     const handleFormSuccess = () => {
         handleFormClose();
         fetchPage();
-        setSnackbar({ open: true, message: "Brand saved successfully.", severity: "success" });
+        notification.success("Brand saved successfully.");
     };
 
     return (
@@ -374,16 +356,6 @@ const AdminBrandTable: React.FC = () => {
                 brand={editingBrand}
             />
 
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar({ ...snackbar, open: false })}
-                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-            >
-                <Alert severity={snackbar.severity} variant="filled">
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </Box>
     );
 };

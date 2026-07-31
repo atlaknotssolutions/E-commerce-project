@@ -1,3 +1,5 @@
+import { emitToUser, emitToSeller, emitToAdmin } from '../../services/socket.service.js';
+
 export const createAdminNotificationController = ({ adminNotificationService }) => {
 
     const getNotifications = async (req, res) => {
@@ -48,6 +50,9 @@ export const createAdminNotificationController = ({ adminNotificationService }) 
     const publishNotification = async (req, res) => {
         const { id } = req.params;
         const notification = await adminNotificationService.publishNotification(id);
+
+        emitToAdmin('notification:new', notification);
+
         res.status(200).json({ success: true, data: notification });
     };
 

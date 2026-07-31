@@ -14,7 +14,6 @@ import ChartContainer from './ChartContainer';
 const SalesTrendChart: React.FC = () => {
     const orders = useAppSelector((state) => state.sellerDashboard.orders);
     const loading = useAppSelector((state) => state.sellerDashboard.loading);
-    const refreshing = useAppSelector((state) => state.sellerDashboard.refreshing);
 
     const chartData = useMemo(() => {
         if (!orders?.recentOrders) return [];

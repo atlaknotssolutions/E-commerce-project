@@ -415,6 +415,7 @@ export const createProductService = ({
         const result = await productRepository.getAllProducts({
             ...filterParams,
             category: resolvedCategoryObjectId,
+            sellerId: filterParams.sellerId || null,
         });
 
         return {

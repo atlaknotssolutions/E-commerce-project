@@ -7,7 +7,6 @@ import {
     clearAdminBrandError,
 } from "../../../Redux Toolkit/Admin/adminBrandSlice";
 import {
-    fetchAllBrandRequests,
     fetchPendingBrandRequestCount,
 } from "../../../Redux Toolkit/Admin/adminBrandRequestSlice";
 import AdminBrandTable from "./AdminBrandTable";

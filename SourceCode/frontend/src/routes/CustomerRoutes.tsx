@@ -46,7 +46,7 @@ const LegalFallback = () => (
 
 const CustomerRoutes = () => {
   const dispatch = useAppDispatch()
-    const { cart, auth, user } = useAppSelector(store => store);
+    const { auth, user } = useAppSelector(store => store);
     const location = useLocation();
 
 useEffect(() => {
@@ -54,7 +54,7 @@ useEffect(() => {
 
     dispatch(fetchUserCart(localStorage.getItem("jwt") || ""));
     dispatch(getWishlistByUserId());
-}, [auth.jwt, user.user]);
+}, [auth.jwt, user.user, dispatch]);
   const hideFooter = location.pathname === '/login' || location.pathname === '/become-seller';
   return (
     <>

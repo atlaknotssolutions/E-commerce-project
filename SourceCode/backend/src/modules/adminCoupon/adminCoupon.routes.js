@@ -133,5 +133,87 @@ export const createAdminCouponRoutes = ({
         asyncHandler(adminCouponController.getUsage)
     );
 
+    // ==========================================
+    // SELLER COUPON GATEWAYS
+    // ==========================================
+
+    /**
+     * Seller Endpoint
+     * Lists coupons belonging to the authenticated seller.
+     *
+     * GET /seller/coupons?page=&limit=&search=&isActive=&scope=&targetType=
+     */
+    router.get(
+        '/seller/coupons',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(adminCouponController.listSellerCoupons)
+    );
+
+    /**
+     * Seller Endpoint
+     * Creates a new coupon for the authenticated seller.
+     *
+     * POST /seller/coupons
+     */
+    router.post(
+        '/seller/coupons',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(adminCouponController.createSellerCoupon)
+    );
+
+    /**
+     * Seller Endpoint
+     * Updates a seller's own coupon.
+     *
+     * PATCH /seller/coupons/:id
+     */
+    router.patch(
+        '/seller/coupons/:id',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(adminCouponController.updateSellerCoupon)
+    );
+
+    /**
+     * Seller Endpoint
+     * Deletes a seller's own coupon.
+     *
+     * DELETE /seller/coupons/:id
+     */
+    router.delete(
+        '/seller/coupons/:id',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(adminCouponController.deleteSellerCoupon)
+    );
+
+    /**
+     * Seller Endpoint
+     * Enables a seller's own coupon.
+     *
+     * PATCH /seller/coupons/:id/enable
+     */
+    router.patch(
+        '/seller/coupons/:id/enable',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(adminCouponController.enableSellerCoupon)
+    );
+
+    /**
+     * Seller Endpoint
+     * Disables a seller's own coupon.
+     *
+     * PATCH /seller/coupons/:id/disable
+     */
+    router.patch(
+        '/seller/coupons/:id/disable',
+        authenticate,
+        authorizeRoles('ROLE_SELLER'),
+        asyncHandler(adminCouponController.disableSellerCoupon)
+    );
+
     return Object.freeze(router);
 };

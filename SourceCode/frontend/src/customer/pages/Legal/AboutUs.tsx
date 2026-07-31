@@ -16,7 +16,6 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SearchIcon from '@mui/icons-material/Search';
 import PaymentIcon from '@mui/icons-material/Payment';
 import DeliveryDiningIcon from '@mui/icons-material/DeliveryDining';
-import FavoriteIcon from '@mui/icons-material/Favorite';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import PublicIcon from '@mui/icons-material/Public';
 import DevicesIcon from '@mui/icons-material/Devices';

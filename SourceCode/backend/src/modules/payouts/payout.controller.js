@@ -69,6 +69,32 @@ export const createPayoutController = ({ payoutService }) => {
         res.status(200).json({ success: true, data: stats });
     };
 
+    const processBatchPayouts = async (req, res) => {
+        const { payoutIds } = req.body;
+        const adminId = req.user.id;
+        const results = await payoutService.processBatchPayouts({ payoutIds, adminId });
+        res.status(200).json({ success: true, data: results });
+    };
+
+    const updateBankDetails = async (req, res) => {
+        const sellerId = req.user.id;
+        const { accountNumber, accountHolderName, IFSC } = req.body;
+        if (!accountNumber || !accountHolderName || !IFSC) {
+            return res.status(400).json({ success: false, message: 'accountNumber, accountHolderName, and IFSC are required' });
+        }
+        const result = await payoutService.updateBankDetails({
+            sellerId,
+            bankDetails: { accountNumber, accountHolderName, IFSC },
+        });
+        res.status(200).json({ success: true, data: result });
+    };
+
+    const getFundAccountStatus = async (req, res) => {
+        const sellerId = req.user.id;
+        const data = await payoutService.getFundAccountStatus(sellerId);
+        res.status(200).json({ success: true, data });
+    };
+
     return Object.freeze({
         requestPayout,
         approvePayout,
@@ -80,5 +106,8 @@ export const createPayoutController = ({ payoutService }) => {
         getAllPayouts,
         getPayoutStats,
         getSellerPayoutStats,
+        processBatchPayouts,
+        updateBankDetails,
+        getFundAccountStatus,
     });
 };

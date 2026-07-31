@@ -11,7 +11,7 @@ import UsersTable from './components/UsersTable';
 const AdminUsersPage: React.FC = () =>
 {
     const dispatch = useAppDispatch();
-    const { loading, error, loaded } = useAppSelector(
+    const { error, loaded } = useAppSelector(
         (store) => store.adminUser
     );
 

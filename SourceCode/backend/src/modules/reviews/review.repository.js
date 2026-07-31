@@ -12,7 +12,7 @@ export const createReviewRepository = ({ Review }) =>
     {
         const [newReview] = await Review.create([reviewData], options);
         if (!newReview) return null;
-        await newReview.populate({ path: 'user', select: 'fullName' });
+        await newReview.populate({ path: 'user', select: 'fullName profileImage' });
         return newReview.toObject();
     };
 
@@ -32,7 +32,7 @@ export const createReviewRepository = ({ Review }) =>
     {
         return Review.find({ product: productId }, null, options)
             .sort({ createdAt: -1 })
-            .populate('user', 'fullName') // Populates customer details securely (Masking other private properties)
+            .populate('user', 'fullName profileImage') // Populates customer details securely (Masking other private properties)
             .lean(); // Returns plain lightweight JS objects for fast memory rendering
     };
 
@@ -53,7 +53,7 @@ export const createReviewRepository = ({ Review }) =>
     {
         return Review.find({ user: userId }, null, options)
             .sort({ createdAt: -1 })
-            .populate('user', 'fullName')
+            .populate('user', 'fullName profileImage')
             .populate('product', 'title images sellingPrice')
             .lean();
     };
@@ -69,7 +69,7 @@ export const createReviewRepository = ({ Review }) =>
             { ...options, new: true, runValidators: true }
         );
         if (!updated) return null;
-        await updated.populate({ path: 'user', select: 'fullName' });
+        await updated.populate({ path: 'user', select: 'fullName profileImage' });
         return updated.toObject();
     };
 

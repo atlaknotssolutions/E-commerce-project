@@ -2,11 +2,8 @@ import React from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
 import PublicIcon from '@mui/icons-material/Public';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import StarIcon from '@mui/icons-material/Star';
-import InventoryIcon from '@mui/icons-material/Inventory';
 import { ProductModerationStats } from '../../../../types/productModerationTypes';
 
 interface ModerationStatsCardsProps {

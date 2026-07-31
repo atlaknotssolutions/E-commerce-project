@@ -1,3 +1,5 @@
+import { emitToSeller, emitToAdmin } from '../../services/socket.service.js';
+
 /**
  * Pure function-based factory representing the Seller Verification HTTP API Controllers.
  * Thin controllers — delegates all business logic to the service layer.
@@ -81,6 +83,9 @@ export const createSellerVerificationController = ({ sellerVerificationService }
             note,
         });
 
+        emitToSeller(sellerId, 'seller:statusChanged', { status: 'APPROVED', sellerId });
+        emitToAdmin('admin:sellerApproved', { sellerId, adminId });
+
         res.status(200).json({ success: true, data: result });
     };
 
@@ -99,6 +104,8 @@ export const createSellerVerificationController = ({ sellerVerificationService }
             adminId,
             reason,
         });
+
+        emitToSeller(sellerId, 'seller:statusChanged', { status: 'REJECTED', sellerId, reason });
 
         res.status(200).json({ success: true, data: result });
     };
@@ -119,6 +126,8 @@ export const createSellerVerificationController = ({ sellerVerificationService }
             reason,
         });
 
+        emitToSeller(sellerId, 'seller:statusChanged', { status: 'SUSPENDED', sellerId, reason });
+
         res.status(200).json({ success: true, data: result });
     };
 
@@ -135,6 +144,8 @@ export const createSellerVerificationController = ({ sellerVerificationService }
             sellerId,
             adminId,
         });
+
+        emitToSeller(sellerId, 'seller:statusChanged', { status: 'ACTIVE', sellerId });
 
         res.status(200).json({ success: true, data: result });
     };

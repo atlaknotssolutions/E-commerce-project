@@ -9,7 +9,6 @@ import {
     TextField,
     Pagination,
     InputAdornment,
-    Chip,
     CircularProgress,
     Grid,
 } from "@mui/material";
@@ -24,9 +23,9 @@ import {
 const PublicBrandList = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
 
-    const { brands, featuredBrands, loading, error } = useAppSelector(
+    const { brands, featuredBrands, loading } = useAppSelector(
         (state) => state.publicBrand
     );
 
@@ -43,7 +42,7 @@ const PublicBrandList = () => {
         if (featuredBrands.length === 0) {
             dispatch(fetchFeaturedBrands(8));
         }
-    }, [dispatch, page, search]);
+    }, [dispatch, page, search, featuredBrands.length]);
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearch(e.target.value);

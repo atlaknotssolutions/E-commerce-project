@@ -11,6 +11,7 @@ const mapUserRef = (user) =>
         return {
             id: user._id.toString(),
             fullName: user.fullName,
+            profileImage: user.profileImage || null,
         };
     }
 
@@ -19,6 +20,7 @@ const mapUserRef = (user) =>
         return {
             id: user.id.toString(),
             fullName: user.fullName,
+            profileImage: user.profileImage || null,
         };
     }
 

@@ -102,6 +102,24 @@ const UserSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Coupon',
     }],
+
+    // Automatic coupon distribution fields
+    birthDate: {
+        type: Date,
+        default: null,
+    },
+    referredBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+    },
+    referralCode: {
+        type: String,
+        unique: true,
+        sparse: true,
+        trim: true,
+        default: null,
+    },
 }, {
     // Automatically adds createdAt and updatedAt fields.
     timestamps: true,

@@ -11,7 +11,7 @@ import OrderTable from './components/OrderTable';
 const AdminOrderManagementPage: React.FC = () =>
 {
     const dispatch = useAppDispatch();
-    const { loading, error, stats } = useAppSelector(
+    const { error, stats } = useAppSelector(
         (store) => store.adminOrder
     );
 

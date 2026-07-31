@@ -7,6 +7,12 @@ export interface GeneralSettings {
     currency: string;
     language: string;
     country: string;
+    companyLegalName: string;
+    GSTIN: string;
+    PAN: string;
+    CIN: string;
+    website: string;
+    address: string;
 }
 
 export interface MarketplaceSettings {
@@ -18,6 +24,8 @@ export interface MarketplaceSettings {
     autoApproveProduct: boolean;
     commissionPercentage: number;
     gstPercentage: number;
+    gstEnabled: boolean;
+    commissionBase: 'selling_price' | 'post_coupon';
 }
 
 export interface OrderSettings {
@@ -71,7 +79,19 @@ export interface AppearanceSettings {
     primaryColor: string;
     secondaryColor: string;
     theme: string;
+    dateFormat: string;
+    logoMaxSize: number;
     brandingAssets: BrandingAssets;
+}
+
+export interface InvoiceSettings {
+    invoicePrefix: string;
+    invoiceFooter: string;
+    invoiceTerms: string;
+    invoiceDefaultDueDays: number;
+    invoiceShowGST: boolean;
+    invoiceShowDiscount: boolean;
+    invoiceAutoEmail: boolean;
 }
 
 export interface SystemSettings {
@@ -85,6 +105,8 @@ export interface SystemSettings {
     security: SecuritySettings;
     maintenance: MaintenanceSettings;
     appearance: AppearanceSettings;
+    invoicing: InvoiceSettings;
+    metadata: Record<string, any>;
     settingsVersion: number;
     createdAt: string;
     updatedAt: string;
@@ -99,7 +121,8 @@ export type SettingsSection =
     | 'notifications'
     | 'security'
     | 'maintenance'
-    | 'appearance';
+    | 'appearance'
+    | 'invoicing';
 
 export interface AdminSystemSettingsState {
     settings: SystemSettings | null;

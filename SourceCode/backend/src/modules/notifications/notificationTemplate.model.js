@@ -45,7 +45,6 @@ const NotificationTemplateSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-NotificationTemplateSchema.index({ name: 1 });
 NotificationTemplateSchema.index({ type: 1 });
 NotificationTemplateSchema.index({ isActive: 1 });
 

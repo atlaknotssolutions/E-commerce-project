@@ -152,6 +152,39 @@ export const PUBLISH_STATUS = Object.freeze({
   UNPUBLISHED: 'UNPUBLISHED',
 });
 
+// Customer segmentation labels
+export const CUSTOMER_SEGMENTS = Object.freeze({
+  ALL_CUSTOMERS: 'ALL_CUSTOMERS',
+  NEW_CUSTOMER: 'SEGMENT_NEW_CUSTOMER',
+  RETURNING_CUSTOMER: 'SEGMENT_RETURNING_CUSTOMER',
+  REGULAR_CUSTOMER: 'SEGMENT_REGULAR_CUSTOMER',
+  TOP_CUSTOMER: 'SEGMENT_TOP_CUSTOMER',
+  VIP_CUSTOMER: 'SEGMENT_VIP_CUSTOMER',
+  INACTIVE_CUSTOMER: 'SEGMENT_INACTIVE_CUSTOMER',
+  HIGH_SPENDER: 'SEGMENT_HIGH_SPENDER',
+  FREQUENT_BUYER: 'SEGMENT_FREQUENT_BUYER',
+});
+
+export const CUSTOMER_SEGMENT_VALUES = Object.freeze(
+  Object.values(CUSTOMER_SEGMENTS)
+);
+
+// Seller segmentation labels
+export const SELLER_SEGMENTS = Object.freeze({
+  ALL_SELLERS: 'ALL_SELLERS',
+  NEW_SELLER: 'SEGMENT_NEW_SELLER',
+  ACTIVE_SELLER: 'SEGMENT_ACTIVE_SELLER',
+  TOP_SELLER: 'SEGMENT_TOP_SELLER',
+  HIGH_REVENUE_SELLER: 'SEGMENT_HIGH_REVENUE_SELLER',
+  FAST_GROWING_SELLER: 'SEGMENT_FAST_GROWING_SELLER',
+  PREMIUM_SELLER: 'SEGMENT_PREMIUM_SELLER',
+  TRUSTED_SELLER: 'SEGMENT_TRUSTED_SELLER',
+});
+
+export const SELLER_SEGMENT_VALUES = Object.freeze(
+  Object.values(SELLER_SEGMENTS)
+);
+
 // Commission lifecycle states
 export const COMMISSION_STATUS = Object.freeze({
   CALCULATED: 'CALCULATED',
@@ -238,3 +271,57 @@ export const BRAND_SORT_OPTIONS = Object.freeze({
   CREATED_DESC: 'created_desc',
   DISPLAY_ORDER: 'display_order',
 });
+
+// Coupon scope types
+export const COUPON_SCOPE = Object.freeze({
+  ALL: 'ALL',
+  CATEGORY: 'CATEGORY',
+  PRODUCT: 'PRODUCT',
+  ORDER: 'ORDER',
+  SELLER_STORE: 'SELLER_STORE',
+});
+
+export const COUPON_SCOPE_VALUES = Object.freeze(
+  Object.values(COUPON_SCOPE)
+);
+
+// Automatic coupon distribution trigger types
+export const COUPON_TRIGGER_TYPES = Object.freeze({
+  WELCOME_REGISTRATION: 'WELCOME_REGISTRATION',
+  BIRTHDAY: 'BIRTHDAY',
+  ANNIVERSARY: 'ANNIVERSARY',
+  FIRST_PURCHASE: 'FIRST_PURCHASE',
+  REFERRAL: 'REFERRAL',
+  CART_ABANDONMENT: 'CART_ABANDONMENT',
+  INACTIVE_CUSTOMER: 'INACTIVE_CUSTOMER',
+  VIP_ACHIEVEMENT: 'VIP_ACHIEVEMENT',
+  SELLER_MILESTONE: 'SELLER_MILESTONE',
+});
+
+export const COUPON_TRIGGER_VALUES = Object.freeze(
+  Object.values(COUPON_TRIGGER_TYPES)
+);
+
+// Coupon assignment statuses
+export const COUPON_ASSIGNMENT_STATUS = Object.freeze({
+  ASSIGNED: 'ASSIGNED',
+  CLAIMED: 'CLAIMED',
+  EXPIRED: 'EXPIRED',
+  USED: 'USED',
+});
+
+export const COUPON_ASSIGNMENT_STATUS_VALUES = Object.freeze(
+  Object.values(COUPON_ASSIGNMENT_STATUS)
+);
+
+// Status history actor types (who performed a status transition)
+export const STATUS_HISTORY_ACTOR = Object.freeze({
+  USER: 'User',
+  SELLER: 'Seller',
+  ADMIN: 'Admin',
+  SYSTEM: 'System',
+});
+
+export const STATUS_HISTORY_ACTOR_VALUES = Object.freeze(
+  Object.values(STATUS_HISTORY_ACTOR)
+);

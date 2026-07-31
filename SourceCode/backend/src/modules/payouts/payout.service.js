@@ -1,9 +1,13 @@
 import { PAYOUT_STATUS, COMMISSION_STATUS, GATEWAY_PAYOUT_STATUS } from '../../constants/enums.js';
+import mongoose from 'mongoose';
 
 export const createPayoutService = ({
     payoutRepository,
     commissionRepository,
     sellerReportRepository,
+    settlementService,
+    sellerRepository,
+    razorpayXGateway,
     paymentGatewayFactory,
     gatewayEventRepository,
     gatewayUtils,
@@ -20,7 +24,6 @@ export const createPayoutService = ({
     };
 
     const ACTIVE_COMMISSION_STATUSES = [COMMISSION_STATUS.CALCULATED, COMMISSION_STATUS.APPROVED];
-    const LOCKED_PAYOUT_STATUSES = [PAYOUT_STATUS.PENDING, PAYOUT_STATUS.APPROVED];
 
     const validateTransition = (currentStatus, targetStatus) => {
         const allowed = VALID_TRANSITIONS[currentStatus] || [];
@@ -52,6 +55,74 @@ export const createPayoutService = ({
         };
     };
 
+    const ensureRazorpayXFundAccount = async (sellerId) => {
+        if (!razorpayXGateway) return null;
+
+        const seller = await sellerRepository.findById(sellerId);
+        if (!seller) {
+            throw createApiError({ statusCode: 404, message: 'Seller not found' });
+        }
+
+        if (seller.razorpayxFundAccountId && seller.razorpayxFundAccountStatus === 'ACTIVE') {
+            return seller.razorpayxFundAccountId;
+        }
+
+        const bankDetails = seller.bankDetails;
+        if (!bankDetails || !bankDetails.accountNumber || !bankDetails.IFSC) {
+            throw createApiError({
+                statusCode: 400,
+                message: 'Seller bank details are required for RazorpayX payout. Please update bank details first.',
+            });
+        }
+
+        // Create or re-use contact
+        let contactId = seller.razorpayxContactId;
+        if (!contactId) {
+            try {
+                const contact = await razorpayXGateway.createContact({
+                    name: seller.businessDetails?.businessName || seller.sellerName,
+                    email: seller.email,
+                    contact: seller.mobile,
+                    referenceId: seller._id.toString(),
+                });
+                contactId = contact.id;
+                await sellerRepository.updateRazorpayXFields({
+                    id: sellerId,
+                    contactId,
+                });
+            } catch (error) {
+                throw createApiError({
+                    statusCode: 502,
+                    message: `Failed to create RazorpayX contact: ${error.message || error}`,
+                });
+            }
+        }
+
+        // Create fund account
+        try {
+            const fundAccount = await razorpayXGateway.createFundAccount({
+                contactId,
+                accountHolderName: bankDetails.accountHolderName,
+                accountNumber: bankDetails.accountNumber.replace(/\s/g, ''),
+                ifsc: bankDetails.IFSC,
+                referenceId: `${seller._id.toString()}-${Date.now()}`,
+            });
+
+            await sellerRepository.updateRazorpayXFields({
+                id: sellerId,
+                fundAccountId: fundAccount.id,
+                fundAccountStatus: fundAccount.active ? 'ACTIVE' : 'PENDING',
+            });
+
+            return fundAccount.id;
+        } catch (error) {
+            throw createApiError({
+                statusCode: 502,
+                message: `Failed to create RazorpayX fund account: ${error.message || error}`,
+            });
+        }
+    };
+
     const requestPayout = async ({ sellerId, amount }) => {
         if (!amount || amount <= 0) {
             throw createApiError({ statusCode: 400, message: 'Payout amount must be greater than zero' });
@@ -66,8 +137,13 @@ export const createPayoutService = ({
         if (balance.availableBalance < amount) {
             throw createApiError({
                 statusCode: 400,
-                message: `Insufficient available balance. Available: ₹${balance.availableBalance}`,
+                message: `Insufficient available balance. Available: \u20B9${balance.availableBalance}`,
             });
+        }
+
+        // Ensure RazorpayX fund account exists before allowing payout request
+        if (razorpayXGateway) {
+            await ensureRazorpayXFundAccount(sellerId);
         }
 
         const payout = await payoutRepository.create({
@@ -106,8 +182,23 @@ export const createPayoutService = ({
             throw createApiError({ statusCode: 409, message: 'Payout already sent to gateway' });
         }
 
-        const provider = mockGatewaysConfig?.defaultPayoutProvider || 'mock_razorpayx';
-        const gateway = paymentGatewayFactory.getPayoutGateway(provider);
+        // Resolve the fund account ID for the seller
+        const sellerId = payout.seller?._id || payout.seller;
+        let fundAccountId;
+
+        if (razorpayXGateway) {
+            const seller = await sellerRepository.findById(sellerId);
+            if (seller?.razorpayxFundAccountId && seller?.razorpayxFundAccountStatus === 'ACTIVE') {
+                fundAccountId = seller.razorpayxFundAccountId;
+            } else {
+                fundAccountId = await ensureRazorpayXFundAccount(sellerId);
+            }
+        } else {
+            fundAccountId = `fa_${sellerId}`;
+        }
+
+        const provider = razorpayXGateway ? 'RAZORPAYX' : (mockGatewaysConfig?.defaultPayoutProvider || 'mock_razorpayx');
+        const gateway = razorpayXGateway || paymentGatewayFactory.getPayoutGateway(provider);
         const idempotencyKey = gatewayUtils.generateIdempotencyKey('PAYOUT', payoutId.toString(), 1);
         const correlationId = gatewayUtils.generateCorrelationId();
 
@@ -118,7 +209,7 @@ export const createPayoutService = ({
             mode: 'NEFT',
             purpose: 'payout',
             referenceId: `ref_${payoutId.toString()}`,
-            fundAccountId: `fa_${payout.seller?._id || payout.seller}`,
+            fundAccountId,
             idempotencyKey,
             correlationId,
         });
@@ -142,7 +233,45 @@ export const createPayoutService = ({
             throw createApiError({ statusCode: 409, message: 'Payout was concurrently claimed by another request' });
         }
 
+        // Create settlement record
+        if (settlementService) {
+            try {
+                await settlementService.createSettlementRecord({
+                    payoutId,
+                    sellerId,
+                    type: 'PAYOUT',
+                    amount: payout.amount,
+                    gatewayPayoutId: gatewayResponse.id,
+                    referenceId: `ref_${payoutId.toString()}`,
+                    bankAccount: payout.seller?.bankDetails || null,
+                });
+            } catch (err) {
+                // Non-blocking — payout succeeded, settlement logging is secondary
+            }
+        }
+
         return mapPayout(claimed);
+    };
+
+    const processBatchPayouts = async ({ payoutIds, adminId } = {}) => {
+        let ids = payoutIds;
+        if (!ids || ids.length === 0) {
+            const pending = await payoutRepository.findAll({ status: PAYOUT_STATUS.APPROVED, limit: 50 });
+            ids = pending.payouts
+                .filter((p) => !p.gatewayPayoutId)
+                .map((p) => p._id.toString());
+        }
+
+        const results = [];
+        for (const id of ids) {
+            try {
+                const result = await executeGatewayPayout(id);
+                results.push({ payoutId: id, success: true, payout: result });
+            } catch (error) {
+                results.push({ payoutId: id, success: false, error: error.message });
+            }
+        }
+        return results;
     };
 
     const completeBusinessPayout = async (payoutId, options = {}) => {
@@ -163,6 +292,18 @@ export const createPayoutService = ({
             processedAt: new Date(),
         }, options);
 
+        // Complete the settlement record
+        if (settlementService) {
+            try {
+                const settlement = await settlementService.findByPayout(payoutId);
+                if (settlement) {
+                    await settlementService.completeSettlement(settlement._id, {
+                        settledAt: new Date(),
+                    });
+                }
+            } catch (err) { /* non-blocking */ }
+        }
+
         return mapPayout(updated);
     };
 
@@ -177,6 +318,40 @@ export const createPayoutService = ({
             processedAt: new Date(),
         });
         return mapPayout(updated);
+    };
+
+    const updateBankDetails = async ({ sellerId, bankDetails }) => {
+        const seller = await sellerRepository.findById(sellerId);
+        if (!seller) {
+            throw createApiError({ statusCode: 404, message: 'Seller not found' });
+        }
+
+        // Clear existing RazorpayX fund account so it gets recreated on next payout
+        await sellerRepository.updateRazorpayXFields({
+            id: sellerId,
+            fundAccountId: null,
+            fundAccountStatus: null,
+        });
+
+        const SellerModel = mongoose.model('Seller');
+        await SellerModel.findByIdAndUpdate(sellerId, {
+            $set: {
+                'bankDetails.accountNumber': bankDetails.accountNumber,
+                'bankDetails.accountHolderName': bankDetails.accountHolderName,
+                'bankDetails.IFSC': bankDetails.IFSC,
+            },
+        });
+
+        // Re-create fund account if RazorpayX gateway is active
+        if (razorpayXGateway) {
+            try {
+                await ensureRazorpayXFundAccount(sellerId);
+            } catch (err) {
+                // Fund account creation failure should not block bank detail update
+            }
+        }
+
+        return { success: true, message: 'Bank details updated successfully' };
     };
 
     const getPayout = async (id) => {
@@ -211,11 +386,21 @@ export const createPayoutService = ({
         return await payoutRepository.getSellerPayoutStats(sellerId);
     };
 
+    const getFundAccountStatus = async (sellerId) => {
+        const seller = await sellerRepository.findById(sellerId);
+        return {
+            contactId: seller?.razorpayxContactId || null,
+            fundAccountId: seller?.razorpayxFundAccountId || null,
+            fundAccountStatus: seller?.razorpayxFundAccountStatus || null,
+        };
+    };
+
     return Object.freeze({
         requestPayout,
         approvePayout,
         rejectPayout,
         executeGatewayPayout,
+        processBatchPayouts,
         completeBusinessPayout,
         getPayout,
         getSellerPayouts,
@@ -223,5 +408,8 @@ export const createPayoutService = ({
         getPayoutStats,
         getSellerPayoutStats,
         getAvailableBalance,
+        ensureRazorpayXFundAccount,
+        updateBankDetails,
+        getFundAccountStatus,
     });
 };

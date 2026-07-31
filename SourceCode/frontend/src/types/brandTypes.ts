@@ -19,12 +19,15 @@ export interface Brand {
 }
 
 export interface BrandRequest {
-    _id: string;
+    _id?: string;
+    id?: string;
     seller: {
-        _id: string;
+        _id?: string;
+        id?: string;
         name?: string;
         email?: string;
-    };
+        businessName?: string;
+    } | null;
     name: string;
     description?: string;
     logo?: string;

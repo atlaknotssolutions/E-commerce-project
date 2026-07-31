@@ -40,7 +40,7 @@ const PersonalDetailsForm = ({ onClose }: UpdateDetailsFormProps) => {
             })
         }
 
-    }, [sellers.profile])
+    }, [sellers.profile, formik])
 
     return (
         <>

@@ -135,6 +135,11 @@ const sellerAuthSlice = createSlice({
             state.jwt = null;
             state.sellerCreated = null;
         },
+        clearSellerAuthMessages: (state) => {
+            state.sellerCreated = null;
+            state.error = null;
+            state.otpSent = false;
+        },
     },
 
     extraReducers: (builder) => {
@@ -215,6 +220,6 @@ const sellerAuthSlice = createSlice({
     },
 });
 
-export const { resetSellerAuthState } = sellerAuthSlice.actions;
+export const { resetSellerAuthState, clearSellerAuthMessages } = sellerAuthSlice.actions;
 
 export default sellerAuthSlice.reducer;
