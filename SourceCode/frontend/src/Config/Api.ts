@@ -1,37 +1,27 @@
-
 import axios from "axios";
 
-export const API_URL = "https://e-commerce-project-1-sb2k.onrender.com";
+export const API_URL = "http://localhost:5000";
 
 export const api = axios.create({
-    baseURL: API_URL,
-    headers: {
-        "Content-Type": "application/json",
-    },
-    withCredentials: true,
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
 });
 
 api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem("jwt");
+  (config) => {
+    const token = localStorage.getItem("jwt");
 
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
 
-        return config;
-    },
-    (error) => Promise.reject(error)
+    return config;
+  },
+  (error) => Promise.reject(error),
 );
-
-
-
-
-
-
-
-
-
 
 // import axios from 'axios';
 
@@ -40,7 +30,7 @@ api.interceptors.request.use(
 // // change api
 
 // export const api = axios.create({
-//   baseURL: API_URL, 
+//   baseURL: API_URL,
 //   headers: {
 //     'Content-Type': 'application/json',
 //   },
