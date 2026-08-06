@@ -1,9 +1,14 @@
 import http from 'http';
-import { env } from './config/env.js';
-import { createDatabaseManager } from './database/db.js';
-import { createApp } from './app.js';
-import { createSocketService } from './services/socket.service.js';
+import { env } from './src/config/env.js';
+import { createDatabaseManager } from './src/database/db.js';
+import { createApp } from './src/app.js';
+import { createSocketService } from './src/services/socket.service.js';
+import dns from "node:dns";
 
+
+dns.setServers(["8.8.8.8", "1.1.1.1", "0.0.0.0"]);
+// ya
+// import * as dns from "node:dns";
 // Create the database manager with the MongoDB connection string
 const dbManager = createDatabaseManager({ mongoDbUri: env.mongoDbUri });
 
@@ -13,6 +18,7 @@ const startServer = async () =>
   {
     // Connect to the database before starting the server
     await dbManager.connect();
+    
 
     // Create the Express application
     const app = await createApp({

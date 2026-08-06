@@ -329,7 +329,7 @@ export const createApp = async ({ env, dbManager }) =>
     const jwtRefreshSecret = env.jwt.refreshSecret;
     const jwtRefreshExpiresIn = env.jwt.refreshExpiresIn;
 
-    console.log("Cloud Name:", env.cloudinary.cloudName);
+    // console.log("Cloud Name:", env.cloudinary.cloudName);
     // =========================================================================
     // SECURITY MIDDLEWARES INSTANTIATIONS
     // =========================================================================

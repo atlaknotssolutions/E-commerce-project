@@ -67,7 +67,7 @@ function App()
 
   return (
     <ThemeProvider theme={customeTheme}>
-      <div className='App' >
+      <div className='App' data-build="BUILDMARKERXYZ_2608" >
         <NotificationProvider />
         <SocketEventHandler />
 

@@ -13,7 +13,7 @@ export const createDatabaseManager = ({ mongoDbUri }) =>
         try
         {
             await mongoose.connect(mongoDbUri);
-            console.log('Successfully connected to MongoDB.');
+            console.log('✅Successfully connected to MongoDB.');
         } catch (error)
         {
             console.error('CRITICAL: MongoDB connection failed!', error.message);
