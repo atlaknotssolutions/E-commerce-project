@@ -33,7 +33,6 @@ const BecomeSeller = () =>
       dispatch(clearSellerAuthMessages());
     } else if (sellerAuth.otpSent) {
       notification.success("OTP sent to your email!");
-      dispatch(clearSellerAuthMessages());
     }
   }, [sellerAuth.sellerCreated, sellerAuth.error, sellerAuth.otpSent, dispatch]);
 

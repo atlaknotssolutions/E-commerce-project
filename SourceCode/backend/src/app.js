@@ -309,15 +309,15 @@ export const createApp = async ({ env, dbManager }) =>
 
     // 1. Core Global Security Middlewares
     app.use(helmet());
-   app.use(
-  cors({
-    origin: [
-      "https://e-commerce-project-iota-ten.vercel.app",
-      "http://localhost:3000",
-    ],
-    credentials: true,
-  })
-);
+    app.use(
+        cors({
+            origin: [
+                "https://e-commerce-project-iota-ten.vercel.app",
+                "http://localhost:3000",
+            ],
+            credentials: true,
+        })
+    );
 
     // 2. Dynamic Performance and Parsers Utilities
     app.use(compression());

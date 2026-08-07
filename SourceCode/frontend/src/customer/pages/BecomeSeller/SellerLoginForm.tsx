@@ -4,6 +4,7 @@ import OTPInput from '../../components/OtpFild/OTPInput'
 import { useFormik } from 'formik';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
 import { sendLoginOtp, verifyLoginOtp } from '../../../Redux Toolkit/Seller/sellerAuthenticationSlice';
+import { fetchSellerProfile } from '../../../Redux Toolkit/Seller/sellerSlice';
 import { useNavigate } from 'react-router-dom';
 
 const SellerLoginForm = () => {
@@ -21,10 +22,19 @@ const SellerLoginForm = () => {
             otp: ''
         },
         
-        onSubmit: (values: any) => {
-            // Handle form submission
-            dispatch(verifyLoginOtp({email:values.email, otp, navigate}))
-            console.log('Form data:', values);
+        onSubmit: async (values: any) => {
+            const result = await dispatch(verifyLoginOtp({ email: values.email, otp }));
+
+            if (!verifyLoginOtp.fulfilled.match(result)) return;
+
+            const jwt = localStorage.getItem("jwt");
+            if (!jwt) return;
+
+            const profileResult = await dispatch(fetchSellerProfile(jwt));
+
+            if (fetchSellerProfile.fulfilled.match(profileResult)) {
+                navigate("/seller");
+            }
         }
     });
 

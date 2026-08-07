@@ -61,7 +61,7 @@ export const sendLoginOtp = createAsyncThunk(
 export const verifyLoginOtp = createAsyncThunk(
     'otp/verifyLoginOtp',
     async (
-        data: { email: string; otp: string; navigate: any },
+        data: { email: string; otp: string },
         { rejectWithValue }
     ) => {
         try {
@@ -70,8 +70,6 @@ export const verifyLoginOtp = createAsyncThunk(
             console.log("login seller success - ", response.data);
 
             localStorage.setItem("jwt", response.data.jwt);
-
-            data.navigate("/seller");
 
             return response.data;
         } catch (error: any) {
@@ -138,7 +136,6 @@ const sellerAuthSlice = createSlice({
         clearSellerAuthMessages: (state) => {
             state.sellerCreated = null;
             state.error = null;
-            state.otpSent = false;
         },
     },
 
@@ -177,6 +174,7 @@ const sellerAuthSlice = createSlice({
             .addCase(verifyLoginOtp.fulfilled, (state, action) => {
                 state.loading = false;
                 state.jwt = action.payload.jwt;
+                state.otpSent = false;
                 state.error = null;
             })
 
