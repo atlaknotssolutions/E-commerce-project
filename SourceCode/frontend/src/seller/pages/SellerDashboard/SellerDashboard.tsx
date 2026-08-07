@@ -3,11 +3,13 @@ import React, { useEffect, useRef } from "react";
 import SellerRoutes from "../../../routes/SellerRoutes";
 import Navbar from "../../../admin seller/components/navbar/Navbar";
 import SellerDrawerList from "../../components/SideBar/DrawerList";
+import { useAppSelector } from "../../../Redux Toolkit/Store";
 import { useLocation } from "react-router-dom";
 
 const SellerDashboard = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const { sellers } = useAppSelector(store => store);
 
   useEffect(() => {
     if (contentRef.current) {
@@ -17,7 +19,7 @@ const SellerDashboard = () => {
 
   return (
     <div className="min-h-screen">
-      <Navbar DrawerList={SellerDrawerList}/>
+      <Navbar DrawerList={SellerDrawerList} role="seller" profile={sellers.profile} />
       <section className="lg:flex lg:h-[90vh]">
         <div className="hidden lg:block h-full">
         <SellerDrawerList/>

@@ -11,7 +11,7 @@ import { useLocation } from 'react-router-dom'
 
 const AdminDashboard = () => {
   const dispatch = useAppDispatch();
-  const { adminDeals: deal, admin } = useAppSelector(store => store)
+  const { adminDeals: deal, admin, user } = useAppSelector(store => store)
   const contentRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
@@ -42,7 +42,7 @@ const AdminDashboard = () => {
   return (
     <>
       <div className="min-h-screen">
-        <Navbar DrawerList={AdminDrawerList} />
+        <Navbar DrawerList={AdminDrawerList} role="admin" profile={user.user} />
         <section className="lg:flex lg:h-[90vh]">
           <div className="hidden lg:block h-full">
             <AdminDrawerList />
