@@ -13,6 +13,11 @@ import { api } from '../../Config/Api';
 import { RootState } from '../Store';
 import { resetUserState } from './UserSlice';
 import { resetCartState } from './CartSlice';
+import { resetSellerState } from '../Seller/sellerSlice';
+import { resetSellerAuthState } from '../Seller/sellerAuthenticationSlice';
+import { resetSellerDashboard } from '../Seller/sellerDashboardSlice';
+import { resetWalletState } from '../Seller/walletSlice';
+import { resetPayoutState } from '../Seller/payoutSlice';
 
 
 const initialState: AuthState = {
@@ -220,6 +225,11 @@ export const performLogout = () => async (dispatch: any) =>
     dispatch(logout());
     dispatch(resetUserState());
     dispatch(resetCartState());
+    dispatch(resetSellerState());
+    dispatch(resetSellerAuthState());
+    dispatch(resetSellerDashboard());
+    dispatch(resetWalletState());
+    dispatch(resetPayoutState());
 };
 
 export const selectAuth = (state: RootState) => state.auth;

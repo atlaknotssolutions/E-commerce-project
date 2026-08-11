@@ -11,16 +11,16 @@ import { fetchSellerLedgerStats, fetchSellerSettlementStats } from "../../../../
 
 const OverviewTab = () => {
   const dispatch = useAppDispatch();
-  const { sellers, payouts } = useAppSelector((store) => store);
+  const { sellers, payouts, wallet } = useAppSelector((store) => store);
 
   useEffect(() => {
     const jwt = localStorage.getItem("jwt");
     if (!jwt) return;
     if (!sellers.reportLoaded) dispatch(fetchSellerReport(jwt));
-    dispatch(fetchPayoutBalance(jwt));
-    dispatch(fetchSellerLedgerStats());
-    dispatch(fetchSellerSettlementStats());
-  }, [dispatch, sellers.reportLoaded]);
+    if (!payouts.balanceLoaded) dispatch(fetchPayoutBalance(jwt));
+    if (!wallet.ledgerStatsLoaded) dispatch(fetchSellerLedgerStats());
+    if (!wallet.settlementStatsLoaded) dispatch(fetchSellerSettlementStats());
+  }, [dispatch, sellers.reportLoaded, payouts.balanceLoaded, wallet.ledgerStatsLoaded, wallet.settlementStatsLoaded]);
 
   const report = sellers.report;
   const balance = payouts.balance;

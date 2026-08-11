@@ -25,9 +25,12 @@ const TransactionsTab = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
 
+  const requestKey = `${page + 1}:${rowsPerPage}`;
+
   useEffect(() => {
+    if (wallet.ledgerRequestKey === requestKey) return;
     dispatch(fetchSellerLedger({ page: page + 1, limit: rowsPerPage }));
-  }, [dispatch, page, rowsPerPage]);
+  }, [dispatch, wallet.ledgerRequestKey, page, rowsPerPage, requestKey]);
 
   const handleChangePage = (_: unknown, newPage: number) => setPage(newPage);
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {

@@ -23,10 +23,13 @@ const SettlementReportsTab = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
 
+  const requestKey = `${page + 1}:${rowsPerPage}`;
+
   useEffect(() => {
+    if (!wallet.settlementStatsLoaded) dispatch(fetchSellerSettlementStats());
+    if (wallet.settlementRequestKey === requestKey) return;
     dispatch(fetchSellerSettlements({ page: page + 1, limit: rowsPerPage }));
-    dispatch(fetchSellerSettlementStats());
-  }, [dispatch, page, rowsPerPage]);
+  }, [dispatch, wallet.settlementRequestKey, wallet.settlementStatsLoaded, page, rowsPerPage, requestKey]);
 
   const stats = wallet.settlementStats;
 

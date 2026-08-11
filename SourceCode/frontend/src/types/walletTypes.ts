@@ -61,4 +61,8 @@ export interface WalletState {
   settlementLoading: boolean;
   settlementError: string | null;
   pagination: Pagination | null;
+  ledgerRequestKey: string | null;
+  ledgerStatsLoaded: boolean;
+  settlementRequestKey: string | null;
+  settlementStatsLoaded: boolean;
 }

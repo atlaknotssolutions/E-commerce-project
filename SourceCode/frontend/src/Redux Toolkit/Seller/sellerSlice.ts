@@ -295,6 +295,16 @@ const sellerSlice = createSlice({
       state.profileUpdated = false;
       state.error = null;
     },
+    resetSellerState: (state) => {
+      state.sellers = [];
+      state.selectedSeller = null;
+      state.profile = null;
+      state.loading = false;
+      state.error = null;
+      state.report = null;
+      state.profileUpdated = false;
+      state.reportLoaded = false;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -425,7 +435,7 @@ const sellerSlice = createSlice({
   },
 });
 
-export const { clearSellerMessages } = sellerSlice.actions;
+export const { clearSellerMessages, resetSellerState } = sellerSlice.actions;
 export default sellerSlice.reducer;
 
 // Define selector functions

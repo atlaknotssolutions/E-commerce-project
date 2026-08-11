@@ -12,7 +12,10 @@ import
   FormHelperText,
   Grid,
   CircularProgress,
+  Box,
+  Typography,
 } from "@mui/material";
+import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import "tailwindcss/tailwind.css";
 import { colors } from "../../../data/Filter/color";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
@@ -465,21 +468,45 @@ const ProductForm = () =>
             </FormControl>
           </Grid>
           <Grid item xs={12}>
-            <Button
-              variant="text"
-              color="secondary"
-              fullWidth
-              onClick={() =>
-                navigate("/seller/request-category", {
-                  state: {
-                    parentCategoryId: selectedLevel2?._id || selectedLevel1?._id || "",
-                    parentCategoryName: selectedLevel2?.name || selectedLevel1?.name || "",
-                  },
-                })
-              }
+            <Box
+              role="note"
+              aria-label="Category not found note"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border p-4"
+              sx={{
+                backgroundColor: "rgba(0, 146, 124, 0.08)",
+                borderColor: "primary.main",
+                borderWidth: 1,
+                borderStyle: "solid",
+              }}
             >
-              Category not found? Request New Category
-            </Button>
+              <div className="flex items-start gap-3">
+                <InfoOutlined color="primary" className="mt-0.5 shrink-0" />
+                <div>
+                  <Typography variant="subtitle2" color="text.primary" sx={{ fontWeight: 600 }}>
+                    Note: Category not found?
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Request a new category and the admin will review it before making it available.
+                  </Typography>
+                </div>
+              </div>
+              <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                className="shrink-0"
+                onClick={() =>
+                  navigate("/seller/request-category", {
+                    state: {
+                      parentCategoryId: selectedLevel2?._id || selectedLevel1?._id || "",
+                      parentCategoryName: selectedLevel2?.name || selectedLevel1?.name || "",
+                    },
+                  })
+                }
+              >
+                Request New Category
+              </Button>
+            </Box>
           </Grid>
           <Grid item xs={12} sm={6} lg={4}>
             <FormControl fullWidth>
@@ -505,14 +532,38 @@ const ProductForm = () =>
             </FormControl>
           </Grid>
           <Grid item xs={12}>
-            <Button
-              variant="text"
-              color="secondary"
-              fullWidth
-              onClick={() => navigate("/seller/request-brand")}
+            <Box
+              role="note"
+              aria-label="Brand not found note"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border p-4"
+              sx={{
+                backgroundColor: "rgba(0, 146, 124, 0.08)",
+                borderColor: "primary.main",
+                borderWidth: 1,
+                borderStyle: "solid",
+              }}
             >
-              Brand not found? Request New Brand
-            </Button>
+              <div className="flex items-start gap-3">
+                <InfoOutlined color="primary" className="mt-0.5 shrink-0" />
+                <div>
+                  <Typography variant="subtitle2" color="text.primary" sx={{ fontWeight: 600 }}>
+                    Note: Brand not found?
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Request a new brand and the admin will review it before approving it.
+                  </Typography>
+                </div>
+              </div>
+              <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                className="shrink-0"
+                onClick={() => navigate("/seller/request-brand")}
+              >
+                Request New Brand
+              </Button>
+            </Box>
           </Grid>
           <Grid item xs={12}>
             <Button

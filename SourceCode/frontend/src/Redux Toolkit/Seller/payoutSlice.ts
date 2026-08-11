@@ -10,6 +10,7 @@ interface PayoutsState {
   loading: boolean;
   error: string | null;
   payoutsLoaded: boolean;
+  balanceLoaded: boolean;
 }
 
 const initialState: PayoutsState = {
@@ -20,6 +21,7 @@ const initialState: PayoutsState = {
   loading: false,
   error: null,
   payoutsLoaded: false,
+  balanceLoaded: false,
 };
 
 export const fetchPayoutsBySeller = createAsyncThunk<
@@ -157,6 +159,7 @@ const payoutsSlice = createSlice({
     clearPayoutError: (state) => {
       state.error = null;
     },
+    resetPayoutState: () => initialState,
   },
   extraReducers: (builder) => {
     builder
@@ -175,9 +178,11 @@ const payoutsSlice = createSlice({
       })
       .addCase(fetchPayoutBalance.pending, (state) => {
         state.error = null;
+        state.balanceLoaded = true;
       })
       .addCase(fetchPayoutBalance.fulfilled, (state, action) => {
         state.balance = action.payload;
+        state.balanceLoaded = true;
       })
       .addCase(fetchPayoutBalance.rejected, (state, action) => {
         state.error = action.payload as string;
@@ -245,5 +250,5 @@ const payoutsSlice = createSlice({
   },
 });
 
-export const { clearPayoutError } = payoutsSlice.actions;
+export const { clearPayoutError, resetPayoutState } = payoutsSlice.actions;
 export default payoutsSlice.reducer;

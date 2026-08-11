@@ -31,10 +31,11 @@ const BankAccountTab = () => {
 
   const formik = useFormik({
     initialValues: {
-      accountHolderName: "",
-      accountNumber: "",
-      ifscCode: "",
+      accountHolderName: sellers.profile?.bankDetails?.accountHolderName || "",
+      accountNumber: sellers.profile?.bankDetails?.accountNumber || "",
+      ifscCode: sellers.profile?.bankDetails?.ifscCode || "",
     },
+    enableReinitialize: true,
     validationSchema: Yup.object({
       accountHolderName: Yup.string().required("Account Holder Name is required"),
       accountNumber: Yup.string().required("Account Number is required"),
@@ -50,16 +51,6 @@ const BankAccountTab = () => {
       }
     },
   });
-
-  useEffect(() => {
-    if (sellers.profile?.bankDetails) {
-      formik.setValues({
-        accountHolderName: sellers.profile.bankDetails.accountHolderName || "",
-        accountNumber: sellers.profile.bankDetails.accountNumber || "",
-        ifscCode: sellers.profile.bankDetails.ifscCode || "",
-      });
-    }
-  }, [sellers.profile, formik]);
 
   const profile = sellers.profile;
   const bankDetails = profile?.bankDetails;

@@ -30,8 +30,8 @@ const PayoutsTab = () => {
 
   useEffect(() => {
     if (!payouts.payoutsLoaded) dispatch(fetchPayoutsBySeller(jwt));
-    dispatch(fetchPayoutBalance(jwt));
-  }, [dispatch, payouts.payoutsLoaded, jwt]);
+    if (!payouts.balanceLoaded) dispatch(fetchPayoutBalance(jwt));
+  }, [dispatch, payouts.payoutsLoaded, payouts.balanceLoaded, jwt]);
 
   useEffect(() => {
     if (snackbar) {
