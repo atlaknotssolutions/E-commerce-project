@@ -8,7 +8,7 @@ import * as Yup from "yup";
 import BecomeSellerFormStep4 from "./BecomeSellerFormStep4";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { createSeller } from "../../../Redux Toolkit/Seller/sellerAuthenticationSlice";
-import { notification } from "../../../services/notificationService";
+// import { notification } from "../../../services/notificationService";
 
 const steps = [
     "Tax Details & Mobile",

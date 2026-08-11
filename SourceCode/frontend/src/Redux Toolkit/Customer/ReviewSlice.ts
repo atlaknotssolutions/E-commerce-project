@@ -1,4 +1,4 @@
-﻿import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import {
   ApiResponse,
   CreateReviewRequest,
