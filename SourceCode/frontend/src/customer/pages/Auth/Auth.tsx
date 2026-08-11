@@ -4,7 +4,7 @@ import { Button } from '@mui/material';
 import SignupForm from './SignupForm';
 import { notification } from '../../../services/notificationService';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
-import { clearOtpSent, clearAuthError } from '../../../Redux Toolkit/Customer/AuthSlice';
+import { clearAuthError } from '../../../Redux Toolkit/Customer/AuthSlice';
 
 const Auth = () => {
     const [isLoginPage, setIsLoginPage] = useState(true);
@@ -14,7 +14,6 @@ const Auth = () => {
     useEffect(() => {
         if (auth.otpSent) {
             notification.success("OTP sent to your email!");
-            dispatch(clearOtpSent());
         } else if (auth.error) {
             notification.error(auth.error);
             dispatch(clearAuthError());
