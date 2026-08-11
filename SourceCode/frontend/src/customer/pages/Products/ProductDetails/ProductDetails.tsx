@@ -14,7 +14,6 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import StorefrontIcon from '@mui/icons-material/Storefront';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import ShareIcon from '@mui/icons-material/Share';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
@@ -35,7 +34,7 @@ import { computeReviewStatistics } from '../../../../util/reviewStatistics';
 import { normalizeSizes } from '../../../../util/normalizeSizes';
 import VariantSelector from '../../../components/VariantSelector';
 import { ProductImage, Product } from '../../../../types/productTypes';
-import { isAuthenticated, requireAuthentication } from '../../../../util/requireAuth';
+import { requireAuthentication } from '../../../../util/requireAuth';
 import { notification } from '../../../../services/notificationService';
 
 const ProductDetails = () => {
