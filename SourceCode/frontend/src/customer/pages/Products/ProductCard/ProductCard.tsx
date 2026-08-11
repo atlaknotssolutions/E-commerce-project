@@ -3,12 +3,13 @@ import "./ProductCard.css";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import { IconButton, Rating, Tooltip } from "@mui/material";
+import { IconButton, Tooltip } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../../../../types/productTypes";
 import { useAppDispatch, useAppSelector } from "../../../../Redux Toolkit/Store";
 import { addProductToWishlist } from "../../../../Redux Toolkit/Customer/WishlistSlice";
 import { isWishlisted } from "../../../../util/isWishlisted";
+import { requireAuthentication } from "../../../../util/requireAuth";
 
 interface ProductCardProps {
   item: Product;
@@ -36,6 +37,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, viewMode = "grid", onAi
 
   const handleAddWishlist = (event: MouseEvent) => {
     event.stopPropagation();
+    const loginPath = requireAuthentication("Please login to add items to wishlist");
+    if (loginPath) {
+      navigate(loginPath, { state: { from: `${window.location.pathname}${window.location.search}` } });
+      return;
+    }
     if (item.id) dispatch(addProductToWishlist({ productId: item.id }));
   };
 
@@ -86,8 +92,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, viewMode = "grid", onAi
             {item.brand && <p className="text-xs text-gray-400 uppercase tracking-wide">{item.brand}</p>}
             <p className="font-medium text-gray-800 line-clamp-2">{item.title}</p>
             <div className="flex items-center gap-2 mt-1">
-              <Rating value={4} readOnly size="small" precision={0.5} />
-              <span className="text-xs text-gray-400">({item.numRatings || 0})</span>
+              {item.numRatings ? <span className="text-xs text-gray-400">{item.numRatings} ratings</span> : null}
             </div>
             {item.seller?.businessDetails?.businessName && (
               <p className="text-xs text-gray-400 mt-1">by {item.seller.businessDetails.businessName}</p>
@@ -187,8 +192,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, viewMode = "grid", onAi
         <p className="text-sm font-medium text-gray-800 line-clamp-2 leading-snug">{item.title}</p>
 
         <div className="flex items-center gap-1">
-          <Rating value={4} readOnly size="small" precision={0.5} />
-          <span className="text-xs text-gray-400">({item.numRatings || 0})</span>
+          {item.numRatings ? <span className="text-xs text-gray-400">{item.numRatings} ratings</span> : null}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">

@@ -18,6 +18,8 @@ const CategorySheet = ({ selectedCategory, toggleDrawer, setShowSheet }: Categor
         (category) => category.categoryId === selectedCategory
     )
 
+    const subCategories = selectedNode?.children ?? []
+
     const handleCategoryClick = (categoryId: string) => {
         if (toggleDrawer) toggleDrawer(false)()
         if (setShowSheet) setShowSheet(false)
@@ -26,24 +28,30 @@ const CategorySheet = ({ selectedCategory, toggleDrawer, setShowSheet }: Categor
 
     return (
         <Box className='bg-white shadow-lg lg:h-[500px] overflow-y-auto'>
-            <div className='flex text-sm flex-wrap'>
-                {selectedNode?.children?.map((item: Category, index: number) => (
-                    <div key={item._id} className={`p-8 lg:w-[20%] ${index % 2 === 0 ? "bg-slate-50" : "bg-white"}`}>
-                        <p className='text-[#00927c] mb-5 font-semibold'>{item.name}</p>
-                        <ul className='space-y-3'>
-                            {item.children?.map((child: Category) => (
-                                <li
-                                    key={child._id}
-                                    onClick={() => handleCategoryClick(child.categoryId)}
-                                    className='hover:text-[#00927c] cursor-pointer'
-                                >
-                                    {child.name}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                ))}
-            </div>
+            {subCategories.length === 0 ? (
+                <div className='flex items-center justify-center min-h-[120px] p-8 text-sm text-gray-400'>
+                    No sub-categories available.
+                </div>
+            ) : (
+                <div className='flex text-sm flex-wrap'>
+                    {subCategories.map((item: Category, index: number) => (
+                        <div key={item._id} className={`p-8 lg:w-[20%] ${index % 2 === 0 ? "bg-slate-50" : "bg-white"}`}>
+                            <p className='text-[#00927c] mb-5 font-semibold'>{item.name}</p>
+                            <ul className='space-y-3'>
+                                {item.children?.map((child: Category) => (
+                                    <li
+                                        key={child._id}
+                                        onClick={() => handleCategoryClick(child.categoryId)}
+                                        className='hover:text-[#00927c] cursor-pointer'
+                                    >
+                                        {child.name}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+            )}
         </Box>
     )
 }

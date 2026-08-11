@@ -13,6 +13,7 @@ import { api } from '../../Config/Api';
 import { RootState } from '../Store';
 import { resetUserState } from './UserSlice';
 import { resetCartState } from './CartSlice';
+import { resetWishlistState } from './WishlistSlice';
 import { resetSellerState } from '../Seller/sellerSlice';
 import { resetSellerAuthState } from '../Seller/sellerAuthenticationSlice';
 import { resetSellerDashboard } from '../Seller/sellerDashboardSlice';
@@ -31,13 +32,13 @@ const initialState: AuthState = {
 // Define the base URL for the API
 const API_URL = '/auth';
 
-export const sendLoginSignupOtp = createAsyncThunk<ApiResponse, { email: string }>(
+export const sendLoginSignupOtp = createAsyncThunk<ApiResponse, { email: string; purpose?: 'login' | 'signup' }>(
     'auth/sendLoginSignupOtp',
-    async ({ email }, { rejectWithValue }) =>
+    async ({ email, purpose }, { rejectWithValue }) =>
     {
         try
         {
-            const response = await api.post(`${API_URL}/sent/login-signup-otp`, { email });
+            const response = await api.post(`${API_URL}/sent/login-signup-otp`, { email, purpose });
             console.log("otp sent successfully", response.data);
             return response.data;
         } catch (error: any)
@@ -63,7 +64,9 @@ export const signup = createAsyncThunk<AuthResponse, SignupRequest>(
             return response.data;
         } catch (error: any)
         {
-            return rejectWithValue('Signup failed');
+            return rejectWithValue(
+                error.response?.data?.message || 'Signup failed'
+            );
         }
     }
 );
@@ -81,7 +84,9 @@ export const signin = createAsyncThunk<AuthResponse, LoginRequest>(
         } catch (error: any)
         {
             console.log("error ", error.response)
-            return rejectWithValue('Signin failed');
+            return rejectWithValue(
+                error.response?.data?.message || 'Signin failed'
+            );
         }
     }
 );
@@ -96,7 +101,9 @@ export const resetPassword = createAsyncThunk<ApiResponse, ResetPasswordRequest>
             return response.data;
         } catch (error: any)
         {
-            return rejectWithValue('Reset password failed');
+            return rejectWithValue(
+                error.response?.data?.message || 'Reset password failed'
+            );
         }
     }
 );
@@ -111,7 +118,9 @@ export const resetPasswordRequest = createAsyncThunk<ApiResponse, { email: strin
             return response.data;
         } catch (error: any)
         {
-            return rejectWithValue('Reset password request failed');
+            return rejectWithValue(
+                error.response?.data?.message || 'Reset password request failed'
+            );
         }
     }
 );
@@ -227,6 +236,7 @@ export const performLogout = () => async (dispatch: any) =>
     dispatch(logout());
     dispatch(resetUserState());
     dispatch(resetCartState());
+    dispatch(resetWishlistState());
     dispatch(resetSellerState());
     dispatch(resetSellerAuthState());
     dispatch(resetSellerDashboard());

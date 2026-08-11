@@ -18,6 +18,7 @@ import { fetchUserProfile } from './Redux Toolkit/Customer/UserSlice';
 import { fetchHomePageData } from './Redux Toolkit/Customer/Customer/AsyncThunk';
 import { useSocket } from './hooks/useSocket';
 import SocketEventHandler from './components/shared/SocketEventHandler';
+import { getJwtPayload, isAuthenticated } from './util/requireAuth';
 
 function App()
 {
@@ -40,7 +41,13 @@ function App()
       }
 
       try {
-        const payload = JSON.parse(atob(jwt.split(".")[1]));
+        const payload = getJwtPayload(jwt);
+
+        if (!payload || !isAuthenticated()) {
+          localStorage.removeItem("jwt");
+          setBootstrapping(false);
+          return;
+        }
 
         if (payload.role === "ROLE_SELLER") {
           await dispatch(fetchSellerProfile(jwt));
@@ -49,6 +56,7 @@ function App()
         }
       } catch (err) {
         console.error(err);
+        localStorage.removeItem("jwt");
       } finally {
         setBootstrapping(false);
       }

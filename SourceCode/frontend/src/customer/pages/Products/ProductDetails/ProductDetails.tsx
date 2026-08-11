@@ -17,7 +17,6 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import ShareIcon from '@mui/icons-material/Share';
-import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 
@@ -25,7 +24,7 @@ import SmilarProduct from '../SimilarProduct/SmilarProduct';
 import ChatBot from '../../ChatBot/ChatBot';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import { useAppDispatch, useAppSelector } from '../../../../Redux Toolkit/Store';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { fetchProductById, getAllProducts } from '../../../../Redux Toolkit/Customer/ProductSlice';
 import { addItemToCart } from '../../../../Redux Toolkit/Customer/CartSlice';
 import { addProductToWishlist } from '../../../../Redux Toolkit/Customer/WishlistSlice';
@@ -36,11 +35,14 @@ import { computeReviewStatistics } from '../../../../util/reviewStatistics';
 import { normalizeSizes } from '../../../../util/normalizeSizes';
 import VariantSelector from '../../../components/VariantSelector';
 import { ProductImage, Product } from '../../../../types/productTypes';
+import { isAuthenticated, requireAuthentication } from '../../../../util/requireAuth';
+import { notification } from '../../../../services/notificationService';
 
 const ProductDetails = () => {
   const dispatch = useAppDispatch();
   const { products, review, wishlist, coupone } = useAppSelector(store => store)
   const navigate = useNavigate()
+  const location = useLocation()
   const { productId, categoryId } = useParams<{
     productId: string;
     categoryId: string;
@@ -49,8 +51,7 @@ const ProductDetails = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState('description');
-  const [pincode, setPincode] = useState('');
-  const [pincodeChecked, setPincodeChecked] = useState(false);
+  const [showStickyBar, setShowStickyBar] = useState(false);
   const [copiedCoupon, setCopiedCoupon] = useState<string | null>(null);
   const [imageZoomPos, setImageZoomPos] = useState({ x: 50, y: 50 });
   const [isZoomed, setIsZoomed] = useState(false);
@@ -65,7 +66,7 @@ const ProductDetails = () => {
   }, []);
 
   const product = products.product;
-  const pageLoading = products.loading && !product;
+  const pageLoading = products.loading && (!product || product.id !== productId);
   const pageError = products.error;
   const variants = useMemo(() => product?.variants || [], [product]);
   const supportedAttributes = product?.category?.supportedAttributes || [];
@@ -139,20 +140,43 @@ const ProductDetails = () => {
       dispatch(fetchProductById(productId))
       dispatch(fetchReviewsByProductId({ productId }))
     }
+  }, [dispatch, productId]);
+
+  useEffect(() => {
+    setSelectedImage(0);
+    setQuantity(1);
+    setSelectedAttributes({});
+    setActiveTab('description');
+    setCopiedCoupon(null);
+    setIsZoomed(false);
+    setGalleryHovered(false);
+  }, [productId]);
+
+  useEffect(() => {
     dispatch(getAllProducts({ category: categoryId }));
+  }, [dispatch, categoryId]);
+
+  useEffect(() => {
     if (!coupone.customerCouponsLoaded) {
       dispatch(fetchCustomerCoupons());
     }
-  }, [dispatch, productId, categoryId, coupone.customerCouponsLoaded]);
+  }, [dispatch, coupone.customerCouponsLoaded]);
 
   // Auto-advance gallery
   useEffect(() => {
-    if (!galleryHovered || effectiveImages.length <= 1 || isTouchDevice) return;
+    if (!galleryHovered || isZoomed || effectiveImages.length <= 1 || isTouchDevice) return;
     galleryTimerRef.current = setInterval(() => {
       setSelectedImage((prev) => (prev + 1) % effectiveImages.length);
     }, 3000);
     return () => { if (galleryTimerRef.current) clearInterval(galleryTimerRef.current); };
-  }, [galleryHovered, effectiveImages.length, isTouchDevice]);
+  }, [galleryHovered, isZoomed, effectiveImages.length, isTouchDevice]);
+
+  useEffect(() => {
+    const onScroll = () => setShowStickyBar(window.scrollY > 450);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const handleAttributeSelect = (key: string, value: string) => {
     setSelectedAttributes((prev) => ({ ...prev, [key]: prev[key] === value ? "" : value }));
@@ -160,21 +184,45 @@ const ProductDetails = () => {
   };
 
   const handleAddCart = () => {
+    const loginPath = requireAuthentication("Please login to add items to cart");
+    if (loginPath) {
+      navigate(loginPath, { state: { from: `${location.pathname}${location.search}` } });
+      return;
+    }
+
     dispatch(addItemToCart({
       jwt: localStorage.getItem('jwt'),
       request: { productId, variantId: selectedVariant?.id || undefined, size: deriveCartSize(), quantity }
     }));
   };
 
-  const handleBuyNow = () => {
-    dispatch(addItemToCart({
-      jwt: localStorage.getItem('jwt'),
-      request: { productId, variantId: selectedVariant?.id || undefined, size: deriveCartSize(), quantity }
-    }));
-    navigate('/cart');
+  const handleBuyNow = async () => {
+    const loginPath = requireAuthentication("Please login to continue to checkout");
+    if (loginPath) {
+      navigate(loginPath, { state: { from: `${location.pathname}${location.search}` } });
+      return;
+    }
+
+    try {
+      await dispatch(addItemToCart({
+        jwt: localStorage.getItem('jwt'),
+        request: { productId, variantId: selectedVariant?.id || undefined, size: deriveCartSize(), quantity }
+      })).unwrap();
+      navigate('/checkout/address');
+    } catch {
+      notification.error("Could not add item to cart. Please try again.");
+    }
   };
 
-  const handleAddWishlist = () => { if (productId) dispatch(addProductToWishlist({ productId })); };
+  const handleAddWishlist = () => {
+    const loginPath = requireAuthentication("Please login to add items to wishlist");
+    if (loginPath) {
+      navigate(loginPath, { state: { from: `${location.pathname}${location.search}` } });
+      return;
+    }
+
+    if (productId) dispatch(addProductToWishlist({ productId }));
+  };
 
   const handleCopyCoupon = (code: string) => {
     navigator.clipboard.writeText(code).then(() => {
@@ -183,8 +231,22 @@ const ProductDetails = () => {
     });
   };
 
-  const handlePincodeCheck = () => {
-    if (pincode.length >= 6) setPincodeChecked(true);
+  const handleShare = async () => {
+    const shareData = { title: product?.title || 'Check out this product', url: window.location.href };
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // User dismissed the native share sheet
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      notification.success("Link copied to clipboard");
+    } catch {
+      notification.error("Could not copy the link");
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -296,16 +358,6 @@ const ProductDetails = () => {
 
   const purchaseArea = (
     <>
-      {/* Price */}
-      <div className="flex items-baseline gap-3 flex-wrap">
-        <span className="text-3xl font-bold text-gray-900">₹{effectivePrice.selling}</span>
-        <span className="text-lg text-gray-400 line-through">₹{effectivePrice.mrp}</span>
-        {effectivePrice.discount > 0 && (
-          <span className="bg-red-50 text-red-600 text-sm font-bold px-2.5 py-0.5 rounded">{effectivePrice.discount}% OFF</span>
-        )}
-      </div>
-      <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes • Free Shipping above ₹1500</p>
-
       {/* Quantity */}
       <div className="mt-5">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Quantity</p>
@@ -315,8 +367,9 @@ const ProductDetails = () => {
             <RemoveIcon fontSize="small" />
           </button>
           <span className="w-12 text-center font-semibold text-gray-800 text-sm">{quantity}</span>
-          <button onClick={() => setQuantity(q => q + 1)}
-            className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors border-l border-gray-300">
+          <button onClick={() => setQuantity(q => Math.min(Math.max(effectiveStock, 1), q + 1))}
+            disabled={quantity >= effectiveStock}
+            className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-l border-gray-300">
             <AddIcon fontSize="small" />
           </button>
         </div>
@@ -353,7 +406,8 @@ const ProductDetails = () => {
           {isFav ? <FavoriteIcon sx={{ fontSize: 16 }} /> : <FavoriteBorderIcon sx={{ fontSize: 16 }} />}
           {isFav ? 'Wishlisted' : 'Wishlist'}
         </button>
-        <button className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-300 transition-colors">
+        <button onClick={() => handleOpenAIAssistant(product)}
+          className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-300 transition-colors">
           <AutoAwesomeIcon sx={{ fontSize: 16, color: '#00927c' }} />
           Ask AI
         </button>
@@ -370,7 +424,7 @@ const ProductDetails = () => {
           {product?.category?.name && (
             <>
               <span>/</span>
-              <span className="cursor-pointer hover:text-teal-600" onClick={() => navigate(`/${product.category?.categoryId}`)}>{product.category.name}</span>
+              <span className="cursor-pointer hover:text-teal-600" onClick={() => navigate(`/products/${product.category?.categoryId}`)}>{product.category.name}</span>
             </>
           )}
           <span>/</span>
@@ -461,19 +515,16 @@ const ProductDetails = () => {
                 </div>
                 <Divider orientation="vertical" flexItem sx={{ height: 20 }} />
                 <span className="text-xs text-gray-500">{reviewStats.totalReviews} Ratings</span>
-                {reviewStats.totalReviews > 0 && (
+                {reviewStats.totalReviews > 0 && typeof product.numRatings === 'number' && product.numRatings > 0 && (
                   <>
                     <Divider orientation="vertical" flexItem sx={{ height: 20 }} />
-                    <span className="text-xs text-gray-500">Sold {product.numRatings || '500'}+</span>
+                    <span className="text-xs text-gray-500">Sold {product.numRatings}+</span>
                   </>
                 )}
                 {/* Icons */}
                 <div className="flex items-center gap-1 ml-auto">
                   <Tooltip title="Share">
-                    <IconButton size="small"><ShareIcon sx={{ fontSize: 18, color: '#666' }} /></IconButton>
-                  </Tooltip>
-                  <Tooltip title="Compare">
-                    <IconButton size="small"><CompareArrowsIcon sx={{ fontSize: 18, color: '#666' }} /></IconButton>
+                    <IconButton size="small" onClick={handleShare}><ShareIcon sx={{ fontSize: 18, color: '#666' }} /></IconButton>
                   </Tooltip>
                   <Tooltip title={isFav ? 'Remove from Wishlist' : 'Add to Wishlist'}>
                     <IconButton size="small" onClick={handleAddWishlist}>
@@ -486,7 +537,7 @@ const ProductDetails = () => {
               <Divider className="my-4" />
 
               {/* Seller Card */}
-              {product?.seller?.businessDetails?.businessName && (
+              {/* {product?.seller?.businessDetails?.businessName && (
                 <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
                     <StorefrontIcon sx={{ color: '#00927c', fontSize: 20 }} />
@@ -500,31 +551,15 @@ const ProductDetails = () => {
                   </div>
                   <button className="text-xs text-teal-600 font-medium hover:underline flex-shrink-0">Visit Store →</button>
                 </div>
-              )}
+              )} */}
 
-              {/* Delivery Checker */}
-              <div className="mb-4">
+              {/* Delivery */}
+              <div className="mb-4 mt-2">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Delivery</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden flex-1 max-w-[280px]">
-                    <span className="text-gray-400 pl-3"><LocalShippingIcon sx={{ fontSize: 16 }} /></span>
-                    <input value={pincode} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setPincode(v); setPincodeChecked(false); }}
-                      onKeyDown={(e) => e.key === 'Enter' && handlePincodeCheck()}
-                      className="flex-1 px-2 py-2 text-sm outline-none" placeholder="Enter pincode" type="text" />
-                    <button onClick={handlePincodeCheck} disabled={pincode.length < 6}
-                      className="px-3 py-2 text-xs font-medium text-teal-600 hover:bg-teal-50 disabled:opacity-40 transition-colors">
-                      Check
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <LocalShippingIcon sx={{ fontSize: 16 }} />
+                  <span>Delivery options and charges are shown at checkout.</span>
                 </div>
-                {pincodeChecked && (
-                  <div className="mt-2 space-y-1">
-                    <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircleIcon sx={{ fontSize: 14 }} /> Delivery by Tomorrow</p>
-                    <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircleIcon sx={{ fontSize: 14 }} /> Free Delivery</p>
-                    <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircleIcon sx={{ fontSize: 14 }} /> COD Available</p>
-                    <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircleIcon sx={{ fontSize: 14 }} /> Return within 7 Days</p>
-                  </div>
-                )}
               </div>
 
               {/* Pricing */}
@@ -743,7 +778,7 @@ const ProductDetails = () => {
       </div>
 
       {/* ===== STICKY PURCHASE BAR (Desktop) ===== */}
-      <div className="hidden lg:block fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 shadow-lg z-50 transition-transform duration-300">
+      <div className={`hidden lg:block fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 shadow-lg z-50 transition-transform duration-300 ${showStickyBar ? 'translate-y-0' : 'translate-y-full'}`}>
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex items-center gap-6">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <img className="w-12 h-12 rounded-lg object-cover border border-gray-200" src={effectiveImages[selectedImage]?.url || ''} alt="" />
@@ -763,8 +798,9 @@ const ProductDetails = () => {
                 <RemoveIcon fontSize="small" />
               </button>
               <span className="w-10 text-center font-semibold text-sm">{quantity}</span>
-              <button onClick={() => setQuantity(q => q + 1)}
-                className="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 border-l border-gray-300">
+              <button onClick={() => setQuantity(q => Math.min(Math.max(effectiveStock, 1), q + 1))}
+                disabled={quantity >= effectiveStock}
+                className="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed border-l border-gray-300">
                 <AddIcon fontSize="small" />
               </button>
             </div>
@@ -797,32 +833,41 @@ const ProductDetails = () => {
       </div>
 
       {/* ===== MOBILE BOTTOM BAR ===== */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-baseline gap-2">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 px-4 py-2.5">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-2 flex-wrap">
               <span className="font-bold text-gray-900 text-lg">₹{effectivePrice.selling}</span>
               <span className="text-xs text-gray-400 line-through">₹{effectivePrice.mrp}</span>
               {effectivePrice.discount > 0 && <span className="text-xs text-red-500 font-semibold">{effectivePrice.discount}% off</span>}
             </div>
+            <p className="text-[11px] text-gray-400 truncate max-w-[260px]">{product.title}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <IconButton onClick={handleAddWishlist} size="small" sx={{ border: '1px solid #e5e7eb', borderRadius: '10px', width: 42, height: 42 }}>
-              {isFav ? <FavoriteIcon sx={{ color: '#e91e63', fontSize: 20 }} /> : <FavoriteBorderIcon sx={{ color: '#666', fontSize: 20 }} />}
-            </IconButton>
-            {effectiveStock > 0 ? (
+          <IconButton onClick={handleAddWishlist} size="small" sx={{ border: '1px solid #e5e7eb', borderRadius: '10px', width: 40, height: 40, flexShrink: 0 }}>
+            {isFav ? <FavoriteIcon sx={{ color: '#e91e63', fontSize: 20 }} /> : <FavoriteBorderIcon sx={{ color: '#666', fontSize: 20 }} />}
+          </IconButton>
+        </div>
+        <div className="flex items-center gap-2">
+          {effectiveStock <= 0 ? (
+            <Button disabled sx={{ py: "0.7rem", borderRadius: "10px", fontSize: "0.85rem", flex: 1 }} variant='contained'>
+              Sold Out
+            </Button>
+          ) : (
+            <>
               <Button onClick={handleAddCart}
                 disabled={hasSelectedAttributes && !selectedVariant}
-                sx={{ py: "0.65rem", px: "1.2rem", borderRadius: "10px", bgcolor: "#00927c", "&:hover": { bgcolor: "#007a6a" }, fontSize: "0.85rem", whiteSpace: "nowrap" }}
+                sx={{ py: "0.7rem", borderRadius: "10px", bgcolor: "#00927c", "&:hover": { bgcolor: "#007a6a" }, fontSize: "0.85rem", flex: 1, whiteSpace: "nowrap" }}
                 variant='contained' startIcon={<AddShoppingCartIcon />}>
                 Add to Cart
               </Button>
-            ) : (
-              <Button disabled sx={{ py: "0.65rem", px: "1.2rem", borderRadius: "10px", fontSize: "0.85rem" }} variant='contained'>
-                Sold Out
+              <Button onClick={handleBuyNow}
+                disabled={hasSelectedAttributes && !selectedVariant}
+                sx={{ py: "0.7rem", borderRadius: "10px", borderColor: "#00927c", color: "#00927c", "&:hover": { borderColor: "#007a6a", bgcolor: "#f0fdfa" }, fontSize: "0.85rem", flex: 1, whiteSpace: "nowrap" }}
+                variant='outlined'>
+                Buy Now
               </Button>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
 

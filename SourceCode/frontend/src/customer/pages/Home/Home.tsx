@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 // import Banner from './Banner/Banner'
 import HomeCategory from './HomeCategory/HomeCategory'
 import TopBrand from './TopBrands/Grid'
@@ -9,12 +9,7 @@ import ChatBot from '../ChatBot/ChatBot'
 import { useNavigate } from 'react-router-dom'
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import branding from '../../../Config/branding';
-import
-{
-    useAppDispatch,
-    useAppSelector,
-} from '../../../Redux Toolkit/Store'
-import { fetchCategoryTree } from '../../../Redux Toolkit/Customer/Customer/AsyncThunk'
+import { useAppSelector } from '../../../Redux Toolkit/Store'
 import DealSlider from './Deals/Deals'
 
 
@@ -23,7 +18,6 @@ const Home = () =>
 {
     const [showChatBot, setShowChatBot] = useState(false)
     const { homePage } = useAppSelector(store => store)
-    const dispatch = useAppDispatch();
     const navigate = useNavigate();
 
     const handleShowChatBot = () =>
@@ -39,10 +33,6 @@ const Home = () =>
         navigate("/become-seller")
     }
 
-    useEffect(() =>
-    {
-        dispatch(fetchCategoryTree());
-    }, [dispatch]);
     return (
         <>
             {(!homePage.loading) ? <div className='space-y-6 lg:space-y-10 relative'>

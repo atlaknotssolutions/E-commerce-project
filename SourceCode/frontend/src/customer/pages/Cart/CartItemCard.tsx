@@ -6,6 +6,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import { CartItem } from '../../../types/cartTypes';
 import { useAppDispatch } from '../../../Redux Toolkit/Store';
 import { deleteCartItem, updateCartItem } from '../../../Redux Toolkit/Customer/CartSlice';
+import { requireAuthentication } from '../../../util/requireAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface CartItemProps
 {
@@ -15,9 +17,16 @@ interface CartItemProps
 const CartItemCard: React.FC<CartItemProps> = ({ item }) =>
 {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
 
     const handleUpdateQuantity = (value: number) =>
     {
+        const loginPath = requireAuthentication("Please login to update your cart");
+        if (loginPath) {
+            navigate(loginPath, { state: { from: `${window.location.pathname}${window.location.search}` } });
+            return;
+        }
+
         dispatch(updateCartItem({
             jwt: localStorage.getItem("jwt"),
             cartItemId: item.id, cartItem: { quantity: item.quantity + value }
@@ -25,6 +34,12 @@ const CartItemCard: React.FC<CartItemProps> = ({ item }) =>
     }
     const handleRemoveCartItem = () =>
     {
+        const loginPath = requireAuthentication("Please login to update your cart");
+        if (loginPath) {
+            navigate(loginPath, { state: { from: `${window.location.pathname}${window.location.search}` } });
+            return;
+        }
+
         dispatch(deleteCartItem({
             jwt: localStorage.getItem("jwt") || "",
             cartItemId: item.id

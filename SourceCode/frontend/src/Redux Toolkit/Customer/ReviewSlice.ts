@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+﻿import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import {
   ApiResponse,
   CreateReviewRequest,
@@ -23,7 +23,7 @@ export const fetchReviewsByProductId = createAsyncThunk<
       );
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data || "Failed to fetch reviews");
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch reviews");
     }
   }
 );
@@ -42,7 +42,7 @@ export const createReview = createAsyncThunk<
       );
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data || "Failed to create review");
+      return rejectWithValue(error.response?.data?.message || "Failed to create review");
     }
   }
 );
@@ -61,7 +61,7 @@ export const updateReview = createAsyncThunk<
       );
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data || "Failed to update review");
+      return rejectWithValue(error.response?.data?.message || "Failed to update review");
     }
   }
 );
@@ -75,7 +75,7 @@ export const deleteReview = createAsyncThunk<
     const response = await api.delete(`${API_URL}/reviews/${reviewId}`);
     return response.data;
   } catch (error: any) {
-    return rejectWithValue(error.response?.data || "Failed to delete review");
+    return rejectWithValue(error.response?.data?.message || "Failed to delete review");
   }
 });
 
@@ -90,7 +90,7 @@ export const fetchMyReviews = createAsyncThunk<
       const response = await api.get(`${API_URL}/reviews/my`);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data || "Failed to fetch your reviews");
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch your reviews");
     }
   }
 );
@@ -226,3 +226,4 @@ const reviewSlice = createSlice({
 
 export default reviewSlice.reducer;
 export const { resetReviewState, clearError, setUploadLoading } = reviewSlice.actions;
+

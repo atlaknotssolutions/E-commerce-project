@@ -4,6 +4,7 @@ import { Product } from '../../../types/productTypes';
 import { useAppDispatch } from '../../../Redux Toolkit/Store';
 import CloseIcon from '@mui/icons-material/Close';
 import { addProductToWishlist } from '../../../Redux Toolkit/Customer/WishlistSlice';
+import { requireAuthentication } from '../../../util/requireAuth';
 
 interface ProductCardProps {
     item: Product;
@@ -14,6 +15,11 @@ const WishlistProductCard: React.FC<ProductCardProps> = ({ item }) => {
     const dispatch = useAppDispatch();
 
     const handleIconClick = (e:MouseEvent) => {
+        const loginPath = requireAuthentication("Please login to manage your wishlist");
+        if (loginPath) {
+            navigate(loginPath, { state: { from: `${window.location.pathname}${window.location.search}` } });
+            return;
+        }
         if(item.id)
         dispatch(addProductToWishlist({productId:item.id}))
     };

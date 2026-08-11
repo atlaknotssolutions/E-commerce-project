@@ -14,11 +14,12 @@ import { clearOrderCanceled } from '../../../Redux Toolkit/Customer/OrderSlice'
 import Addresses from './Adresses'
 import CustomerDashboard from './CustomerDashboard'
 import CustomerCoupons from './CustomerCoupons'
+import Wishlist from '../Wishlist/Wishlist'
 
 const menu = [
     { name: "Dashboard", path: "/account" },
     { name: "Orders", path: "/account/orders" },
-    { name: "Wishlist", path: "/wishlist" },
+    { name: "Wishlist", path: "/account/wishlist" },
     { name: "Coupons", path: "/account/coupons" },
     { name: "Reviews", path: "/account/reviews" },
     { name: "Addresses", path: "/account/addresses" },
@@ -96,6 +97,7 @@ const Profile = () => {
                         <Route path='/coupons' element={<CustomerCoupons />} />
                         <Route path='/profile' element={<UserDetails />} />
                         <Route path='/addresses' element={<Addresses />} />
+                        <Route path='/wishlist' element={<Wishlist />} />
                     </Routes>
 
                 </div>

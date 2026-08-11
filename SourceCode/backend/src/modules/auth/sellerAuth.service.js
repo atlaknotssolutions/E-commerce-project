@@ -105,24 +105,88 @@ export const createSellerAuthService = ({
         }
 
         // 2. Defensive Payload Mapping: Converts flat/camelCase frontend keys to strict Mongoose schema expectations
+        const requireField = (value, fieldName) =>
+        {
+            if (!value || String(value).trim() === '')
+            {
+                throw createApiError({
+                    statusCode: 400,
+                    code: 'MISSING_REQUIRED_FIELD',
+                    message: `Onboarding failed: '${fieldName}' is required.`,
+                });
+            }
+
+            return String(value).trim();
+        };
+
+        const businessName = requireField(
+            sellerData.businessDetails?.businessName || sellerData.businessName,
+            'businessName'
+        );
+
+        const gstin = requireField(
+            sellerData.businessDetails?.GSTIN || sellerData.GSTIN || sellerData.gstin,
+            'GSTIN'
+        );
+
+        const businessAddress = requireField(
+            sellerData.businessDetails?.businessAddress ||
+            sellerData.businessDetails?.address ||
+            sellerData.businessAddress ||
+            sellerData.pickupAddress?.streetAddress,
+            'businessAddress'
+        );
+
         const mappedBusinessDetails = {
-            businessName: sellerData.businessDetails?.businessName || sellerData.businessName || 'Default Business Name',
-            GSTIN: sellerData.businessDetails?.GSTIN || sellerData.GSTIN || sellerData.gstin || '29ABCDE1234F1Z5', // Fallbacks to valid mock format if missing
-            businessAddress: sellerData.businessDetails?.businessAddress || sellerData.businessDetails?.address || sellerData.businessAddress || sellerData.pickupAddress?.streetAddress || 'Default Business Address'
+            businessName,
+            GSTIN: gstin,
+            businessAddress,
         };
 
         const mappedBankDetails = {
-            accountNumber: sellerData.bankDetails?.accountNumber || '1234567890',
-            accountHolderName: sellerData.bankDetails?.accountHolderName || sellerData.sellerName || 'Default Holder Name',
-            IFSC: sellerData.bankDetails?.IFSC || sellerData.bankDetails?.ifscCode || 'SBIN0008888' // Maps camelCase 'ifscCode' smoothly
+            accountNumber: requireField(
+                sellerData.bankDetails?.accountNumber,
+                'bankDetails.accountNumber'
+            ),
+            accountHolderName: requireField(
+                sellerData.bankDetails?.accountHolderName || sellerData.sellerName,
+                'bankDetails.accountHolderName'
+            ),
+            IFSC: requireField(
+                sellerData.bankDetails?.IFSC || sellerData.bankDetails?.ifscCode,
+                'bankDetails.IFSC'
+            ),
         };
 
         const mappedPickupAddress = {
-            streetAddress: sellerData.pickupAddress?.streetAddress || 'Default Pickup Street Address',
-            city: sellerData.pickupAddress?.city || 'Default City', // Avoids empty validations failures
-            state: sellerData.pickupAddress?.state || 'Default State',
-            pinCode: sellerData.pickupAddress?.pinCode || sellerData.pickupAddress?.pincode || '560001' // Maps lowercase 'pincode' smoothly
+            streetAddress: requireField(
+                sellerData.pickupAddress?.streetAddress ||
+                sellerData.pickupAddress?.address,
+                'pickupAddress.streetAddress'
+            ),
+            city: requireField(
+                sellerData.pickupAddress?.city,
+                'pickupAddress.city'
+            ),
+            state: requireField(
+                sellerData.pickupAddress?.state,
+                'pickupAddress.state'
+            ),
+            pinCode: requireField(
+                sellerData.pickupAddress?.pinCode || sellerData.pickupAddress?.pincode,
+                'pickupAddress.pinCode'
+            ),
         };
+
+        const sellerName = requireField(
+            sellerData.sellerName,
+            'sellerName'
+        );
+
+        const mobile = requireField(
+            sellerData.mobile,
+            'mobile'
+        );
 
         // 3. Hash credential password securely prior to saving
         const encryptedPassword = sellerData.password
@@ -131,9 +195,9 @@ export const createSellerAuthService = ({
 
         // 4. Commit seller write operations directly into database utilizing our mapped payload
         const newSeller = await sellerRepository.create({
-            sellerName: sellerData.sellerName || 'Default Seller Name',
+            sellerName,
             email: targetEmail,
-            mobile: sellerData.mobile || '9876543210',
+            mobile,
             passwordHash: encryptedPassword,
             role: 'ROLE_SELLER',
             isEmailVerified: false,

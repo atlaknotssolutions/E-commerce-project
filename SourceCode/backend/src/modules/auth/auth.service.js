@@ -116,17 +116,18 @@ export const createAuthService = ({
     /**
      * Dispatches Customer Login / Signup OTP.
      */
-    const sendLoginOtp = async ({ email, fullName, }) =>
+    const sendLoginOtp = async ({ email, fullName, purpose }) =>
     {
         let targetEmail = email.toLowerCase().trim();
-        let requireExistingUser = false;
 
-        // Prefix "signing_" means Login flow.
-        if (targetEmail.startsWith('signing_'))
+        const isLegacyLoginPrefix = targetEmail.startsWith('signing_');
+        if (isLegacyLoginPrefix)
         {
             targetEmail = targetEmail.replace('signing_', '');
-            requireExistingUser = true;
         }
+
+        const requireExistingUser =
+            purpose === 'login' || isLegacyLoginPrefix;
 
         let recipientName = fullName || 'Customer';
 

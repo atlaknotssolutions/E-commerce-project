@@ -13,11 +13,12 @@ export const createAuthController = ({ authService }) =>
      */
     const sendOTP = async (req, res) =>
     {
-        const { email, fullName } = req.body;
+        const { email, fullName, purpose } = req.body;
 
         const outcome = await authService.sendLoginOtp({
             email,
             fullName,
+            purpose,
         });
 
         res.status(201).json(outcome);

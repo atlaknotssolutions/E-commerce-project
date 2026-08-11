@@ -11,6 +11,8 @@ import { notification } from '../../../services/notificationService';
 import { createOrder } from '../../../Redux Toolkit/Customer/OrderSlice'
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store'
 import { applyCoupon, fetchCustomerCoupons, resetCouponApplied } from '../../../Redux Toolkit/Customer/CouponSlice'
+import { isAuthenticated } from '../../../util/requireAuth'
+import { useNavigate } from 'react-router-dom'
 
 const style = {
     position: 'absolute' as 'absolute',
@@ -38,6 +40,7 @@ const paymentGatwayList = [
 const AddressPage = () =>
 {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const [value, setValue] = useState(0);
     const { user, cart, coupone } = useAppSelector(store => store)
     const [paymentGateway, setPaymentGateway] = useState(paymentGatwayList[0].value);
@@ -126,6 +129,12 @@ const AddressPage = () =>
 
     const handleCreateOrder = () =>
     {
+        if (!isAuthenticated()) {
+            notification.warning("Please login to place an order");
+            navigate("/login", { state: { from: `${window.location.pathname}${window.location.search}` } });
+            return;
+        }
+
         const selectedAddress = user.user?.addresses?.[value];
 
         if (!selectedAddress)

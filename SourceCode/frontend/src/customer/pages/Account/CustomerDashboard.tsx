@@ -75,7 +75,7 @@ const CustomerDashboard = () => {
       value: wishlistProducts.length,
       icon: <Favorite sx={{ fontSize: 28 }} />,
       color: '#e91e63',
-      path: '/wishlist',
+      path: '/account/wishlist',
     },
     {
       label: 'Available Coupons',
@@ -284,7 +284,7 @@ const CustomerDashboard = () => {
                 size="small"
                 sx={{ color: '#00927c', textTransform: 'none' }}
                 endIcon={<ArrowForward />}
-                onClick={() => navigate('/wishlist')}
+                onClick={() => navigate('/account/wishlist')}
               >
                 View All
               </Button>
@@ -300,7 +300,7 @@ const CustomerDashboard = () => {
                   <div
                     key={item.id || index}
                     className="rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => navigate('/wishlist')}
+                    onClick={() => navigate('/account/wishlist')}
                   >
                     <Avatar
                       src={item.image || ''}

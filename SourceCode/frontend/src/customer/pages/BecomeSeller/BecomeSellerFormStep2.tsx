@@ -17,8 +17,8 @@ const BecomeSellerFormStep2: React.FC<BecomeSellerFormStep2Props> = ({ formik })
             value={formik.values.pickupAddress.name}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            error={formik.touched.name && Boolean(formik.errors.name)}
-            helperText={formik.touched.name && formik.errors.name}
+            error={formik.touched.pickupAddress?.name && Boolean(formik.errors.pickupAddress?.name)}
+            helperText={formik.touched.pickupAddress?.name && formik.errors.pickupAddress?.name}
           />
         </Grid>
         <Grid item xs={6}>
@@ -29,8 +29,8 @@ const BecomeSellerFormStep2: React.FC<BecomeSellerFormStep2Props> = ({ formik })
             value={formik.values.pickupAddress.mobile}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            error={formik.touched.mobile && Boolean(formik.errors.mobile)}
-            helperText={formik.touched.mobile && formik.errors.mobile}
+            error={formik.touched.pickupAddress?.mobile && Boolean(formik.errors.pickupAddress?.mobile)}
+            helperText={formik.touched.pickupAddress?.mobile && formik.errors.pickupAddress?.mobile}
           />
         </Grid>
         <Grid item xs={6}>

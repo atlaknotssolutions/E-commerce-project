@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react'
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { Route, Routes, useLocation, Navigate } from 'react-router-dom'
 import Home from '../customer/pages/Home/Home'
 import Products from '../customer/pages/Products/Products'
 import ProductDetails from '../customer/pages/Products/ProductDetails/ProductDetails'
@@ -16,12 +16,12 @@ import PaymentSuccessHandler from '../customer/pages/Pyement/PaymentSuccessHandl
 import Reviews from '../customer/pages/Review/Reviews'
 import WriteReviews from '../customer/pages/Review/WriteReview'
 import EditReview from '../customer/pages/Review/EditReview'
-import Wishlist from '../customer/pages/Wishlist/Wishlist'
 import { getWishlistByUserId } from '../Redux Toolkit/Customer/WishlistSlice'
 import PublicBrandList from '../customer/pages/Brands/PublicBrandList'
 import PublicBrandDetail from '../customer/pages/Brands/PublicBrandDetail'
 import SearchProducts from '../customer/pages/Search/SearchProducts'
 import CookieBanner from '../customer/components/Cookie/CookieBanner'
+import RequireAuth from './RequireAuth'
 
 const AboutUs = lazy(() => import('../customer/pages/Legal/AboutUs'))
 const PrivacyPolicy = lazy(() => import('../customer/pages/Legal/PrivacyPolicy'))
@@ -65,13 +65,13 @@ useEffect(() => {
         <Route path='/products/:categoryId' element={<Products />} />
         <Route path='/search-products' element={<SearchProducts />} />
         <Route path='/reviews/:productId' element={<Reviews />} />
-        <Route path='/reviews/:productId/create' element={<WriteReviews />} />
-        <Route path='/reviews/:productId/edit/:reviewId' element={<EditReview />} />
+        <Route path='/reviews/:productId/create' element={<RequireAuth><WriteReviews /></RequireAuth>} />
+        <Route path='/reviews/:productId/edit/:reviewId' element={<RequireAuth><EditReview /></RequireAuth>} />
         <Route path='/product-details/:categoryId/:name/:productId' element={<ProductDetails />} />
-        <Route path='/cart' element={<Cart />} />
-        <Route path='/wishlist' element={<Wishlist />} />
-        <Route path='/checkout/address' element={<Address />} />
-        <Route path='/account/*' element={<Profile />} />
+        <Route path='/cart' element={<RequireAuth><Cart /></RequireAuth>} />
+        <Route path='/wishlist' element={<Navigate to='/account/wishlist' replace />} />
+        <Route path='/checkout/address' element={<RequireAuth><Address /></RequireAuth>} />
+        <Route path='/account/*' element={<RequireAuth><Profile /></RequireAuth>} />
         <Route path='/login' element={<Auth/>} />
         <Route path='/payment-success' element={<PaymentSuccessHandler/>} />
         <Route path='/about' element={<AboutUs />} />

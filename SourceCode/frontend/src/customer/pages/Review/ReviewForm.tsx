@@ -25,6 +25,8 @@ import {
 } from '../../../Redux Toolkit/Customer/ReviewSlice';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CreateReviewRequest, Review } from '../../../types/reviewTypes';
+import { isAuthenticated } from '../../../util/requireAuth';
+import { notification } from '../../../services/notificationService';
 
 interface ReviewFormProps {
     existingReview?: Review;
@@ -54,6 +56,12 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ existingReview, mode = 'create'
                 .max(5, 'Rating cannot be more than 5'),
         }),
         onSubmit: (values) => {
+            if (!isAuthenticated()) {
+                notification.warning("Please login to submit a review");
+                navigate("/login", { state: { from: `${window.location.pathname}${window.location.search}` } });
+                return;
+            }
+
             if (mode === 'edit' && existingReview) {
                 dispatch(updateReview({
                     reviewId: existingReview.id,

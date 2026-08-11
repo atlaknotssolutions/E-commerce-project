@@ -57,7 +57,7 @@ const DrawerList = ({toggleDrawer}:any) => {
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>
-            <ListItemButton onClick={() => handleNavigate('/wishlist')}>
+            <ListItemButton onClick={() => handleNavigate('/account/wishlist')}>
               <ListItemIcon><FavoriteBorderIcon sx={{ fontSize: 20, color: '#666' }} /></ListItemIcon>
               <ListItemText primary="Wishlist" />
             </ListItemButton>

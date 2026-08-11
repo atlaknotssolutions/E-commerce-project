@@ -9,7 +9,7 @@ import
     useMediaQuery,
     useTheme,
   } from "@mui/material";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "./Navbar.css";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import StorefrontIcon from "@mui/icons-material/Storefront";
@@ -19,11 +19,12 @@ import CategorySheet from "./CategorySheet";
 import DrawerList from "./DrawerList";
 import { useNavigate } from "react-router-dom";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { useAppSelector } from "../../../Redux Toolkit/Store";
+import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import SearchBar from "./SearchBar";
 import { FavoriteBorder } from "@mui/icons-material";
 import { getAccountRoute } from "../../../util/roleRoutes";
 import branding from "../../../Config/branding";
+import { fetchCategoryTree } from "../../../Redux Toolkit/Customer/Customer/AsyncThunk";
 
 
 const Navbar = () =>
@@ -32,8 +33,17 @@ const Navbar = () =>
   const [selectedCategory, setSelectedCategory] = useState("men");
   const theme = useTheme();
   const isLarge = useMediaQuery(theme.breakpoints.up("lg"));
-  const { user, cart, sellers, wishlist } = useAppSelector((store) => store);
+  const { user, cart, sellers, wishlist, homePage } = useAppSelector((store) => store);
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+
+  useEffect(() =>
+  {
+    if (homePage.categoryTree.length === 0)
+    {
+      dispatch(fetchCategoryTree());
+    }
+  }, [dispatch, homePage.categoryTree.length]);
 
 
   const [open, setOpen] = React.useState(false);
@@ -147,7 +157,7 @@ const Navbar = () =>
             </Button>
           )}
 
-          <IconButton onClick={() => navigate("/wishlist")} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
+          <IconButton onClick={() => navigate("/account/wishlist")} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
             <Badge badgeContent={wishlist.wishlist?.products?.length ?? 0} color="primary" sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 18, minWidth: 18 } }}>
               <FavoriteBorder sx={{ fontSize: 22 }} className="text-gray-500" />
             </Badge>

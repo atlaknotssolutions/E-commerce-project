@@ -2,15 +2,36 @@ import { Button, CircularProgress, TextField } from '@mui/material'
 import React, { useEffect, useState } from 'react'
 import OTPInput from '../../components/OtpFild/OTPInput'
 import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
 import { useNavigate } from 'react-router-dom';
 import { sendLoginSignupOtp, signup } from '../../../Redux Toolkit/Customer/AuthSlice';
+import { fetchUserProfile } from '../../../Redux Toolkit/Customer/UserSlice';
+
+const SendOtpSchema = Yup.object({
+    email: Yup.string()
+        .trim()
+        .email('Please enter a valid email address.')
+        .required('Email is required.'),
+});
+
+const SignupSchema = Yup.object({
+    email: Yup.string()
+        .trim()
+        .email('Please enter a valid email address.')
+        .required('Email is required.'),
+    otp: Yup.string()
+        .matches(/^\d{6}$/, 'OTP must be exactly 6 digits')
+        .required('OTP is required'),
+    name: Yup.string().trim().required('Name is required'),
+    mobile: Yup.string()
+        .matches(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit mobile number')
+        .required('Mobile number is required'),
+});
 
 const SignupForm = () =>
 {
-
     const navigate = useNavigate();
-    const [otp, setOtp] = useState("");
     const [timer, setTimer] = useState<number>(30); // Timer state
     const [isTimerActive, setIsTimerActive] = useState<boolean>(false);
     const dispatch = useAppDispatch();
@@ -23,54 +44,82 @@ const SignupForm = () =>
             name: "",
             mobile: "",
         },
-
-        // onSubmit: (values: any) => {
-        //     // Handle form submission
-        //     dispatch(signup({ fullName: values.name, email: values.email, otp }))
-        //     console.log('Form data:', values);
-        // }
-
-
+        validationSchema: auth.otpSent ? SignupSchema : SendOtpSchema,
 
         onSubmit: async (values: any) =>
         {
+            const trimmedEmail = values.email.trim();
+
+            if (!auth.otpSent)
+            {
+                if (auth.loading) return;
+
+                dispatch(sendLoginSignupOtp({ email: trimmedEmail, purpose: 'signup' }));
+                setTimer(30);
+                setIsTimerActive(true);
+                return;
+            }
+
             const result = await dispatch(
                 signup({
                     fullName: values.name,
-                    email: values.email,
+                    email: trimmedEmail,
                     mobile: values.mobile,
-                    otp,
+                    otp: values.otp,
                 })
             );
 
-            console.log("Signup Result:", result);
-
             if (signup.fulfilled.match(result))
             {
-                navigate("/", { replace: true });
+                const jwt = localStorage.getItem("jwt");
+                if (!jwt) return;
+
+                const profileResult = await dispatch(fetchUserProfile({ jwt }));
+
+                if (fetchUserProfile.fulfilled.match(profileResult))
+                {
+                    navigate("/", { replace: true });
+                }
             }
         }
     });
 
     const handleOtpChange = (otp: any) =>
     {
-
-        setOtp(otp);
-
+        formik.setFieldValue('otp', otp || '');
     };
 
-    const handleResendOTP = () =>
+    const handleResendOtp = async () =>
     {
-        // Implement OTP resend logic
-        dispatch(sendLoginSignupOtp({ email: formik.values.email }))
-        console.log('Resend OTP');
+        if (auth.loading) return;
+
+        const trimmedEmail = formik.values.email.trim();
+
+        let emailError: string | undefined;
+        try
+        {
+            await SendOtpSchema.validate({ email: trimmedEmail });
+        } catch (err: any)
+        {
+            emailError = err.errors?.[0] || err.message || 'Please enter a valid email address.';
+        }
+
+        if (emailError)
+        {
+            formik.setFieldError('email', emailError);
+            formik.setFieldTouched('email', true, false);
+            return;
+        }
+
+        formik.setFieldError('email', undefined);
+        dispatch(sendLoginSignupOtp({ email: trimmedEmail, purpose: 'signup' }));
         setTimer(30);
         setIsTimerActive(true);
     };
 
     const handleSentOtp = () =>
     {
-        handleResendOTP();
+        formik.handleSubmit()
     }
 
     const handleLogin = async () =>
@@ -125,12 +174,12 @@ const SignupForm = () =>
 
                 {auth.otpSent && <div className="space-y-2">
                     <p className="font-medium text-sm">
-                        * Enter OTP sent to your mobile number
+                        * Enter OTP sent to your email
                     </p>
                     <OTPInput
                         length={6}
                         onChange={handleOtpChange}
-                        error={false}
+                        error={Boolean(formik.touched.otp && formik.errors.otp)}
                     />
                     <p className="text-xs space-x-2">
                         {isTimerActive ? (
@@ -139,7 +188,7 @@ const SignupForm = () =>
                             <>
                                 Didn’t receive OTP?{" "}
                                 <span
-                                    onClick={handleResendOTP}
+                                    onClick={handleResendOtp}
                                     className="text-teal-600 cursor-pointer hover:text-teal-800 font-semibold"
                                 >
                                     Resend OTP
@@ -147,7 +196,7 @@ const SignupForm = () =>
                             </>
                         )}
                     </p>
-                    {formik.touched.otp && formik.errors.otp && <p>{formik.errors.otp as string}</p>}
+                    {formik.touched.otp && formik.errors.otp && <p className="text-sm text-red-500">{formik.errors.otp as string}</p>}
                 </div>}
 
                 {auth.otpSent && <TextField

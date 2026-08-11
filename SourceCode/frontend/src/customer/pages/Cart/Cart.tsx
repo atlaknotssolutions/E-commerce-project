@@ -128,7 +128,7 @@ const Cart = () => {
                 </div>
               </section>
 
-              <div onClick={() => navigate("/wishlist")} className="border rounded-md px-5 py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50">
+              <div onClick={() => navigate("/account/wishlist")} className="border rounded-md px-5 py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50">
                 <span>Add From Wishlist</span>
                 <FavoriteIcon sx={{ color: teal[600], fontSize: "21px" }} />
               </div>
@@ -143,7 +143,7 @@ const Cart = () => {
               Looks like you haven't added anything yet. Start shopping to fill your bag!
             </p>
           </div>
-          <Button variant="outlined" sx={{ py: "11px" }} onClick={() => navigate("/wishlist")}>
+          <Button variant="outlined" sx={{ py: "11px" }} onClick={() => navigate("/account/wishlist")}>
             Add From Wishlist
           </Button>
         </div>

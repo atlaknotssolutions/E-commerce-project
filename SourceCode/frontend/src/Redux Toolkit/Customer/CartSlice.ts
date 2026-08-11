@@ -87,7 +87,7 @@ export const deleteCartItem = createAsyncThunk<
   } catch (error: any)
   {
     return rejectWithValue(
-      error.response.data.message || "Failed to delete cart item"
+      error.response?.data?.message || "Failed to delete cart item"
     );
   }
 });
@@ -112,7 +112,7 @@ export const updateCartItem = createAsyncThunk<
     } catch (error: any)
     {
       return rejectWithValue(
-        error.response.data.message || "Failed to update cart item"
+        error.response?.data?.message || "Failed to update cart item"
       );
     }
   }

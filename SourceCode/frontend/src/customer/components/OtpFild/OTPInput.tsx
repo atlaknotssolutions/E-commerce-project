@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, KeyboardEvent, useEffect } from 'react';
+import React, { useState, ChangeEvent, KeyboardEvent, useEffect, useRef } from 'react';
 
 interface OTPInputProps {
     length: number;
@@ -8,9 +8,15 @@ interface OTPInputProps {
 
 const OTPInput: React.FC<OTPInputProps> = ({ length, onChange, error = false }) => {
     const [otp, setOtp] = useState<string[]>(Array(length).fill(''));
+    const lastValueRef = useRef('');
 
     useEffect(() => {
-        onChange(otp.join(''));
+        const joined = otp.join('');
+
+        if (joined !== lastValueRef.current) {
+            lastValueRef.current = joined;
+            onChange(joined);
+        }
     }, [otp, onChange]);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>, index: number) => {
