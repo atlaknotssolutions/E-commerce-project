@@ -25,6 +25,7 @@ import { FavoriteBorder } from "@mui/icons-material";
 import { getAccountRoute } from "../../../util/roleRoutes";
 import branding from "../../../Config/branding";
 import { fetchCategoryTree } from "../../../Redux Toolkit/Customer/Customer/AsyncThunk";
+import { requireAuthentication } from "../../../util/requireAuth";
 
 
 const Navbar = () =>
@@ -66,6 +67,28 @@ const Navbar = () =>
       navigate("/seller");
     } else navigate("/become-seller");
   }
+
+  const handleWishlistClick = () =>
+  {
+    const loginPath = requireAuthentication("Please login to view your wishlist");
+    if (loginPath)
+    {
+      navigate(loginPath, { state: { from: "/account/wishlist" } });
+      return;
+    }
+    navigate("/account/wishlist");
+  };
+
+  const handleCartClick = () =>
+  {
+    const loginPath = requireAuthentication("Please login to view your cart");
+    if (loginPath)
+    {
+      navigate(loginPath, { state: { from: "/cart" } });
+      return;
+    }
+    navigate("/cart");
+  };
 
 
 
@@ -157,13 +180,13 @@ const Navbar = () =>
             </Button>
           )}
 
-          <IconButton onClick={() => navigate("/account/wishlist")} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
+          <IconButton onClick={handleWishlistClick} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
             <Badge badgeContent={wishlist.wishlist?.products?.length ?? 0} color="primary" sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 18, minWidth: 18 } }}>
               <FavoriteBorder sx={{ fontSize: 22 }} className="text-gray-500" />
             </Badge>
           </IconButton>
 
-          <IconButton onClick={() => navigate("/cart")} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
+          <IconButton onClick={handleCartClick} size="small" sx={{ p: 1 }} className="hover:bg-gray-50">
             <Badge badgeContent={cart.cart?.cartItems?.length ?? 0} color="primary" sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 18, minWidth: 18 } }}>
               <AddShoppingCartIcon sx={{ fontSize: 22 }} className="text-gray-500" />
             </Badge>
