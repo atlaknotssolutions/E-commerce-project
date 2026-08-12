@@ -1,5 +1,12 @@
 import crypto from 'crypto';
 import branding from '../../config/branding.js';
+import { ROLES } from '../../constants/enums.js';
+import {
+    hashPassword,
+    isValidPasswordPolicy,
+    isUsablePasswordHash,
+    verifyPassword,
+} from '../../utils/password.js';
 
 /**
  * Pure function-based factory representing the Merchant Seller Authentication Business Service.
@@ -8,6 +15,7 @@ import branding from '../../config/branding.js';
 export const createSellerAuthService = ({
     sellerRepository,
     verificationCodeRepository,
+    passwordResetTokenRepository,
     generateOTP,
     emailClient,
     signToken,
@@ -478,11 +486,337 @@ This verification code is valid for 10 minutes.
         };
     };
 
+    /**
+     * Password-based signin for sellers who have set a bcrypt password.
+     * Maps exactly to: POST /sellers/password-login
+     *
+     * Deliberately returns ONE generic authentication failure for every
+     * invalid combination (unknown email, non-seller role, missing/legacy
+     * password hash, banned/suspended account, wrong password) to prevent
+     * account enumeration.
+     *
+     * Issues the SAME session contract as the existing Seller OTP login:
+     * a JWT access token with payload { id, email, role }. The Seller
+     * architecture has no refresh-token mechanism, so none is issued here.
+     */
+    const signinSellerWithPassword = async ({ email, password }) =>
+    {
+        const targetEmail = email.toLowerCase().trim();
+
+        // passwordHash is schema-level `select: false`; this is the ONLY
+        // repository read that explicitly requests it for verification.
+        const existingSeller =
+            await sellerRepository.findByEmailWithPassword(targetEmail);
+
+        // Short-circuit chain: bcrypt only runs when a usable hash exists
+        // and the account is a legitimate, active Seller.
+        const passwordIsValid =
+            existingSeller
+            && existingSeller.role === ROLES.SELLER
+            && existingSeller.accountStatus !== 'BANNED'
+            && existingSeller.accountStatus !== 'SUSPENDED'
+            && isUsablePasswordHash(existingSeller.passwordHash)
+            && typeof password === 'string'
+            && password.length > 0
+            && await verifyPassword(password, existingSeller.passwordHash);
+
+        if (!passwordIsValid)
+        {
+            throw createApiError({
+                statusCode: 401,
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password.',
+            });
+        }
+
+        const tokenPayload = { id: existingSeller._id, email: existingSeller.email, role: existingSeller.role };
+        const accessToken = signToken({ payload: tokenPayload, secret: jwtAccessSecret, expiresIn: jwtAccessExpiresIn });
+
+        return {
+            jwt: accessToken,
+            status: true,
+            message: 'Merchant session successfully verified.',
+            role: existingSeller.role,
+        };
+    };
+
+    /**
+     * Sets a password on a legacy/OTP-created Seller account, or changes an
+     * existing password after verifying the current one.
+     * Maps exactly to: POST /sellers/password (authenticated + ROLE_SELLER)
+     *
+     * Case A (no usable bcrypt hash): only `password` is required.
+     * Case B (usable bcrypt hash): `currentPassword` must be provided and
+     * verified before the hash is replaced.
+     *
+     * Reuses the shared password utility (same bcrypt cost as Customer).
+     */
+    const setSellerPassword = async ({ sellerId, password, currentPassword }) =>
+    {
+        // passwordHash is schema-level `select: false`; this is the ONLY
+        // repository read that explicitly requests it for this decision.
+        const seller = await sellerRepository.findByIdWithPassword(sellerId);
+
+        if (!seller)
+        {
+            throw createApiError({
+                statusCode: 404,
+                code: 'SELLER_NOT_FOUND',
+                message: 'The requested merchant account profile does not exist.',
+            });
+        }
+
+        // Defense in depth: the route is already role-guarded, but the
+        // service independently refuses non-seller principals.
+        if (seller.role !== ROLES.SELLER)
+        {
+            throw createApiError({
+                statusCode: 403,
+                code: 'ACCESS_FORBIDDEN',
+                message: `Access Forbidden: Your account role (${seller.role}) does not possess authorizations to execute this operational run.`,
+            });
+        }
+
+        // Policy validation runs before any branch logic so it fails fast
+        // and never depends on whether a password already exists.
+        if (!isValidPasswordPolicy(password))
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'INVALID_PASSWORD',
+                message: 'Password must be a non-empty string between 8 and 72 characters.',
+            });
+        }
+
+        const hasUsablePassword = isUsablePasswordHash(seller.passwordHash);
+
+        if (hasUsablePassword)
+        {
+            if (typeof currentPassword !== 'string' || currentPassword.length === 0)
+            {
+                throw createApiError({
+                    statusCode: 400,
+                    code: 'CURRENT_PASSWORD_REQUIRED',
+                    message: 'Current password is required to change your password.',
+                });
+            }
+
+            const currentPasswordIsValid =
+                await verifyPassword(currentPassword, seller.passwordHash);
+
+            if (!currentPasswordIsValid)
+            {
+                throw createApiError({
+                    statusCode: 401,
+                    code: 'INVALID_CURRENT_PASSWORD',
+                    message: 'The current password you entered is incorrect.',
+                });
+            }
+        }
+
+        const newPasswordHash = await hashPassword(password);
+
+        await sellerRepository.updatePasswordHash({
+            userId: seller._id,
+            passwordHash: newPasswordHash,
+        });
+
+        // Outstanding reset links are no longer actionable once the seller
+        // controls a working password. Reuses the existing reset token purge.
+        await passwordResetTokenRepository.deleteExistingTokens({
+            email: seller.email,
+        });
+
+        return {
+            success: true,
+            message: hasUsablePassword
+                ? 'Your password has been changed successfully.'
+                : 'Your password has been set successfully.',
+        };
+    };
+
+    /**
+     * Generates and dispatches a secure password reset link for Sellers.
+     * Maps exactly to: POST /sellers/reset-password-request
+     *
+     * Enumeration protection: unknown emails, and any non-seller account,
+     * receive the exact same generic response as a real Seller. A token is
+     * created and an email dispatched ONLY for legitimate Seller accounts.
+     *
+     * Reuses the existing PasswordResetToken infrastructure (SHA-256 token
+     * hashing, 15-minute expiry, deleteExistingTokens, single-use purge).
+     */
+    const requestSellerPasswordReset = async ({ email }) =>
+    {
+        const targetEmail = email.toLowerCase().trim();
+
+        if (!/^\S+@\S+\.\S+$/.test(targetEmail))
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'INVALID_EMAIL',
+                message: 'Please provide a valid email address.',
+            });
+        }
+
+        const seller =
+            await sellerRepository.findByEmail(targetEmail);
+
+        // Identical generic response for unknown / non-seller / banned /
+        // suspended accounts. Never reveals whether the account exists or
+        // which role it holds.
+        if (!seller
+            || seller.role !== ROLES.SELLER
+            || seller.accountStatus === 'BANNED'
+            || seller.accountStatus === 'SUSPENDED')
+        {
+            return {
+                success: true,
+                message: 'If an account exists for this email address, a password reset link has been sent.',
+            };
+        }
+
+        // Generate secure token
+        const rawToken =
+            crypto.randomBytes(32).toString('hex');
+
+        const tokenHash =
+            hashString(rawToken);
+
+        const expiresAt =
+            new Date(Date.now() + 15 * 60 * 1000);
+
+        // Remove previous reset requests
+        await passwordResetTokenRepository.deleteExistingTokens({
+            email: targetEmail,
+        });
+
+        // Save new reset request
+        await passwordResetTokenRepository.saveToken({
+            email: targetEmail,
+            tokenHash,
+            expiresAt,
+        });
+
+        // Build recovery URL
+        const recoveryLink =
+            `${process.env.FRONTEND_URL}/seller/reset-password?token=${rawToken}`;
+
+        // Send email
+        await emailClient.sendEmail({
+            toEmail: targetEmail,
+
+            recipientName:
+                seller.businessDetails?.businessName ||
+                seller.sellerName ||
+                'Seller',
+
+            subject:
+                `${branding.appName} • Seller Password Reset Request`,
+
+            title:
+                'Reset Your Seller Password',
+
+            otp: null,
+
+            message: `
+            We received a request to reset your seller account password.
+
+            Click the button below to create a new password.
+
+            If you didn't request this change, you can safely ignore this email.
+            `,
+
+            verificationLink: recoveryLink,
+
+            showVerificationButton: true,
+
+            buttonText: 'Reset Password',
+
+            otpExpiryText: '',
+
+            footerNote: `
+            This password reset link will expire in 15 minutes.
+
+            If you didn't request a password reset, you can safely ignore this email.
+            `,
+        });
+
+        return {
+            success: true,
+            message: 'If an account exists for this email address, a password reset link has been sent.',
+        };
+    };
+
+    /**
+     * Seller Password Reset Executer.
+     * Maps exactly to: POST /sellers/reset-password
+     *
+     * Produces a bcrypt passwordHash (same format as the Customer reset
+     * flow). Rejects invalid passwords BEFORE any database write, and
+     * restricts resets to Seller accounts only. Invalid/expired/replayed
+     * tokens all surface the same generic error so nothing is revealed
+     * about the token, the user, or the role.
+     */
+    const resetSellerPassword = async ({ token, newPassword }) =>
+    {
+        const tokenHash = hashString(token);
+
+        const activeToken = await passwordResetTokenRepository.findByTokenHash(tokenHash);
+        if (!activeToken)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'INVALID_OR_EXPIRED_TOKEN',
+                message: 'The password reset link is invalid or has expired. Please request a new recovery link.'
+            });
+        }
+
+        // Password policy (shared utility). Fails before any DB write.
+        if (!isValidPasswordPolicy(newPassword))
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'INVALID_PASSWORD',
+                message: 'Password must be a non-empty string between 8 and 72 characters.',
+            });
+        }
+
+        const seller = await sellerRepository.findByEmail(activeToken.email);
+
+        // Generic token failure: never reveals whether the token belonged to
+        // an account, or which role that account holds.
+        if (!seller || seller.role !== ROLES.SELLER)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'INVALID_OR_EXPIRED_TOKEN',
+                message: 'The password reset link is invalid or has expired. Please request a new recovery link.'
+            });
+        }
+
+        const newPasswordHash = await hashPassword(newPassword);
+
+        await sellerRepository.updatePasswordHash({
+            userId: seller._id,
+            passwordHash: newPasswordHash,
+        });
+
+        // Single use: purge the used token and any outstanding ones.
+        await passwordResetTokenRepository.deleteExistingTokens({ email: activeToken.email });
+
+        return { success: true, message: 'Your password has been successfully reset. Please log in with your new credentials.' };
+    };
+
     return Object.freeze({
         createSeller,
         sendSellerLoginOtp,
         verifySellerLoginOtp,
         verifySellerEmailByOtp,
         verifySellerEmailByLink,
+        signinSellerWithPassword,
+        setSellerPassword,
+        requestSellerPasswordReset,
+        resetSellerPassword,
     });
 };

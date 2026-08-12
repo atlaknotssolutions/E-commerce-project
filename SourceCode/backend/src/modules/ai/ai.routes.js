@@ -1,46 +1,33 @@
+import { Router } from "express";
+
 /**
- * Pure function-based routing factory representing the AI Chatbot API gateways.
- * Binds AI chat paths supporting optional authentication for guest or logged-in users.
+ * Builds the /api/ai router. The router and controller are injected
+ * so this module remains a pure route composition layer.
  */
 export const createAiRoutes = ({
   router,
   aiController,
   authenticate,
-  asyncHandler
+  asyncHandler,
 }) =>
 {
-
-  /**
-   * Optional Authentication Wrapper.
-   * If a Bearer token is supplied, it verifies the signature and attaches req.user.
-   * If no token is provided, it gracefully allows the request to proceed as a guest.
-   */
   const optionalAuthenticate = (req, res, next) =>
   {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer '))
+    if (!authHeader || !authHeader.startsWith("Bearer "))
     {
-      return next(); // Proceed smoothly as guest
+      return next();
     }
     return authenticate(req, res, next);
   };
 
-  // ==========================================
-  // ARTIFICIAL INTELLIGENCE GATEWAYS (/ai/*)
-  // ==========================================
+  // router.post("/chat", optionalAuthenticate, asyncHandler(aiController.chat));
+  // router.post("/chat/demo", asyncHandler(aiController.chatDemo));
+  // router.get("/health", aiController.health);
 
-  // Public/Optional-Auth Endpoint: Context-aware conversational AI assistant chatbot
-  router.post(
-    '/ai/chat',
-    optionalAuthenticate,
-    asyncHandler(aiController.chat)
-  );
-
-  // Public/Development Endpoint: Simple demo chatbot response generator
-  router.post(
-    '/ai/chat/demo',
-    asyncHandler(aiController.chatDemo)
-  );
+  router.post("/ai/chat", optionalAuthenticate, asyncHandler(aiController.chat));
+  router.post("/ai/chat/demo", asyncHandler(aiController.chatDemo));
+  router.get("/ai/health", aiController.health);
 
   return router;
 };

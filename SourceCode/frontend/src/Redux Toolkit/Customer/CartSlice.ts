@@ -1,6 +1,6 @@
 // src/slices/cartSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { Cart, CartItem } from "../../types/cartTypes";
+import { Cart } from "../../types/cartTypes";
 import { api } from "../../Config/Api";
 import { RootState } from "../Store";
 import { applyCoupon } from "./CouponSlice";
@@ -52,7 +52,7 @@ interface AddItemRequest
 }
 
 export const addItemToCart = createAsyncThunk<
-  CartItem,
+  Cart,
   { jwt: string | null; request: AddItemRequest }
 >("cart/addItemToCart", async ({ jwt, request }, { rejectWithValue }) =>
 {
@@ -74,7 +74,7 @@ export const addItemToCart = createAsyncThunk<
 });
 
 export const deleteCartItem = createAsyncThunk<
-  any,
+  Cart,
   { jwt: string; cartItemId: string }
 >("cart/deleteCartItem", async ({ jwt, cartItemId }, { rejectWithValue }) =>
 {
@@ -93,7 +93,7 @@ export const deleteCartItem = createAsyncThunk<
 });
 
 export const updateCartItem = createAsyncThunk<
-  any,
+  Cart,
   { jwt: string | null; cartItemId: string; cartItem: any }
 >(
   "cart/updateCartItem",
@@ -157,21 +157,10 @@ const cartSlice = createSlice({
       })
       .addCase(
         addItemToCart.fulfilled,
-        (state, action: PayloadAction<CartItem>) =>
+        (state, action: PayloadAction<Cart>) =>
         {
           state.loading = false;
-
-          if (!state.cart)
-          {
-            return;
-          }
-
-          if (!state.cart.cartItems)
-          {
-            state.cart.cartItems = [];
-          }
-
-          state.cart.cartItems.push(action.payload);
+          state.cart = action.payload;
         }
       )
       .addCase(addItemToCart.rejected, (state, action) =>
@@ -188,13 +177,7 @@ const cartSlice = createSlice({
       })
       .addCase(deleteCartItem.fulfilled, (state, action) =>
       {
-        if (state.cart)
-        {
-          state.cart.cartItems = state.cart.cartItems.filter(
-            (item: CartItem) => item.id !== action.meta.arg.cartItemId
-          );
-        }
-
+        state.cart = action.payload;
         state.loading = false;
       })
       .addCase(deleteCartItem.rejected, (state, action) =>
@@ -209,19 +192,7 @@ const cartSlice = createSlice({
       })
       .addCase(updateCartItem.fulfilled, (state, action) =>
       {
-        if (state.cart)
-        {
-          const index = state.cart.cartItems.findIndex(
-            (item: CartItem) => item.id === action.meta.arg.cartItemId
-          );
-          if (index !== -1)
-          {
-            state.cart.cartItems[index] = {
-              ...state.cart.cartItems[index],
-              ...action.payload,
-            };
-          }
-        }
+        state.cart = action.payload;
         state.loading = false;
       })
       .addCase(updateCartItem.rejected, (state, action) =>

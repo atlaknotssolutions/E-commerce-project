@@ -1,4 +1,4 @@
-import { toCartDto, toCartItemDto } from "../../utils/mappers/cart.mapper.js";
+import { toCartDto } from "../../utils/mappers/cart.mapper.js";
 import {
     computeCartTotals,
     computeItemLine,
@@ -118,16 +118,9 @@ export const createCartService = ({
         // 5. Commit state updates to database
         const finalCart = await cartRepository.updateCart({ userId, cartData: recalculatedData });
 
-        // Returns newly appended item snapshot
-        const item = finalCart.items.find(
-            (item) =>
-                item.product._id.toString() === productId.toString() &&
-                item.size === size &&
-                ((!variantId && !item.variantId) ||
-                 (variantId && item.variantId && item.variantId.toString() === variantId.toString()))
-        );
-
-        return toCartItemDto(item);
+        // Returns the authoritative, fully recalculated cart so the client's
+        // Price Details / checkout totals stay in sync without a follow-up fetch.
+        return toCartDto(finalCart);
     };
 
     /**
@@ -173,11 +166,9 @@ export const createCartService = ({
         const recalculatedData = recalculateCart(cart.items, cart.couponPrice);
         const finalCart = await cartRepository.updateCart({ userId, cartData: recalculatedData });
 
-        const item = finalCart.items.find(
-            (item) => item._id.toString() === cartItemId.toString()
-        );
-
-        return toCartItemDto(item);
+        // Returns the authoritative, fully recalculated cart so the client's
+        // Price Details / checkout totals stay in sync without a follow-up fetch.
+        return toCartDto(finalCart);
     };
 
     /**
@@ -213,9 +204,11 @@ export const createCartService = ({
 
         // 3. Re-evaluate sums of residue lists
         const recalculatedData = recalculateCart(filteredItemsCollection, cart.couponPrice);
-        await cartRepository.updateCart({ userId, cartData: recalculatedData });
+        const updatedCart = await cartRepository.updateCart({ userId, cartData: recalculatedData });
 
-        return { success: true, message: 'Item successfully removed from cart.' };
+        // Returns the authoritative, fully recalculated cart so the client's
+        // Price Details / checkout totals stay in sync without a follow-up fetch.
+        return toCartDto(updatedCart);
     };
 
 

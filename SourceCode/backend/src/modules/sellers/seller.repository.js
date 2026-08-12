@@ -18,6 +18,22 @@ export const createSellerRepository = ({ Seller }) =>
     };
 
     /**
+     * Locates a registered merchant seller using unique business email,
+     * explicitly including the passwordHash field despite its schema-level
+     * `select: false`. Intended ONLY for password credential verification
+     * inside the auth service. Callers must never serialize the returned
+     * hash back to clients.
+     */
+    const findByEmailWithPassword = async (email, options = {}) =>
+    {
+        return Seller.findOne(
+            { email: email.toLowerCase() },
+            '+passwordHash', // Explicitly opt back into the excluded field.
+            options
+        ).lean();
+    };
+
+    /**
      * Resolves a seller profile using unique database ObjectId.
      */
     const findById = async (id, options = {}) =>
@@ -26,6 +42,36 @@ export const createSellerRepository = ({ Seller }) =>
             id,
             null,
             options
+        ).lean();
+    };
+
+    /**
+     * Resolves a seller profile using unique database ObjectId, explicitly
+     * including the passwordHash field despite its schema-level
+     * `select: false`. Intended ONLY for password credential verification
+     * inside the auth service. Callers must never serialize the returned
+     * hash back to clients.
+     */
+    const findByIdWithPassword = async (id, options = {}) =>
+    {
+        return Seller.findById(
+            id,
+            '+passwordHash', // Explicitly opt back into the excluded field.
+            options
+        ).lean();
+    };
+
+    /**
+     * Updates ONLY the passwordHash field for a seller.
+     * The returned document never exposes passwordHash because the schema
+     * marks the field as `select: false`.
+     */
+    const updatePasswordHash = async ({ userId, passwordHash }, options = {}) =>
+    {
+        return Seller.findByIdAndUpdate(
+            userId,
+            { $set: { passwordHash } },
+            { new: true, runValidators: true, ...options }
         ).lean();
     };
 
@@ -117,7 +163,10 @@ export const createSellerRepository = ({ Seller }) =>
 
     return Object.freeze({
         findByEmail,
+        findByEmailWithPassword,
         findById,
+        findByIdWithPassword,
+        updatePasswordHash,
         create,
         updateVerificationStatus,
         updateAccountStatus,

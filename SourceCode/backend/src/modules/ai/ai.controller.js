@@ -2,31 +2,58 @@
  * Pure function-based factory representing the AI Chatbot HTTP API Controllers.
  * Strictly enforces thin controller design principles.
  */
-export const createAiController = ({ aiService }) =>
+export const createAiController = ({ aiService, logger = console }) =>
 {
+    /**
+     * Shared handler so /chat and /chat/demo can't drift out of sync,
+     * and so error handling only has to be written once.
+     */
+    const handleChat = async ({ prompt, productId, userId }, res) =>
+    {
+        if (!prompt || typeof prompt !== "string" || !prompt.trim())
+        {
+            return res.status(400).json({
+                role: "assistant",
+                message: "A non-empty 'prompt' is required.",
+            });
+        }
+
+        try
+        {
+            const result = await aiService.getChatBotResponse({
+                prompt: prompt.trim(),
+                productId: productId || null,
+                userId,
+            });
+
+            return res.status(200).json({
+                role: "assistant",
+                message: result.response,
+                mockMode: result.mockMode,
+                sources: result.sources,
+            });
+        }
+        catch (err)
+        {
+            logger.error("[AI Controller] getChatBotResponse failed:", err);
+
+            return res.status(502).json({
+                role: "assistant",
+                message: "Sorry, I couldn't process that request right now.",
+                mockMode: true,
+            });
+        }
+    };
+
     /**
      * POST /api/ai/chat
      */
     const chat = async (req, res) =>
     {
         const userId = req.user?.id || null;
+        const { prompt, productId } = req.body || {};
 
-        const { prompt, productId } = req.body;
-
-        const result = await aiService.getChatBotResponse({
-            prompt,
-            productId: productId || null,
-            userId,
-        });
-
-        console.log("========== AI RESULT ==========");
-        console.log(result);
-
-        return res.status(200).json({
-            role: "assistant",
-            message: result.response,
-            mockMode: result.mockMode,
-        });
+        return handleChat({ prompt, productId, userId }, res);
     };
 
     /**
@@ -34,88 +61,22 @@ export const createAiController = ({ aiService }) =>
      */
     const chatDemo = async (req, res) =>
     {
-        const message =
-            req.query.message ||
-            req.body.message ||
-            "Hello";
+        const message = req.query?.message || req.body?.message || "Hello";
 
-        const result = await aiService.getChatBotResponse({
-            prompt: message,
-            productId: null,
-            userId: null,
-        });
+        return handleChat({ prompt: message, productId: null, userId: null }, res);
+    };
 
-        return res.status(200).json({
-            role: "assistant",
-            message: result.response,
-            mockMode: result.mockMode,
-        });
+    /**
+     * GET /api/ai/health — surfaces index status from the RAG service.
+     */
+    const health = (req, res) =>
+    {
+        return res.status(200).json(aiService.getStatus());
     };
 
     return Object.freeze({
         chat,
         chatDemo,
+        health,
     });
 };
-
-
-
-
-// /**
-//  * Pure function-based factory representing the AI Chatbot HTTP API Controllers.
-//  * Strictly enforces thin controller design principles, avoiding classes and context leaks.
-//  */
-// export const createAiController = ({ aiService }) =>
-// {
-
-//     /**
-//      * Main Conversational AI Chatbot endpoint.
-//      * Leverages optional user credentials context to generate highly relevant answers.
-//      * Maps exactly to: POST /ai/chat
-//      */
-//     const chat = async (req, res) =>
-//     {
-//         // Reads optional user credentials ID safely (Might be null if guest accesses chatbot)
-//         const userId = req.user ? req.user.id : null;
-
-//         // Destructures core prompt inputs and optional catalog targets
-//         const { prompt, productId } = req.body;
-
-//         const outcome = await aiService.getChatBotResponse({
-//             prompt,
-//             productId: productId || null,
-//             userId,
-//         });
-
-//         // 200 OK: Standard expected response payload delivery
-//         res.status(200).json(outcome);
-//     };
-
-//     /**
-//      * Simple Demo AI Chatbot endpoint.
-//      * Generates a rapid conversational response for testing and developmental evaluations.
-//      * Maps exactly to: POST /ai/chat/demo?message=... (Optional Public/dev)
-//      */
-//     const chatDemo = async (req, res) =>
-//     {
-//         // Reads dynamic user query from query parameters or body fallback
-//         const message = req.query.message || req.body.message || 'Hello';
-
-//         const outcome = await aiService.getChatBotResponse({
-//             prompt: message,
-//             productId: null,
-//             userId: null,
-//         });
-
-//         // 200 OK: Returns standard ApiResponse packaging back to client
-//         res.status(200).json({
-//             response: `[DEMO ASSISTANT] ${outcome.response}`,
-//             mockMode: true,
-//         });
-//     };
-
-//     return Object.freeze({
-//         chat,
-//         chatDemo, // Added demo chatbot controller method
-//     });
-// };

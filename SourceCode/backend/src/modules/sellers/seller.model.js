@@ -113,7 +113,10 @@ const SellerSchema = new mongoose.Schema({
     },
     passwordHash: {
         // Empty for OTP/passwordless authentication if needed.
+        // Excluded from default queries via `select: false`; only fetched
+        // explicitly when verifying credentials (see findByEmailWithPassword).
         type: String,
+        select: false,
     },
     role: {
         type: String,

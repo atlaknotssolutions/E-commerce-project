@@ -15,8 +15,8 @@ const REQUIRED_ENV_VARS = [
 
     'STRIPE_SECRET_KEY',
 
-    'GROQ_API_KEY',
-    'GROQ_MODEL',
+    // 'GROQ_API_KEY',
+    // 'GROQ_MODEL',
 
     'FRONTEND_URL',
 ];
@@ -36,8 +36,8 @@ const configuration = {
     nodeEnv: process.env.NODE_ENV || 'development',
     port: parseInt(process.env.PORT || '5000', 10),
     mongoDbUri: process.env.MONGODB_URI,
-    groqApiKey: process.env.GROQ_API_KEY,
-    groqModel: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    // groqApiKey: process.env.GROQ_API_KEY,
+    // groqModel: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
     logLevel: process.env.LOG_LEVEL || 'info',
     frontendUrl: process.env.FRONTEND_URL,
     apiBaseUrl: process.env.API_BASE_URL,
