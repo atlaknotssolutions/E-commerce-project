@@ -1,6 +1,13 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import branding from '../../config/branding.js';
+import { ROLES } from '../../constants/enums.js';
+import {
+    hashPassword,
+    isValidPasswordPolicy,
+    isUsablePasswordHash,
+    verifyPassword,
+} from '../../utils/password.js';
 
 /**
  * Pure function-based factory representing the Customer Authentication Business Service.
@@ -111,6 +118,32 @@ export const createAuthService = ({
         }, options);
 
         return rawRefreshToken;
+    };
+
+    /**
+     * Internal Helper: Issues a fresh access token plus a new rotatable
+     * refresh token for an authenticated customer. Shared by all
+     * session-establishing flows (OTP signup/signin, password signin).
+     */
+    const issueCustomerSession = async ({ user }) =>
+    {
+        const tokenPayload = { id: user._id, email: user.email, role: user.role };
+        const accessToken = signToken({
+            payload: tokenPayload,
+            secret: jwtAccessSecret,
+            expiresIn: jwtAccessExpiresIn,
+        });
+
+        const familyId = crypto.randomUUID(); // Unique family identifier for the new session
+        const refreshToken = await issueRefreshToken({
+            userId: user._id,
+            familyId,
+        });
+
+        return {
+            jwt: accessToken,
+            refreshToken,
+        };
     };
 
     /**
@@ -318,6 +351,146 @@ export const createAuthService = ({
     };
 
     /**
+     * Password-based signin for customers who have set a password.
+     * Maps exactly to: POST /auth/password-login
+     *
+     * Deliberately returns ONE generic authentication failure for every
+     * invalid combination (unknown email, non-customer role, missing/legacy
+     * password hash, wrong password) to prevent account enumeration.
+     */
+    const signinCustomerWithPassword = async ({ email, password }) =>
+    {
+        const targetEmail = email.toLowerCase().trim();
+
+        // passwordHash is schema-level `select: false`; this is the ONLY
+        // repository read that explicitly requests it for verification.
+        const existingUser =
+            await userRepository.findByEmailWithPassword(targetEmail);
+
+        // Short-circuit chain: bcrypt only runs when a usable hash exists.
+        const passwordIsValid =
+            existingUser
+            && existingUser.role === ROLES.CUSTOMER
+            && isUsablePasswordHash(existingUser.passwordHash)
+            && typeof password === 'string'
+            && password.length > 0
+            && await verifyPassword(password, existingUser.passwordHash);
+
+        if (!passwordIsValid)
+        {
+            throw createApiError({
+                statusCode: 401,
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password.',
+            });
+        }
+
+        const { jwt, refreshToken } =
+            await issueCustomerSession({ user: existingUser });
+
+        return {
+            jwt,
+            refreshToken, // Export refresh token to be attached as HttpOnly cookie in controllers
+            status: true,
+            message: 'Login successfully verified.',
+            role: existingUser.role,
+        };
+    };
+
+    /**
+     * Sets a password on an OTP-created (or legacy hash) customer account,
+     * or changes an existing password after verifying the current one.
+     * Maps exactly to: POST /auth/password (authenticated + ROLE_CUSTOMER)
+     *
+     * Case A (no usable bcrypt hash): only `password` is required.
+     * Case B (usable bcrypt hash): `currentPassword` must be provided and
+     * verified before the hash is replaced.
+     */
+    const setPassword = async ({ userId, password, currentPassword }) =>
+    {
+        // passwordHash is schema-level `select: false`; this is the ONLY
+        // repository read that explicitly requests it for this decision.
+        const user = await userRepository.findByIdWithPassword(userId);
+
+        if (!user)
+        {
+            throw createApiError({
+                statusCode: 404,
+                code: 'USER_NOT_FOUND',
+                message: 'The requested user profile does not exist on this server.',
+            });
+        }
+
+        // Defense in depth: the route is already role-guarded, but the
+        // service independently refuses non-customer principals.
+        if (user.role !== ROLES.CUSTOMER)
+        {
+            throw createApiError({
+                statusCode: 403,
+                code: 'ACCESS_FORBIDDEN',
+                message: `Access Forbidden: Your account role (${user.role}) does not possess authorizations to execute this operational run.`,
+            });
+        }
+
+        // Policy validation runs before any branch logic so it fails fast
+        // and never depends on whether a password already exists.
+        if (!isValidPasswordPolicy(password))
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'INVALID_PASSWORD',
+                message: 'Password must be a non-empty string between 8 and 72 characters.',
+            });
+        }
+
+        const hasUsablePassword = isUsablePasswordHash(user.passwordHash);
+
+        if (hasUsablePassword)
+        {
+            if (typeof currentPassword !== 'string' || currentPassword.length === 0)
+            {
+                throw createApiError({
+                    statusCode: 400,
+                    code: 'CURRENT_PASSWORD_REQUIRED',
+                    message: 'Current password is required to change your password.',
+                });
+            }
+
+            const currentPasswordIsValid =
+                await verifyPassword(currentPassword, user.passwordHash);
+
+            if (!currentPasswordIsValid)
+            {
+                throw createApiError({
+                    statusCode: 401,
+                    code: 'INVALID_CURRENT_PASSWORD',
+                    message: 'The current password you entered is incorrect.',
+                });
+            }
+        }
+
+        const newPasswordHash = await hashPassword(password);
+
+        await userRepository.updatePasswordHash({
+            userId: user._id,
+            passwordHash: newPasswordHash,
+        });
+
+        // Outstanding reset links are no longer actionable once the customer
+        // controls a working password. Reuses the existing reset token purge.
+        await passwordResetTokenRepository.deleteExistingTokens({
+            email: user.email,
+        });
+
+        return {
+            success: true,
+            message: hasUsablePassword
+                ? 'Your password has been changed successfully.'
+                : 'Your password has been set successfully.',
+        };
+    };
+
+    /**
      * Standard signin validation logic.
      */
     const signinCustomer = async ({ email, otp }) =>
@@ -359,23 +532,36 @@ export const createAuthService = ({
 
 
     /**
- * Generates and dispatches a secure password reset link.
- */
+     * Generates and dispatches a secure password reset link.
+     *
+     * Enumeration protection: unknown emails, and any non-customer account,
+     * receive the exact same generic response as a real customer. A token is
+     * created and an email dispatched ONLY for customer accounts.
+     */
     const requestPasswordReset = async ({ email }) =>
     {
         const targetEmail = email.toLowerCase().trim();
 
+        if (!/^\S+@\S+\.\S+$/.test(targetEmail))
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'INVALID_EMAIL',
+                message: 'Please provide a valid email address.',
+            });
+        }
+
         const user =
             await userRepository.findByEmail(targetEmail);
 
-        if (!user)
+        // Identical generic response for unknown / non-customer accounts.
+        // Never reveals whether the account exists or which role it holds.
+        if (!user || user.role !== ROLES.CUSTOMER)
         {
-            throw createApiError({
-                statusCode: 404,
-                code: 'USER_NOT_FOUND',
-                message:
-                    'Reset failed. No customer profile registered under this email address.',
-            });
+            return {
+                success: true,
+                message: 'If an account exists for this email address, a password reset link has been sent.',
+            };
         }
 
         // Generate secure token
@@ -444,8 +630,7 @@ export const createAuthService = ({
 
         return {
             success: true,
-            message:
-                'A secure password reset link has been sent to your registered email address.',
+            message: 'If an account exists for this email address, a password reset link has been sent.',
         };
     };
 
@@ -453,6 +638,10 @@ export const createAuthService = ({
 
     /**
      * Password Reset Executer.
+     *
+     * Produces a bcrypt passwordHash (same format as Phase 2/3 password
+     * flows). Rejects invalid passwords BEFORE any database write, and
+     * restricts resets to customer accounts only.
      */
     const resetPassword = async ({ token, newPassword }) =>
     {
@@ -468,7 +657,15 @@ export const createAuthService = ({
             });
         }
 
-        const encryptedPassword = hashString(newPassword);
+        // Password policy (shared Phase 3 utility). Fails before any DB write.
+        if (!isValidPasswordPolicy(newPassword))
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'INVALID_PASSWORD',
+                message: 'Password must be a non-empty string between 8 and 72 characters.',
+            });
+        }
 
         const user = await userRepository.findByEmail(activeToken.email);
         if (!user)
@@ -480,9 +677,27 @@ export const createAuthService = ({
             });
         }
 
-        const UserMongooseModel = mongoose.model('User');
-        await UserMongooseModel.findByIdAndUpdate(user._id, { passwordHash: encryptedPassword });
+        // Security boundary: reset tokens are issued to customers only.
+        // A legacy/non-customer token must never reset a seller/admin account.
+        if (user.role !== ROLES.CUSTOMER)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'INVALID_OR_EXPIRED_TOKEN',
+                message: 'The password reset link is invalid or has expired. Please request a new recovery link.'
+            });
+        }
 
+        // CRITICAL: bcrypt-hash the new password. Legacy flow stored an
+        // unsalted SHA-256 hash here which password-login could never verify.
+        const newPasswordHash = await hashPassword(newPassword);
+
+        await userRepository.updatePasswordHash({
+            userId: user._id,
+            passwordHash: newPasswordHash,
+        });
+
+        // Single use: purge the used token and any outstanding ones.
         await passwordResetTokenRepository.deleteExistingTokens({ email: activeToken.email });
 
         return { success: true, message: 'Your password has been successfully reset. Please log in with your new credentials.' };
@@ -496,22 +711,7 @@ export const createAuthService = ({
     const refreshSession = async ({ refreshToken }) =>
     {
 
-        try
-        {
-            verifyToken({
-                token: refreshToken,
-                secret: jwtRefreshSecret,
-            });
-        } catch (error)
-        {
-            throw createApiError({
-                statusCode: 401,
-                code: 'REFRESH_TOKEN_EXPIRED',
-                message: 'Your refresh token session has expired or is invalid. Please log in again.'
-            });
-        }
-
-        // 2. Hash input token to locate database record
+        // 1. Hash input token to locate database record
         const tokenHash = hashString(refreshToken);
         const sessionToken = await refreshTokenRepository.findByTokenHash(tokenHash);
 
@@ -525,7 +725,7 @@ export const createAuthService = ({
             });
         }
 
-        // 3. Replay Attack Detection: If token is already used, ban the entire family lineage immediately!
+        // 2. Replay Attack Detection: If token is already used, ban the entire family lineage immediately!
         if (sessionToken.isUsed)
         {
             await refreshTokenRepository.revokeFamily({ familyId: sessionToken.familyId });
@@ -536,14 +736,14 @@ export const createAuthService = ({
             });
         }
 
-        // 4. Token is valid and unused -> Trigger Rotation
+        // 3. Token is valid and unused -> Trigger Rotation
         const userId = sessionToken.user;
         const familyId = sessionToken.familyId;
 
         // Flag current token as used
         await refreshTokenRepository.markAsUsed({ id: sessionToken._id });
 
-        // 5. Generate fresh rotated tokens under same family lineage
+        // 4. Generate fresh rotated tokens under same family lineage
         const userProfile = await userRepository.findById(userId);
         if (!userProfile)
         {
@@ -578,6 +778,8 @@ export const createAuthService = ({
         sendLoginOtp,
         signupCustomer,
         signinCustomer,
+        signinCustomerWithPassword,
+        setPassword,
         requestPasswordReset,
         resetPassword,
         refreshSession, // Added session rotation action

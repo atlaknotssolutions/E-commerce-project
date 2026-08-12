@@ -51,29 +51,29 @@ const CartItemCard: React.FC<CartItemProps> = ({ item }) =>
 
                 <div>
                     <img className='w-[90px] rounded-md'
-                        src={item.product.images[0]?.url || ""}
+                        src={item.product?.images?.[0]?.url || ""}
                         alt="" />
                 </div>
                 <div className='space-y-2'>
                     {/* <h1 className="font-semibold text-lg">
-                        {item.product.seller?.businessDetails?.businessName ?? "Unknown Seller"}
+                        {item.product?.seller?.businessDetails?.businessName ?? "Unknown Seller"}
                     </h1> */}
 
                     <h1 className="text-gray-600 font-semibold text-sm">
-                        {item.product.title}
+                        {item.product?.title || "Product no longer available"}
                     </h1>
 
                     <p className="text-gray-400 text-xs">
                         <strong>Sold by:</strong>{" "}
-                        {item.product.seller?.businessDetails?.businessName ?? "Unknown Seller"}
+                        {item.product?.seller?.businessDetails?.businessName ?? "Unknown Seller"}
                     </p>
 
                     <p className="text-xs">
                         <strong>7 days replacement</strong> available
                     </p>
 
-                    {item.variantId && item.product.variants && (() => {
-                        const matchedVariant = item.product.variants.find(
+                    {item.variantId && item.product?.variants && (() => {
+                        const matchedVariant = item.product?.variants.find(
                             (v) => v.id === item.variantId
                         );
                         if (!matchedVariant) return null;

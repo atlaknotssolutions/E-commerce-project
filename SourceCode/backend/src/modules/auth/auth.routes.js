@@ -2,11 +2,16 @@
  * Pure function-based routing factory representing the Authentication API gateways.
  * Binds public browsing endpoints and locks administrative controllers under strict guards.
  */
+import { ROLES } from '../../constants/enums.js';
+
 export const createAuthRoutes = ({
     router,
     authController,
     sellerAuthController,
     authenticate,
+    authorizeRoles,
+    passwordLoginRateLimiter,
+    passwordResetRequestRateLimiter,
     asyncHandler
 }) =>
 {
@@ -24,8 +29,11 @@ export const createAuthRoutes = ({
     // Validates OTP to authorize logins for existing customers
     router.post('/auth/signin', asyncHandler(authController.signin));
 
-    // Customer Endpoint: Initiates forgot-password workflow generating a temporary secure recovery link (Public Route)
-    router.post('/auth/reset-password-request', asyncHandler(authController.requestPasswordReset));
+    // Authorizes existing customers via email + password (Public Route, rate limited against brute force)
+    router.post('/auth/password-login', passwordLoginRateLimiter, asyncHandler(authController.passwordSignin));
+
+    // Customer Endpoint: Initiates forgot-password workflow generating a temporary secure recovery link (Public Route, rate limited against abuse)
+    router.post('/auth/reset-password-request', passwordResetRequestRateLimiter, asyncHandler(authController.requestPasswordReset));
 
     // Customer Endpoint: Commits the password modifications after validating the recovery token (Public Route)
     router.post('/auth/reset-password', asyncHandler(authController.resetPassword));
@@ -35,6 +43,9 @@ export const createAuthRoutes = ({
 
     // Customer Endpoint: Manual session logout terminator (Guarded - Requires Authentication)
     router.post('/auth/logout', authenticate, asyncHandler(authController.logout));
+
+    // Customer Endpoint: Sets a first password on an OTP-created account, or changes an existing one (Guarded - Requires Authentication + Customer role)
+    router.post('/auth/password', authenticate, authorizeRoles(ROLES.CUSTOMER), asyncHandler(authController.setPassword));
 
 
     // ============================================

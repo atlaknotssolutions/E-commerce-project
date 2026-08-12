@@ -11,6 +11,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { notification } from '../../../services/notificationService';
 import { formatDate } from '../../util/fomateDate';
 import { OrderStatus, ReturnStatus } from '../../../types/orderTypes';
+import { PRODUCT_UNAVAILABLE_NAME, toOrderItemView } from '../../util/orderItemView';
 
 const OrderDetails = () =>
 {
@@ -56,6 +57,8 @@ const OrderDetails = () =>
       No order found
     </div>;
   }
+
+  const orderItemView = toOrderItemView(orders.orderItem);
 
   const existingReturn = orders.returns.find(r => r.orderItemId === orderItemId);
   const currentStatus = orders.currentOrder?.orderStatus;
@@ -260,35 +263,35 @@ const OrderDetails = () =>
         <div className='flex flex-col sm:flex-row gap-5 items-center sm:items-start'>
           <img
             className="w-[90px] h-[90px] object-cover rounded-lg"
-            src={
-              orders.orderItem?.product.images?.[0]?.url ||
-              "/logo192.png"
-            }
-            alt={orders.orderItem?.product.title}
+            src={orderItemView.image}
+            alt={orderItemView.name}
           />
           <div className='flex-1 text-sm space-y-1 text-center sm:text-left'>
-            <h1 className='font-bold text-base'>{orders.orderItem?.product.seller?.businessDetails.businessName}</h1>
-            <p className='text-gray-700'>{orders.orderItem?.product.title}</p>
+            {orderItemView.productAvailable ? (
+              <>
+                <h1 className='font-bold text-base'>{orderItemView.sellerName}</h1>
+                <p className='text-gray-700'>{orderItemView.name}</p>
+              </>
+            ) : (
+              <>
+                <h1 className='font-bold text-base'>{orderItemView.name}</h1>
+                <p className='text-gray-500'>{orderItemView.hasHistoricalName ? PRODUCT_UNAVAILABLE_NAME : ''}</p>
+              </>
+            )}
             <p className='text-gray-500'>
               <strong>Variant:</strong>{" "}
-              {orders.orderItem?.variantAttributes
-                ? (() => {
-                    const va = orders.orderItem.variantAttributes;
-                    const parts: string[] = [];
-                    if (va.color) parts.push(va.color);
-                    if (va.size) parts.push(va.size);
-                    if (va.storage) parts.push(va.storage);
-                    if (va.ram) parts.push(va.ram);
-                    return parts.length > 0 ? parts.join(" / ") : orders.orderItem?.size || "N/A";
-                  })()
-                : orders.orderItem?.size || "FREE"
-              }
+              {orderItemView.variantLabel}
             </p>
+            {!orderItemView.productAvailable && (
+              <p className='text-gray-500'>
+                <strong>Qty:</strong> {orderItemView.quantity}
+              </p>
+            )}
           </div>
           <div className='shrink-0'>
-            {isDelivered ? (
+            {isDelivered && orderItemView.productAvailable ? (
               <Button
-                onClick={() => navigate(`/reviews/${orders.orderItem?.product.id}/create`)}
+                onClick={() => navigate(`/reviews/${orderItemView.productId}/create`)}
                 variant="contained"
                 color="primary"
                 sx={{ textTransform: 'none' }}
@@ -580,7 +583,7 @@ const OrderDetails = () =>
           onClose={() => setReturnDialogOpen(false)}
           orderId={orderId}
           orderItemId={orderItemId}
-          productId={orders.orderItem.product.id || ""}
+          productId={orders.orderItem.product?.id || ""}
         />
       )}
     </Box>

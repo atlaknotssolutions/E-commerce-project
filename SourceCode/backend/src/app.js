@@ -9,8 +9,10 @@ import morgan from "morgan";
 // Core Utilities & Middlewares
 import { createErrorHandlerMiddleware } from './middlewares/errorHandler.js';
 import { createAuthenticateMiddleware } from './middlewares/authenticate.js';
+import { createOptionalAuthenticateMiddleware } from './middlewares/authenticateOptional.js';
 import { createAuthorizeRolesMiddleware } from './middlewares/authorizeRoles.js';
 import { createApiError } from './utils/apiError.js';
+import { createRateLimiter } from './utils/rateLimiter.js';
 import { asyncHandler } from './utils/asyncHandler.js';
 import { generateOTP } from './utils/otp.js';
 import { signToken, verifyToken } from './utils/jwt.js';
@@ -314,6 +316,7 @@ export const createApp = async ({ env, dbManager }) =>
             origin: [
                 "https://e-commerce-project-iota-ten.vercel.app",
                 "http://localhost:3000",
+                "http://192.168.1.22:3000",
             ],
             credentials: true,
         })
@@ -340,6 +343,12 @@ export const createApp = async ({ env, dbManager }) =>
     // =========================================================================
 
     const authenticate = createAuthenticateMiddleware({
+        verifyToken,
+        jwtAccessSecret,
+        createApiError
+    });
+
+    const authenticateOptional = createOptionalAuthenticateMiddleware({
         verifyToken,
         jwtAccessSecret,
         createApiError
@@ -883,7 +892,7 @@ export const createApp = async ({ env, dbManager }) =>
     });
 
     // E. Setup Thin HTTP Controllers
-    const authController = createAuthController({ authService });
+    const authController = createAuthController({ authService, createApiError });
     const sellerAuthController = createSellerAuthController({ sellerAuthService });
     const productController = createProductController({ productService });
     const cartController = createCartController({ cartService });
@@ -981,12 +990,52 @@ export const createApp = async ({ env, dbManager }) =>
     });
 
     // F. Assembly Routes
+
+    // Brute-force protection for the password login endpoint.
+    // In-memory fixed window (per process); keyed by client IP + email so a
+    // single offender cannot block other users behind the same IP.
+    const passwordLoginRateLimiter = createRateLimiter({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxAttempts: 10,
+        keyGenerator: (req) =>
+        {
+            const rawEmail = req.body && req.body.email;
+            const email = typeof rawEmail === 'string'
+                ? rawEmail.trim().toLowerCase()
+                : '';
+            return `${req.ip}:${email}`;
+        },
+        message: 'Too many login attempts. Please try again later.',
+        code: 'RATE_LIMIT_EXCEEDED',
+    });
+
+    // Abuse protection for the password reset request endpoint.
+    // Keyed by client IP + normalized email; generic message never reveals
+    // whether the email belongs to an existing account.
+    const passwordResetRequestRateLimiter = createRateLimiter({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxAttempts: 5,
+        keyGenerator: (req) =>
+        {
+            const rawEmail = req.body && req.body.email;
+            const email = typeof rawEmail === 'string'
+                ? rawEmail.trim().toLowerCase()
+                : '';
+            return `${req.ip}:${email}`;
+        },
+        message: 'Too many password reset requests. Please try again later.',
+        code: 'RATE_LIMIT_EXCEEDED',
+    });
+
     const rawAuthRouterInstance = express.Router();
     const authRoutes = createAuthRoutes({
         router: rawAuthRouterInstance,
         authController,
         sellerAuthController,
         authenticate, // Safely passed
+        authorizeRoles,
+        passwordLoginRateLimiter,
+        passwordResetRequestRateLimiter,
         asyncHandler,
     });
 
@@ -1046,6 +1095,7 @@ export const createApp = async ({ env, dbManager }) =>
         router: rawPaymentRouterInstance,
         paymentController,
         authenticate,
+        authenticateOptional,
         asyncHandler,
     });
 

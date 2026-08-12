@@ -241,7 +241,7 @@ export const createPaymentService = ({
     /**
      * Idempotent Payment Verification & Settlements Engine.
      */
-    const verifyRazorpayPayment = async ({ paymentId, paymentLinkId }) =>
+    const verifyRazorpayPayment = async ({ paymentId, paymentLinkId, userId }) =>
     {
         const paymentOrder = await paymentOrderRepository.findByPaymentLinkId(paymentLinkId);
         if (!paymentOrder)
@@ -250,6 +250,19 @@ export const createPaymentService = ({
                 statusCode: 404,
                 code: 'PAYMENT_RECORD_NOT_FOUND',
                 message: 'Payment verification failed. No transaction record matches the provided link ID.'
+            });
+        }
+
+        // Ownership enforcement when the caller is authenticated.
+        // Unauthenticated callers are authorized by possession of the
+        // high-entropy gateway payment link id (capability credential) plus
+        // the server-side gateway status verification below.
+        if (userId && paymentOrder.user?.toString() !== userId.toString())
+        {
+            throw createApiError({
+                statusCode: 403,
+                code: 'PAYMENT_SESSION_ACCESS_FORBIDDEN',
+                message: 'Verification rejected: This payment session does not belong to your account.'
             });
         }
 
@@ -348,7 +361,7 @@ export const createPaymentService = ({
     };
 
 
-    const verifyStripePayment = async ({ sessionId }) =>
+    const verifyStripePayment = async ({ sessionId, userId }) =>
     {
         const paymentOrder =
             await paymentOrderRepository.findByPaymentLinkId(sessionId);
@@ -359,6 +372,20 @@ export const createPaymentService = ({
                 statusCode: 404,
                 code: 'PAYMENT_RECORD_NOT_FOUND',
                 message: 'Stripe payment session was not found in our records.'
+            });
+        }
+
+        // Ownership enforcement when the caller is authenticated.
+        // Unauthenticated callers are authorized by possession of the
+        // high-entropy Stripe checkout session id (capability credential,
+        // delivered only to the paying browser via the success_url redirect)
+        // plus the server-side Stripe `payment_status === 'paid'` check below.
+        if (userId && paymentOrder.user?.toString() !== userId.toString())
+        {
+            throw createApiError({
+                statusCode: 403,
+                code: 'PAYMENT_SESSION_ACCESS_FORBIDDEN',
+                message: 'Verification rejected: This payment session does not belong to your account.'
             });
         }
 

@@ -1,5 +1,5 @@
-import { Backdrop, CircularProgress } from "@mui/material";
-import { useEffect } from "react";
+import { Alert, Backdrop, Button, CircularProgress, Paper } from "@mui/material";
+import { useEffect, useRef, useState } from "react";
 import { useAppDispatch } from "../../../Redux Toolkit/Store";
 import { paymentSuccess } from "../../../Redux Toolkit/Customer/OrderSlice";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -8,6 +8,9 @@ const PaymentSuccessHandler = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const location = useLocation();
+    const [verifying, setVerifying] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const autoVerifiedRef = useRef(false);
 
     const params = new URLSearchParams(location.search);
 
@@ -18,147 +21,108 @@ const PaymentSuccessHandler = () => {
     // Stripe
     const stripeSessionId = params.get("session_id");
 
-    useEffect(() => {
-        const verify = async () => {
-            try {
+    const hasPaymentParam = Boolean(razorpayPaymentId || stripeSessionId);
 
-                // Razorpay
-                if (razorpayPaymentId) {
-                    await dispatch(
-                        paymentSuccess({
-                            paymentId: razorpayPaymentId,
-                            paymentLinkId: razorpayPaymentLinkId || "",
-                            paymentMethod: "RAZORPAY",
-                            jwt: localStorage.getItem("jwt") || "",
-                        })
-                    ).unwrap();
-                }
+    const runVerification = async () => {
+        setVerifying(true);
+        setError(null);
 
-                // Stripe
-                else if (stripeSessionId) {
-                    await dispatch(
-                        paymentSuccess({
-                            paymentId: stripeSessionId,
-                            paymentLinkId: "",
-                            paymentMethod: "STRIPE",
-                            jwt: localStorage.getItem("jwt") || "",
-                        })
-                    ).unwrap();
-                }
-
-                navigate("/account/orders", {
-                    replace: true,
-                });
-
-            } catch (err) {
-                console.error(err);
-                navigate("/");
+        try {
+            // Razorpay
+            if (razorpayPaymentId) {
+                await dispatch(
+                    paymentSuccess({
+                        paymentId: razorpayPaymentId,
+                        paymentLinkId: razorpayPaymentLinkId || "",
+                        paymentMethod: "RAZORPAY",
+                        jwt: localStorage.getItem("jwt") || "",
+                    })
+                ).unwrap();
             }
-        };
 
-        verify();
-    }, [
-        dispatch,
-        navigate,
-        razorpayPaymentId,
-        razorpayPaymentLinkId,
-        stripeSessionId,
-    ]);
+            // Stripe
+            else if (stripeSessionId) {
+                await dispatch(
+                    paymentSuccess({
+                        paymentId: stripeSessionId,
+                        paymentLinkId: "",
+                        paymentMethod: "STRIPE",
+                        jwt: localStorage.getItem("jwt") || "",
+                    })
+                ).unwrap();
+            }
+
+            // Only reached after the backend confirms successful payment/order processing.
+            navigate("/account/orders", {
+                replace: true,
+            });
+        } catch (err: any) {
+            console.error(err);
+            setError(err?.message || "Payment verification failed. Please try again.");
+            setVerifying(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!hasPaymentParam) {
+            setVerifying(false);
+            setError("No payment reference was found in the URL.");
+            return;
+        }
+
+        if (autoVerifiedRef.current) return;
+        autoVerifiedRef.current = true;
+
+        runVerification();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasPaymentParam, dispatch, navigate, razorpayPaymentId, razorpayPaymentLinkId, stripeSessionId]);
+
+    if (verifying) {
+        return (
+            <Backdrop
+                sx={{
+                    color: "#fff",
+                    zIndex: (theme) => theme.zIndex.drawer + 1,
+                }}
+                open
+            >
+                <CircularProgress color="inherit" />
+            </Backdrop>
+        );
+    }
 
     return (
-        <Backdrop
-            sx={{
-                color: "#fff",
-                zIndex: (theme) => theme.zIndex.drawer + 1,
-            }}
-            open
-        >
-            <CircularProgress color="inherit" />
-        </Backdrop>
+        <div className="min-h-[90vh] flex justify-center items-center px-5">
+            <Paper className="p-8 w-full max-w-md rounded-md border shadow-lg space-y-5">
+                <Alert severity="error">
+                    {error || "Payment verification failed. Please try again."}
+                </Alert>
+                <div className="flex flex-col gap-3">
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={() => runVerification()}
+                    >
+                        Try Again
+                    </Button>
+                    <Button
+                        fullWidth
+                        variant="outlined"
+                        onClick={() => navigate("/account/orders", { replace: true })}
+                    >
+                        Go to Orders
+                    </Button>
+                    <Button
+                        fullWidth
+                        variant="text"
+                        onClick={() => navigate("/", { replace: true })}
+                    >
+                        Go to Home
+                    </Button>
+                </div>
+            </Paper>
+        </div>
     );
 };
 
 export default PaymentSuccessHandler;
-
-
-
-
-
-
-
-// import { Backdrop, Button, CircularProgress } from "@mui/material";
-// import React, { useEffect } from "react";
-// import store, { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
-// import { paymentSuccess } from "../../../Redux Toolkit/Customer/OrderSlice";
-// import { useLocation, useNavigate } from "react-router-dom";
-
-// const PaymentSuccessHandler = () => {
-//     const dispatch = useAppDispatch();
-//     const location = useLocation();
-//     const { orders } = useAppSelector(store => store)
-//     const navigate=useNavigate();
-
-//     const getQueryParam = (key: string): string | null => {
-//         const params = new URLSearchParams(location.search);
-//         return params.get(key);
-//     };
-//     const paymentId = getQueryParam("razorpay_payment_id");
-//     const paymentLinkId = getQueryParam("razorpay_payment_link_id");
-//     // const paymentId="cs_test_a1eU8pFuXZJlg3tiahN153QykvQl6LI5hLgSnUUh01alidIPrMU8KyDx67"
-
-//     // useEffect(() => {
-//     //     if (paymentId) {
-//     //         dispatch(
-//     //             paymentSuccess({
-//     //                 paymentId,
-//     //                 paymentLinkId: paymentLinkId || "",
-//     //                 jwt: localStorage.getItem("jwt") || "",
-//     //             })
-//     //         );
-//     //     }
-//     // }, [paymentId]);
-
-
-//     useEffect(() => {
-//     if (!paymentId) return;
-
-//     dispatch(
-//         paymentSuccess({
-//             paymentId,
-//             paymentLinkId: paymentLinkId || "",
-//             jwt: localStorage.getItem("jwt") || "",
-//         })
-//     )
-//         .unwrap()
-//         .then(() => {
-//             navigate("/account/orders");
-//         })
-//         .catch((err) => {
-//             console.error(err);
-//         });
-
-// }, [dispatch, navigate, paymentId, paymentLinkId]);
-
-
-//     return (
-//         <div className="min-h-[90vh] flex justify-center items-center">
-//             {orders ? <div className="bg-primary-color text-white p-8 w-[90%] lg:w-[25%] border rounded-md h-[40vh] flex flex-col gap-7 items-center justify-center">
-//                 <h1 className="text-3xl font-semibold">Congratulations!</h1>
-//                 <h1 className="text-2xl font-semibold">Your Order Get Success</h1>
-//                 <div>
-//                     <Button onClick={()=>navigate("/")} color="secondary" variant="contained">Shopping More</Button>
-//                 </div>
-
-//             </div> : <Backdrop
-//                 sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
-//                 open={true}
-//             //   onClick={handleClose}
-//             >
-//                 <CircularProgress color="inherit" />
-//             </Backdrop>}
-           
-//         </div>
-//     );
-// };
-
-// export default PaymentSuccessHandler;

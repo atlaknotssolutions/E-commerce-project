@@ -17,17 +17,23 @@ export const createUserRepository = ({ User }) =>
     };
 
     /**
+     * Find a user by email, explicitly including the passwordHash field
+     * despite its schema-level `select: false`. Intended ONLY for password
+     * credential verification inside the auth service. Callers must never
+     * serialize the returned hash back to clients.
+     */
+    const findByEmailWithPassword = async (email, options = {}) =>
+    {
+        return User.findOne(
+            { email: email.toLowerCase() },
+            '+passwordHash', // Explicitly opt back into the excluded field.
+            options
+        ).lean(); // Return a plain JavaScript object.
+    };
+
+    /**
      * Find a user by ID.
      */
-    // const findById = async (id, options = {}) =>
-    // {
-    //     return User.findById(
-    //         id,
-    //         { passwordHash: 0 }, // Exclude the password hash.
-    //         options
-    //     ).lean();
-    // };
-
     const findById = async (id, options = {}) =>
     {
         return User.findById(
@@ -35,6 +41,21 @@ export const createUserRepository = ({ User }) =>
             { passwordHash: 0 },
             options
         );
+    };
+
+    /**
+     * Find a user by ID, explicitly including the passwordHash field
+     * despite its schema-level `select: false`. Intended ONLY for password
+     * credential verification inside the auth service. Callers must never
+     * serialize the returned hash back to clients.
+     */
+    const findByIdWithPassword = async (id, options = {}) =>
+    {
+        return User.findById(
+            id,
+            '+passwordHash', // Explicitly opt back into the excluded field.
+            options
+        ).lean(); // Return a plain JavaScript object.
     };
 
     /**
@@ -47,6 +68,20 @@ export const createUserRepository = ({ User }) =>
 
         // Convert the document to a plain JavaScript object.
         return newUser ? newUser.toObject() : null;
+    };
+
+    /**
+     * Updates ONLY the passwordHash field for a user.
+     * The returned document never exposes passwordHash because the schema
+     * marks the field as `select: false`.
+     */
+    const updatePasswordHash = async ({ userId, passwordHash }, options = {}) =>
+    {
+        return User.findByIdAndUpdate(
+            userId,
+            { $set: { passwordHash } },
+            { new: true, runValidators: true, ...options }
+        );
     };
 
     /**
@@ -244,8 +279,11 @@ export const createUserRepository = ({ User }) =>
 
     return Object.freeze({
         findByEmail,
+        findByEmailWithPassword,
         findById,
+        findByIdWithPassword,
         create,
+        updatePasswordHash,
         addAddress,
         updateAddress,
         deleteAddress,

@@ -6,6 +6,7 @@ export const createPaymentRoutes = ({
     router,
     paymentController,
     authenticate,
+    authenticateOptional,
     asyncHandler
 }) =>
 {
@@ -16,17 +17,21 @@ export const createPaymentRoutes = ({
 
     // Stripe Checkout Session Verification
     // Stripe (Specific)
+    // Auth-optional: accepts a valid Bearer JWT OR the Stripe checkout
+    // session id itself as the capability credential (only the browser that
+    // completed checkout receives it via the success_url redirect).
     router.get(
         '/api/payment/stripe/:sessionId',
-        authenticate,
+        authenticateOptional,
         asyncHandler(paymentController.verifyStripePayment)
     );
 
     // Customer Endpoint: Validates captured transaction success, running atomic double-entry accounting ledgers inside razorpay transaction sessions
     // Razorpay (Generic)
+    // Auth-optional: same capability model as the Stripe verification route.
     router.get(
         '/api/payment/:paymentId',
-        authenticate,
+        authenticateOptional,
         asyncHandler(paymentController.verifyPayment)
     );
 

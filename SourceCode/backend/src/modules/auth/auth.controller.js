@@ -4,7 +4,7 @@ import { COOKIE_OPTIONS } from '../../config/cookie.js'; // Imported centralized
  * Pure function-based factory representing the Customer Authentication HTTP API Controllers.
  * Strictly enforces thin controller design principles, avoiding classes and context leaks.
  */
-export const createAuthController = ({ authService }) =>
+export const createAuthController = ({ authService, createApiError }) =>
 {
 
     /**
@@ -67,12 +67,79 @@ export const createAuthController = ({ authService }) =>
     };
 
     /**
+     * Authorizes existing customers via email + bcrypt password.
+     * Maps exactly to: POST /auth/password-login
+     */
+    const passwordSignin = async (req, res) =>
+    {
+        const { email, password } = req.body;
+
+        if (!email || !password)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Email and password are required.',
+            });
+        }
+
+        const { jwt, refreshToken, status, message, role } =
+            await authService.signinCustomerWithPassword({ email, password });
+
+        // Sets the rotated refresh token in the secure HttpOnly cookie (same as OTP signin)
+        res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+
+        res.status(200).json({
+            jwt,
+            status,
+            message,
+            role,
+        });
+    };
+
+    /**
+     * Sets a password on an OTP-created account, or changes an existing
+     * password after verifying the current one.
+     * Maps exactly to: POST /auth/password (authenticated + ROLE_CUSTOMER)
+     */
+    const setPassword = async (req, res) =>
+    {
+        const { password, currentPassword } = req.body;
+
+        if (!password)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'A new password is required.',
+            });
+        }
+
+        const outcome = await authService.setPassword({
+            userId: req.user.id,
+            password,
+            currentPassword,
+        });
+
+        res.status(200).json(outcome);
+    };
+
+    /**
      * Initiates forgot-password workflow generating a temporary secure recovery link.
      * Maps exactly to: POST /auth/reset-password-request
      */
     const requestPasswordReset = async (req, res) =>
     {
         const { email } = req.body;
+
+        if (!email)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Email is required.',
+            });
+        }
 
         const outcome = await authService.requestPasswordReset({ email });
 
@@ -86,6 +153,15 @@ export const createAuthController = ({ authService }) =>
     const resetPassword = async (req, res) =>
     {
         const { token, password } = req.body;
+
+        if (!token || !password)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Token and new password are required.',
+            });
+        }
 
         const outcome = await authService.resetPassword({
             token,
@@ -144,6 +220,8 @@ export const createAuthController = ({ authService }) =>
         sendOTP,
         signup,
         signin,
+        passwordSignin,
+        setPassword,
         requestPasswordReset,
         resetPassword,
         refreshSession,

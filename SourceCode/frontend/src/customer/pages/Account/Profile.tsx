@@ -14,6 +14,7 @@ import { clearOrderCanceled } from '../../../Redux Toolkit/Customer/OrderSlice'
 import Addresses from './Adresses'
 import CustomerDashboard from './CustomerDashboard'
 import CustomerCoupons from './CustomerCoupons'
+import ChangePassword from './ChangePassword'
 import Wishlist from '../Wishlist/Wishlist'
 
 const menu = [
@@ -24,6 +25,7 @@ const menu = [
     { name: "Reviews", path: "/account/reviews" },
     { name: "Addresses", path: "/account/addresses" },
     { name: "Profile", path: "/account/profile" },
+    { name: "Password & Security", path: "/account/password" },
     { name: "Logout", path: "logout" }
 ]
 const Profile = () => {
@@ -97,6 +99,7 @@ const Profile = () => {
                         <Route path='/coupons' element={<CustomerCoupons />} />
                         <Route path='/profile' element={<UserDetails />} />
                         <Route path='/addresses' element={<Addresses />} />
+                        <Route path='/password' element={<ChangePassword />} />
                         <Route path='/wishlist' element={<Wishlist />} />
                     </Routes>
 

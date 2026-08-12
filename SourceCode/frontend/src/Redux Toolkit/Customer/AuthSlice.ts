@@ -6,6 +6,9 @@ import
         LoginRequest,
         SignupRequest,
         ResetPasswordRequest,
+        PasswordLoginRequest,
+        PasswordChangeRequest,
+        ApiErrorPayload,
         ApiResponse,
         AuthState,
     } from '../../types/authTypes';
@@ -125,6 +128,41 @@ export const resetPasswordRequest = createAsyncThunk<ApiResponse, { email: strin
     }
 );
 
+export const signinWithPassword = createAsyncThunk<AuthResponse, PasswordLoginRequest>(
+    'auth/signinWithPassword',
+    async (loginRequest, { rejectWithValue }) =>
+    {
+        try
+        {
+            const response = await api.post<AuthResponse>(`${API_URL}/password-login`, loginRequest);
+            localStorage.setItem("jwt", response.data.jwt);
+            return response.data;
+        } catch (error: any)
+        {
+            return rejectWithValue(
+                error.response?.data?.message || 'Signin failed'
+            );
+        }
+    }
+);
+
+export const setPassword = createAsyncThunk<ApiResponse, PasswordChangeRequest, { rejectValue: ApiErrorPayload }>(
+    'auth/setPassword',
+    async (passwordRequest, { rejectWithValue }) =>
+    {
+        try
+        {
+            const response = await api.post<ApiResponse>(`${API_URL}/password`, passwordRequest);
+            return response.data;
+        } catch (error: any)
+        {
+            return rejectWithValue(
+                error.response?.data as ApiErrorPayload
+            );
+        }
+    }
+);
+
 const authSlice = createSlice({
     name: 'auth',
     initialState,
@@ -221,6 +259,37 @@ const authSlice = createSlice({
             {
                 state.loading = false;
                 state.error = action.payload as string;
+            })
+            .addCase(signinWithPassword.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(signinWithPassword.fulfilled, (state, action: PayloadAction<AuthResponse>) =>
+            {
+                state.jwt = action.payload.jwt;
+                state.role = action.payload.role;
+                state.loading = false;
+                state.otpSent = false;
+            })
+            .addCase(signinWithPassword.rejected, (state, action) =>
+            {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
+            .addCase(setPassword.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(setPassword.fulfilled, (state) =>
+            {
+                state.loading = false;
+            })
+            .addCase(setPassword.rejected, (state, action) =>
+            {
+                state.loading = false;
+                state.error = action.payload?.message || 'Failed to update password';
             });
     },
 });

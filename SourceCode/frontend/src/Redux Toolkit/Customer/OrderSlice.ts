@@ -112,9 +112,7 @@ export const paymentSuccess = createAsyncThunk<
 >('orders/paymentSuccess', async ({ paymentId, paymentMethod, jwt, paymentLinkId }, { rejectWithValue }) => {
   try {
     const response = await api.get(`/api/payment/${paymentId}`, {
-      headers: {
-        Authorization: `Bearer ${jwt}`,
-      },
+      headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
       params:{paymentMethod, paymentLinkId}
     });
 

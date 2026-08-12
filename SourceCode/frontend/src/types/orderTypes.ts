@@ -62,7 +62,10 @@ export interface OrderItem
 {
     id: string;
     order: Order;
-    product: Product;
+    /** Live product reference. Null when the product no longer exists (deleted) or populate failed. */
+    product: Product | null;
+    /** Historical product title snapshot stored on the order item at purchase time. */
+    title?: string;
     size: string;
     variantId?: string;
     variantAttributes?: Record<string, string>;

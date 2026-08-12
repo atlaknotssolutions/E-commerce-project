@@ -29,6 +29,21 @@ export interface ResetPasswordRequest {
     password: string;
 }
 
+export interface PasswordLoginRequest {
+    email: string;
+    password: string;
+}
+
+export interface PasswordChangeRequest {
+    password: string;
+    currentPassword?: string;
+}
+
+export interface ApiErrorPayload {
+    message?: string;
+    code?: string;
+}
+
 export interface AuthState {
     jwt: string | null;
     role: string | null;

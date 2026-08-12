@@ -10,6 +10,8 @@ import Footer from '../customer/components/Footer/Footer'
 import Navbar from '../customer/components/Navbar/Navbar'
 import NotFound from '../customer/pages/NotFound/NotFound'
 import Auth from '../customer/pages/Auth/Auth'
+import ForgotPassword from '../customer/pages/Auth/ForgotPassword'
+import ResetPassword from '../customer/pages/Auth/ResetPassword'
 import { useAppDispatch, useAppSelector } from '../Redux Toolkit/Store'
 import { fetchUserCart } from '../Redux Toolkit/Customer/CartSlice'
 import PaymentSuccessHandler from '../customer/pages/Pyement/PaymentSuccessHandler'
@@ -55,7 +57,7 @@ useEffect(() => {
     dispatch(fetchUserCart(localStorage.getItem("jwt") || ""));
     dispatch(getWishlistByUserId());
 }, [auth.jwt, user.user, dispatch]);
-  const hideFooter = location.pathname === '/login' || location.pathname === '/become-seller';
+  const hideFooter = location.pathname === '/login' || location.pathname === '/become-seller' || location.pathname === '/forgot-password' || location.pathname === '/reset-password';
   return (
     <>
       <Navbar />
@@ -73,6 +75,8 @@ useEffect(() => {
         <Route path='/checkout/address' element={<RequireAuth><Address /></RequireAuth>} />
         <Route path='/account/*' element={<RequireAuth><Profile /></RequireAuth>} />
         <Route path='/login' element={<Auth/>} />
+        <Route path='/forgot-password' element={<ForgotPassword />} />
+        <Route path='/reset-password' element={<ResetPassword />} />
         <Route path='/payment-success' element={<PaymentSuccessHandler/>} />
         <Route path='/about' element={<AboutUs />} />
         <Route path='/privacy-policy' element={<PrivacyPolicy />} />

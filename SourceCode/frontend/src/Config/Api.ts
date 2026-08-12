@@ -1,8 +1,13 @@
 import axios from "axios";
 import { notification } from "../services/notificationService";
 
-export const API_URL = "https://e-commerce-project-1-sb2k.onrender.com";
+// export const API_URL = "https://e-commerce-project-1-sb2k.onrender.com";
 // export const API_URL = "http://localhost:5000";
+
+const API_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:5000"
+    : "http://192.168.1.22:5000";
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -11,6 +16,8 @@ export const api = axios.create({
   },
   withCredentials: true,
 });
+
+
 
 
 
@@ -35,6 +42,10 @@ const AUTH_EXEMPT_PATHS = [
   "/auth/signup",
   "/sellers/sent/login-top",
   "/sellers/verify/login-top",
+  "/auth/password-login",
+  "/auth/password",
+  "/auth/reset-password-request",
+  "/auth/reset-password",
 ];
 
 let redirectingToLogin = false;

@@ -14,6 +14,7 @@ export const createPaymentController = ({ paymentService }) =>
     {
         const { paymentId } = req.params;
         const { paymentMethod, paymentLinkId } = req.query;
+        const userId = req.user?.id;
 
         let outcome;
 
@@ -21,6 +22,7 @@ export const createPaymentController = ({ paymentService }) =>
         {
             outcome = await paymentService.verifyStripePayment({
                 sessionId: paymentId,
+                userId,
             });
         }
         else
@@ -28,8 +30,29 @@ export const createPaymentController = ({ paymentService }) =>
             outcome = await paymentService.verifyRazorpayPayment({
                 paymentId,
                 paymentLinkId,
+                userId,
             });
         }
+
+        res.status(200).json({
+            status: true,
+            message: outcome.message,
+        });
+    };
+
+    /**
+     * Stripe Checkout Session Verification.
+     * Maps exactly to: GET /api/payment/stripe/:sessionId
+     */
+    const verifyStripePayment = async (req, res) =>
+    {
+        const { sessionId } = req.params;
+        const userId = req.user?.id;
+
+        const outcome = await paymentService.verifyStripePayment({
+            sessionId,
+            userId,
+        });
 
         res.status(200).json({
             status: true,
@@ -59,6 +82,7 @@ export const createPaymentController = ({ paymentService }) =>
 
     return Object.freeze({
         verifyPayment,
+        verifyStripePayment,
         reissuePaymentLink,
     });
 };

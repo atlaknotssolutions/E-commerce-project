@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { notification } from '../../../services/notificationService';
 import { Order, OrderItem } from '../../../types/orderTypes';
 import { formatDate } from '../../util/fomateDate';
+import { PRODUCT_UNAVAILABLE_NAME, toOrderItemView } from '../../util/orderItemView';
 import OrderStatusBadge from './OrderStatusBadge';
 
 interface OrderItemCardProps{
@@ -15,6 +16,7 @@ interface OrderItemCardProps{
 }
 const OrderItemCard:React.FC<OrderItemCardProps> = ({item,order}) => {
     const navigate = useNavigate()
+    const view = toOrderItemView(item);
 
     const handleCopyOrderId = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -49,26 +51,33 @@ const OrderItemCard:React.FC<OrderItemCardProps> = ({item,order}) => {
 
                 <div className='flex gap-3 bg-teal-50 p-3 rounded-lg'>
                     <img className='w-[70px] h-[70px] object-cover rounded'
-                     src={item.product.images[0]?.url || "/logo192.png"} alt="" />
+                     src={view.image} alt={view.name} />
                     <div className='flex-1 min-w-0 space-y-1'>
-                        <h1 className='font-bold text-sm truncate'>{item.product.seller?.businessDetails.businessName}
-                        </h1>
-                        <p className='text-xs truncate'>
-                            {item.product.title}
-                        </p>
+                        {view.productAvailable ? (
+                            <>
+                                <h1 className='font-bold text-sm truncate'>{view.sellerName}
+                                </h1>
+                                <p className='text-xs truncate'>
+                                    {view.name}
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <h1 className='font-bold text-sm truncate'>{view.name}
+                                </h1>
+                                <p className='text-xs truncate text-gray-500'>
+                                    {view.hasHistoricalName ? PRODUCT_UNAVAILABLE_NAME : ''}
+                                </p>
+                            </>
+                        )}
                         <p className='text-xs text-gray-600'>
-                            {item.variantAttributes
-                                ? (() => {
-                                    const parts: string[] = [];
-                                    if (item.variantAttributes.color) parts.push(item.variantAttributes.color);
-                                    if (item.variantAttributes.size) parts.push(item.variantAttributes.size);
-                                    if (item.variantAttributes.storage) parts.push(item.variantAttributes.storage);
-                                    if (item.variantAttributes.ram) parts.push(item.variantAttributes.ram);
-                                    return parts.length > 0 ? parts.join(" / ") : item.size;
-                                })()
-                                : item.size || "FREE"
-                            }
+                            {view.variantLabel}
                         </p>
+                        {!view.productAvailable && (
+                            <p className='text-xs text-gray-600'>
+                                Qty: {view.quantity}
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
