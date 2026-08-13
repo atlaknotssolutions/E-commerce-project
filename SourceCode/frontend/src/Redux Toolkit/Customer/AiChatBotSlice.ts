@@ -1,9 +1,22 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { api } from "../../Config/Api";
 
+interface ChatSource {
+  id?: string;
+  title?: string;
+  sellingPrice?: number;
+  mrpPrice?: number;
+  category?: {
+    categoryId?: string;
+    name?: string;
+  };
+  images?: Array<{ url?: string }>;
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   message: string;
+  sources?: ChatSource[];
 }
 
 interface ChatResponse {

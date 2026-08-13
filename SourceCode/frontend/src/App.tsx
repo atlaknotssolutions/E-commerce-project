@@ -13,6 +13,8 @@ import SellerAccountVerified from './seller/pages/SellerAccountVerified';
 import { useAppDispatch, useAppSelector } from './Redux Toolkit/Store';
 import { fetchSellerProfile } from './Redux Toolkit/Seller/sellerSlice';
 import BecomeSeller from './customer/pages/BecomeSeller/BecomeSeller';
+import SellerForgotPassword from './seller/pages/Auth/SellerForgotPassword';
+import SellerResetPassword from './seller/pages/Auth/SellerResetPassword';
 import AdminAuth from './admin/pages/Auth/AdminAuth';
 import { fetchUserProfile } from './Redux Toolkit/Customer/UserSlice';
 import { fetchHomePageData } from './Redux Toolkit/Customer/Customer/AsyncThunk';
@@ -80,13 +82,31 @@ function App()
         <SocketEventHandler />
 
         <Routes>
-          {sellers.profile && <Route path='/seller/*' element={<SellerDashboard />} />}
-          {user.user?.role === "ROLE_ADMIN" && (
-            <Route path='/admin/*' element={<AdminDashboard />} />
-          )}
+          <Route
+            path='/seller/*'
+            element={
+              sellers.profile ? (
+                <SellerDashboard />
+              ) : (
+                <Navigate to="/become-seller" replace />
+              )
+            }
+          />
+          <Route
+            path='/admin/*'
+            element={
+              user.user?.role === "ROLE_ADMIN" ? (
+                <AdminDashboard />
+              ) : (
+                <Navigate to="/admin-login" replace />
+              )
+            }
+          />
           <Route path='/verify-seller/:otp' element={<SellerAccountVerification />} />
           <Route path='/seller-account-verified' element={<SellerAccountVerified />} />
           <Route path='/become-seller' element={<BecomeSeller />} />
+          <Route path='/seller/forgot-password' element={<SellerForgotPassword />} />
+          <Route path='/seller/reset-password' element={<SellerResetPassword />} />
           <Route path='/admin-login' element={<AdminAuth />} />
 
           <Route path='*' element={

@@ -370,7 +370,7 @@ export const createAuthService = ({
         // Short-circuit chain: bcrypt only runs when a usable hash exists.
         const passwordIsValid =
             existingUser
-            && existingUser.role === ROLES.CUSTOMER
+            && (existingUser.role === ROLES.CUSTOMER || existingUser.role === ROLES.ADMIN)
             && isUsablePasswordHash(existingUser.passwordHash)
             && typeof password === 'string'
             && password.length > 0
@@ -423,7 +423,7 @@ export const createAuthService = ({
 
         // Defense in depth: the route is already role-guarded, but the
         // service independently refuses non-customer principals.
-        if (user.role !== ROLES.CUSTOMER)
+        if (user.role !== ROLES.CUSTOMER && user.role !== ROLES.ADMIN)
         {
             throw createApiError({
                 statusCode: 403,

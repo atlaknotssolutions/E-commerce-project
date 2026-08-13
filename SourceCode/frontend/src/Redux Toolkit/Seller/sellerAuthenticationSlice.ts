@@ -2,6 +2,11 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '../../Config/Api';
 import { Seller } from '../../types/sellerTypes';
 import axios from 'axios';
+import {
+    ApiResponse,
+    PasswordChangeRequest,
+    ApiErrorPayload,
+} from '../../types/authTypes';
 
 // ===========================================
 // Types
@@ -117,6 +122,105 @@ export const createSeller = createAsyncThunk<
 );
 
 // ===========================================
+// Seller Password Login
+// ===========================================
+
+export const signinWithPassword = createAsyncThunk<
+    { jwt: string; message: string; role: string },
+    { email: string; password: string }
+>(
+    'sellerAuth/signinWithPassword',
+    async (data, { rejectWithValue }) => {
+        try {
+            const response = await api.post('/sellers/password-login', data);
+
+            localStorage.setItem("jwt", response.data.jwt);
+
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message || 'Invalid email or password.'
+            );
+        }
+    }
+);
+
+// ===========================================
+// Seller Set / Change Password
+// ===========================================
+
+export const setPassword = createAsyncThunk<
+    ApiResponse,
+    PasswordChangeRequest,
+    { rejectValue: ApiErrorPayload }
+>(
+    'sellerAuth/setPassword',
+    async (passwordRequest, { rejectWithValue }) => {
+        try {
+            const response = await api.post<ApiResponse>(
+                '/sellers/password',
+                passwordRequest
+            );
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data as ApiErrorPayload
+            );
+        }
+    }
+);
+
+// ===========================================
+// Seller Password Reset Request
+// ===========================================
+
+export const resetPasswordRequest = createAsyncThunk<
+    ApiResponse,
+    { email: string }
+>(
+    'sellerAuth/resetPasswordRequest',
+    async ({ email }, { rejectWithValue }) => {
+        try {
+            const response = await api.post<ApiResponse>(
+                '/sellers/reset-password-request',
+                { email }
+            );
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                'Failed to request password reset.'
+            );
+        }
+    }
+);
+
+// ===========================================
+// Seller Password Reset Execute
+// ===========================================
+
+export const resetPassword = createAsyncThunk<
+    ApiResponse,
+    { token: string; password: string }
+>(
+    'sellerAuth/resetPassword',
+    async ({ token, password }, { rejectWithValue }) => {
+        try {
+            const response = await api.post<ApiResponse>(
+                '/sellers/reset-password',
+                { token, password }
+            );
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                'Failed to reset password.'
+            );
+        }
+    }
+);
+
+// ===========================================
 // Slice
 // ===========================================
 
@@ -214,6 +318,81 @@ const sellerAuthSlice = createSlice({
                 state.error =
                     (action.payload as string) ||
                     'Failed to create seller';
+            })
+
+            // ==============================
+            // Seller Password Login
+            // ==============================
+
+            .addCase(signinWithPassword.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+
+            .addCase(signinWithPassword.fulfilled, (state, action) => {
+                state.loading = false;
+                state.jwt = action.payload.jwt;
+                state.error = null;
+            })
+
+            .addCase(signinWithPassword.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
+
+            // ==============================
+            // Seller Set / Change Password
+            // ==============================
+
+            .addCase(setPassword.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+
+            .addCase(setPassword.fulfilled, (state) => {
+                state.loading = false;
+            })
+
+            .addCase(setPassword.rejected, (state, action) => {
+                state.loading = false;
+                state.error =
+                    action.payload?.message || 'Failed to update password.';
+            })
+
+            // ==============================
+            // Seller Password Reset Request
+            // ==============================
+
+            .addCase(resetPasswordRequest.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+
+            .addCase(resetPasswordRequest.fulfilled, (state) => {
+                state.loading = false;
+            })
+
+            .addCase(resetPasswordRequest.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
+
+            // ==============================
+            // Seller Password Reset Execute
+            // ==============================
+
+            .addCase(resetPassword.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+
+            .addCase(resetPassword.fulfilled, (state) => {
+                state.loading = false;
+            })
+
+            .addCase(resetPassword.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
             });
     },
 });

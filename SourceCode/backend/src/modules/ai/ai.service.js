@@ -9,6 +9,7 @@ export const createAiService = ({
   cartRepository,
   productRepository,
   orderRepository,
+  categoryRepository,
   createApiError,
 }) => {
   // ============================================================
@@ -137,6 +138,81 @@ ${prompt}
     mockMode: isMockMode(),
   });
 
+  const normalizeText = (value = "") =>
+    String(value)
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const getProductSearchValues = (product = {}) => {
+    const variants = Array.isArray(product.variants) ? product.variants : [];
+    const manualValues = [
+      product.title,
+      product.brand,
+      product.color,
+      product.sizes,
+      product.category?.name,
+      product.category?.categoryId,
+      product.description,
+      ...variants.flatMap((variant) => [
+        variant?.attributes?.color,
+        variant?.attributes?.size,
+        ...(Array.isArray(variant?.attributes?.dynamic)
+          ? variant.attributes.dynamic.map((attr) => attr?.value)
+          : []),
+        ...(Array.isArray(variant?.attributes?.custom)
+          ? variant.attributes.custom.map((attr) => attr?.value)
+          : []),
+      ]),
+    ]
+      .filter(Boolean)
+      .flatMap((value) =>
+        String(value)
+          .split(/[\s,\/]+/)
+          .map((part) => normalizeText(part))
+          .filter(Boolean),
+      );
+
+    return [...new Set(manualValues)];
+  };
+
+  const findMatchingProductsByQuery = async (query) => {
+    const normalizedQuery = normalizeText(query);
+    if (!normalizedQuery) return [];
+
+    try {
+      const result = await productRepository.getAllProducts({
+        pageNumber: 0,
+        sizeLimit: 50,
+      });
+
+      const products = Array.isArray(result?.content) ? result.content : [];
+
+      return products.filter((product) => {
+        const values = getProductSearchValues(product);
+        const tokens = normalizedQuery.split(" ").filter(Boolean);
+
+        return tokens.some((token) => {
+          if (!token || token.length === 1) {
+            return false;
+          }
+
+          return values.some((value) => {
+            if (!value) return false;
+            return (
+              value === token || value.includes(token) || token.includes(value)
+            );
+          });
+        });
+      });
+    } catch (error) {
+      console.log("Product query matching error:", error.message);
+      return [];
+    }
+  };
+
   /**
    * High-Intelligence Local Mock AI Processor.
    * Parses prompts and leverages injected repository data to generate context-aware solutions.
@@ -216,8 +292,135 @@ ${prompt}
       return `I accessed your secure ledger accounts! Here are details of your most recent transactions (showing top 3 orders):\n\n${orderSummaryList}\n\nHow can I assist you further with shipping tracking or cancellations?`;
     }
 
+    // Context-Aware Trigger D: Customer requests category/browse products
+    if (
+      query.includes("category") ||
+      query.includes("browse") ||
+      query.includes("shop") ||
+      query.includes("collection") ||
+      query.includes("type") ||
+      query.includes("look for") ||
+      query.includes("what do you have")
+    ) {
+      try {
+        const categories = await categoryRepository.findAll();
+
+        if (!categories || categories.length === 0) {
+          return `I'm sorry, we currently don't have any categories available in our system. Please check back later!`;
+        }
+
+        // Get top 3 categories
+        const topCategories = categories.slice(0, 3);
+
+        const categoryListText = topCategories
+          .map((cat, idx) => `${idx + 1}. **${cat.name}** (ID: ${cat._id})`)
+          .join("\n");
+
+        return `Great! Here are some popular shopping categories to explore:\n\n${categoryListText}\n\n📌 **Please reply with the category number (1, 2, or 3) to see products in that category with colors, sizes, and pricing!**\n\nExample: "Show me category 1" or just reply "1"`;
+      } catch (err) {
+        console.log("Category fetch error:", err.message);
+      }
+    }
+
+    // Context-Aware Trigger E: Customer selects a category
+    if (
+      query.match(/^(1|2|3|one|two|three|first|second|third)$/) ||
+      query.match(/category\s*(1|2|3)/)
+    ) {
+      try {
+        const categories = await categoryRepository.findAll();
+
+        if (!categories || categories.length === 0) {
+          return `I'm sorry, no categories available right now.`;
+        }
+
+        // Extract category number
+        let categoryIndex = 0;
+        if (
+          query.includes("1") ||
+          query.includes("one") ||
+          query.includes("first")
+        )
+          categoryIndex = 0;
+        else if (
+          query.includes("2") ||
+          query.includes("two") ||
+          query.includes("second")
+        )
+          categoryIndex = 1;
+        else if (
+          query.includes("3") ||
+          query.includes("three") ||
+          query.includes("third")
+        )
+          categoryIndex = 2;
+
+        if (categoryIndex >= categories.length) {
+          return `That category number is out of range. Please select from 1 to ${Math.min(3, categories.length)}.`;
+        }
+
+        const selectedCategory = categories[categoryIndex];
+
+        // Fetch products from this category using getAllProducts
+        const products = await productRepository.getAllProducts({
+          category: selectedCategory._id,
+          pageNumber: 0,
+          sizeLimit: 3,
+        });
+
+        if (!products || products.length === 0) {
+          return `I found the **${selectedCategory.name}** category, but unfortunately there are no products available in this category at the moment. Would you like to explore another category?`;
+        }
+
+        // Get top 3 products with full details
+        const topProducts = products.slice(0, 3);
+
+        const productListText = topProducts
+          .map((prod) => {
+            const colors = prod.color
+              ? Array.isArray(prod.color)
+                ? prod.color.join(", ")
+                : prod.color
+              : "Not specified";
+            const sizes = prod.sizes
+              ? Array.isArray(prod.sizes)
+                ? prod.sizes.join(", ")
+                : prod.sizes
+              : "Not specified";
+
+            return `\n📦 **${prod.title}**\n   💰 Price: Rs. ${prod.sellingPrice} (MRP: Rs. ${prod.mrpPrice})\n   🎨 Colors: ${colors}\n   📏 Sizes: ${sizes}\n   ⭐ Stock: ${prod.quantity} available\n   🏪 Seller: ${prod.seller ? prod.seller.sellerName : "Official Store"}`;
+          })
+          .join("\n");
+
+        return `Perfect! Here are the top products in the **${selectedCategory.name}** category:\n${productListText}\n\n✨ **All products feature multiple color and size options!**\n\nWould you like to add any of these to your cart, or would you like to see more products from this category?`;
+      } catch (err) {
+        console.log("Category products fetch error:", err.message);
+      }
+    }
+
+    const attributeMatchingProducts = await findMatchingProductsByQuery(query);
+    if (attributeMatchingProducts.length > 0) {
+      const productListText = attributeMatchingProducts
+        .slice(0, 3)
+        .map((prod) => {
+          const colors = Array.isArray(prod.color)
+            ? prod.color.join(", ")
+            : prod.color || "Not specified";
+          const sizes = Array.isArray(prod.sizes)
+            ? prod.sizes.join(", ")
+            : prod.sizes || "Not specified";
+
+          const categoryName = prod.category?.name || "General";
+
+          return `\n📦 **${prod.title}**\n   🏷️ Category: ${categoryName}\n   💰 Price: Rs. ${prod.sellingPrice} (MRP: Rs. ${prod.mrpPrice})\n   🎨 Colors: ${colors}\n   📏 Sizes: ${sizes}\n   ⭐ Stock: ${prod.quantity} available\n   🏪 Seller: ${prod.seller ? prod.seller.sellerName : "Official Store"}`;
+        })
+        .join("\n");
+
+      return `I found these products matching your query using category, color, or size:\n${productListText}\n\nHere is the full product details for each match. Let me know if you want to view one in detail or add it to your cart.`;
+    }
+
     // Fallback Scenario: Standard friendly chatbot replies
-    return `Hello! I am your **${branding.appName} AI Assistant** chatbot.\n\nI can dynamically fetch your real-time data directly from our databases securely. Ask me questions like:\n- *"What is in my cart?"*\n- *"Show my recent orders history"* \n- *"Tell me about the product detail"* \n\nHow can I assist you with your shopping experience today?`;
+    return `Hello! I am your **${branding.appName} AI Assistant** chatbot.\n\nI can dynamically fetch your real-time data directly from our databases securely. Ask me questions like:\n- *"Show me categories"* - Browse shopping categories\n- *"What is in my cart?"* - View your cart\n- *"Show my recent orders history"* - Track orders\n- *"Tell me about the product detail"* - Product information\n\nHow can I assist you with your shopping experience today?`;
   };
 
   /**
@@ -236,13 +439,33 @@ ${prompt}
       !groqKey || groqKey.includes("MOCK") || process.env.NODE_ENV === "test";
 
     if (isMockMode) {
+      const mockResponse = await processMockResponse({
+        prompt,
+        productId,
+        userId,
+      });
+
+      const fallbackSources = [];
+      const responseText = mockResponse || "";
+      const hasProductMatch =
+        responseText.includes("I found these products matching your query") ||
+        responseText.includes(
+          "Here is the full product details for each match",
+        );
+
+      if (hasProductMatch) {
+        const matchedProducts = await findMatchingProductsByQuery(prompt);
+        return {
+          response: mockResponse,
+          mockMode: true,
+          sources: matchedProducts.slice(0, 3),
+        };
+      }
+
       return {
-        response: await processMockResponse({
-          prompt,
-          productId,
-          userId,
-        }),
+        response: mockResponse,
         mockMode: true,
+        sources: fallbackSources,
       };
     }
 
@@ -376,9 +599,20 @@ ${prompt}
 
         conversationStore.set(userId, previousMessages);
       }
+      const sources = [];
+      try {
+        const matchedProducts = await findMatchingProductsByQuery(prompt);
+        if (matchedProducts.length > 0) {
+          sources.push(...matchedProducts.slice(0, 3));
+        }
+      } catch (err) {
+        console.log("Groq source enrichment error:", err.message);
+      }
+
       return {
         response: generatedText,
         mockMode: false,
+        sources,
       };
     } catch (error) {
       console.error("Groq Error:", error);
@@ -387,6 +621,7 @@ ${prompt}
         response:
           "I'm currently unable to connect to the AI service. Please try again in a moment.",
         mockMode: false,
+        sources: [],
       };
     }
   };

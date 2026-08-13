@@ -1,4 +1,19 @@
 /**
+ * Normalizes pagination values to safe positive integers.
+ * Guards .skip()/.limit() against negative, zero or NaN input
+ * (e.g. page=0, page=-1, page=abc) which otherwise produce invalid MongoDB skip values.
+ */
+const toSafePositiveInt = (value, fallback) =>
+{
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed))
+    {
+        return fallback;
+    }
+    return Math.max(1, parsed);
+};
+
+/**
  * Pure function-based factory representing the Brand Persistence database interface.
  * Strictly abstracts query pipelines from business levels utilizing Dependency Injection.
  */
@@ -90,23 +105,25 @@ export const createBrandRepository = ({ Brand, Product }) =>
             filter.categoryId = categoryId;
         }
 
-        const skip = (page - 1) * limit;
+        const safePage = toSafePositiveInt(page, 1);
+        const safeLimit = toSafePositiveInt(limit, 20);
+        const skip = (safePage - 1) * safeLimit;
         const sort = { displayOrder: 1, name: 1 };
 
         const [data, total] = await Promise.all([
             Brand.find(filter, null, { lean: true })
                 .sort(sort)
                 .skip(skip)
-                .limit(limit),
+                .limit(safeLimit),
             Brand.countDocuments(filter),
         ]);
 
         return {
             data,
-            page,
-            limit,
+            page: safePage,
+            limit: safeLimit,
             total,
-            totalPages: Math.ceil(total / limit),
+            totalPages: Math.ceil(total / safeLimit),
         };
     };
 
@@ -115,13 +132,14 @@ export const createBrandRepository = ({ Brand, Product }) =>
      */
     const findFeatured = async ({ limit = 10 } = {}) =>
     {
+        const safeLimit = toSafePositiveInt(limit, 10);
         return Brand.find(
             { isFeatured: true, isActive: true, isDeleted: false },
             null,
             { lean: true }
         )
             .sort({ displayOrder: 1, name: 1 })
-            .limit(limit);
+            .limit(safeLimit);
     };
 
     /**
@@ -159,14 +177,16 @@ export const createBrandRepository = ({ Brand, Product }) =>
             ];
         }
 
-        const skip = (page - 1) * limit;
+        const safePage = toSafePositiveInt(page, 1);
+        const safeLimit = toSafePositiveInt(limit, 20);
+        const skip = (safePage - 1) * safeLimit;
         const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
 
         const [data, total] = await Promise.all([
             Brand.find(filter, null, { lean: true })
                 .sort(sort)
                 .skip(skip)
-                .limit(limit)
+                .limit(safeLimit)
                 .populate('categoryId', 'name categoryId level')
                 .populate('createdBy', 'fullName email')
                 .populate('updatedBy', 'fullName email'),
@@ -175,10 +195,10 @@ export const createBrandRepository = ({ Brand, Product }) =>
 
         return {
             data,
-            page,
-            limit,
+            page: safePage,
+            limit: safeLimit,
             total,
-            totalPages: Math.ceil(total / limit),
+            totalPages: Math.ceil(total / safeLimit),
         };
     };
 
@@ -302,7 +322,9 @@ export const createBrandRepository = ({ Brand, Product }) =>
      */
     const search = async ({ query, page = 1, limit = 20 }) =>
     {
-        const skip = (page - 1) * limit;
+        const safePage = toSafePositiveInt(page, 1);
+        const safeLimit = toSafePositiveInt(limit, 20);
+        const skip = (safePage - 1) * safeLimit;
 
         const [data, total] = await Promise.all([
             Brand.find(
@@ -311,7 +333,7 @@ export const createBrandRepository = ({ Brand, Product }) =>
             )
                 .sort({ score: { $meta: 'textScore' } })
                 .skip(skip)
-                .limit(limit)
+                .limit(safeLimit)
                 .lean(),
             Brand.countDocuments(
                 { $text: { $search: query }, isDeleted: false }
@@ -320,10 +342,10 @@ export const createBrandRepository = ({ Brand, Product }) =>
 
         return {
             data,
-            page,
-            limit,
+            page: safePage,
+            limit: safeLimit,
             total,
-            totalPages: Math.ceil(total / limit),
+            totalPages: Math.ceil(total / safeLimit),
         };
     };
 

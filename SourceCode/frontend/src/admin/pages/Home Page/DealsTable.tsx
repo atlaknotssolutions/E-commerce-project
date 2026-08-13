@@ -61,13 +61,13 @@ const DealsTable = () => {
                   <StyledTableCell component="th" scope="row">
                     <img
                       className="w-20 rounded-md"
-                      src={item.category.image}
+                      src={item.category?.image || ""}
                       alt=""
                     />
                   </StyledTableCell>
 
                   <StyledTableCell component="th" scope="row">
-                    {item.category.categoryId}
+                    {item.category?.categoryId || "-"}
                   </StyledTableCell>
                   <StyledTableCell component="th" scope="row">
                     {item.discount}%

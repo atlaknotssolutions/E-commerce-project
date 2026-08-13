@@ -7,6 +7,7 @@ import {
   IconButton,
 } from "@mui/material";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import ChangePassword from "../../../admin/pages/Account/AdminChangePassword";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { fetchAdminProfile, updateAdminProfilePhoto } from "../../../Redux Toolkit/Admin/AdminSlice";
 import { notification } from "../../../services/notificationService";
@@ -180,29 +181,10 @@ const AdminAccount = () => {
         </div>
       </div>
 
-      {/* Future Placeholder: Change Password */}
-      {/* <div className="w-full lg:w-[70%]">
-        <h1 className="text-2xl font-bold text-gray-600 pb-3">
-          Security Settings
-        </h1>
-        <div className="space-y-4">
-          <PlaceholderCard
-            icon={<LockOutlinedIcon />}
-            title="Change Password"
-            description="Update your account password for enhanced security."
-          />
-          <PlaceholderCard
-            icon={<VerifiedUserIcon />}
-            title="Two Factor Authentication"
-            description="Add an extra layer of security to your account."
-          />
-          <PlaceholderCard
-            icon={<DevicesIcon />}
-            title="Login Sessions"
-            description="View and manage your active login sessions."
-          />
-        </div>
-      </div> */}
+      {/* Password & Security */}
+      <div className="w-full lg:w-[70%]">
+        <ChangePassword />
+      </div>
 
     </div>
   );

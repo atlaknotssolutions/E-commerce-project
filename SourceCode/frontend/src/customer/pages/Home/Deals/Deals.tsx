@@ -8,7 +8,11 @@ import { Deal } from "../../../../types/dealTypes";
 
 export default function DealSlider() {
     const {homePage}=useAppSelector(store=>store)
-    const deals = homePage.homePageData?.deals ?? [];
+    const allDeals = homePage.homePageData?.deals ?? [];
+    // A deal without a resolved category cannot render an image, label or link.
+    // Filter them out here so the slider only presents navigable deals while
+    // orphaned deal records (category deleted) never reach DealCard.
+    const deals = allDeals.filter((item: Deal) => item && item.category);
 
 const settings = {
     dots: true,
@@ -45,7 +49,7 @@ const settings = {
         <div className="py-2">
             <div className="slide-container">
                 <Slider {...settings}>
-    {homePage.homePageData?.deals?.map((item: Deal, index) => (
+    {deals.map((item: Deal, index) => (
         <div
             key={item.id || item.id || item.category?.id || index}
             className="px-2.5 deal-card-fixed"

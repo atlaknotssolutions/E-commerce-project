@@ -196,10 +196,20 @@ export const createSellerAuthService = ({
             'mobile'
         );
 
-        // 3. Hash credential password securely prior to saving
-        const encryptedPassword = sellerData.password
-            ? hashString(sellerData.password)
-            : null;
+        // 3. Hash credential password securely prior to saving.
+        // Only a password satisfying the shared platform policy is stored,
+        // and it is ALWAYS bcrypt (never SHA-256, never plaintext). Short or
+        // otherwise-invalid passwords are ignored so the account routes
+        // through the authenticated "set password" flow instead, where the
+        // same 8-72 byte policy is enforced again.
+        const passwordProvided =
+            typeof sellerData.password === 'string'
+            && sellerData.password.length > 0;
+
+        const encryptedPassword =
+            passwordProvided && isValidPasswordPolicy(sellerData.password)
+                ? await hashPassword(sellerData.password)
+                : null;
 
         // 4. Commit seller write operations directly into database utilizing our mapped payload
         const newSeller = await sellerRepository.create({
@@ -399,6 +409,27 @@ This verification code is valid for 10 minutes.
      */
     const verifySellerEmailByOtp = async ({ email, otp }) =>
     {
+        // Email is required to resolve the OTP verification session and the
+        // registered seller. Return a deterministic client error instead of
+        // throwing a generic 500 when the caller omits it.
+        if (typeof email !== 'string' || email.trim() === '')
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'SELLER_EMAIL_REQUIRED',
+                message: 'Seller business email is required to verify the account.',
+            });
+        }
+
+        if (typeof otp !== 'string' || otp.trim() === '')
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'SELLER_OTP_REQUIRED',
+                message: 'Verification OTP is required to verify the account.',
+            });
+        }
+
         const targetEmail = email.toLowerCase().trim();
 
         await validateSellerOtp({

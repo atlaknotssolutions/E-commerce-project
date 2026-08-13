@@ -478,6 +478,7 @@ export const createApp = async ({ env, dbManager }) =>
     const sellerAuthService = createSellerAuthService({
         sellerRepository,
         verificationCodeRepository,
+        passwordResetTokenRepository,
         generateOTP,
         emailClient,
         signToken,
@@ -893,7 +894,7 @@ export const createApp = async ({ env, dbManager }) =>
 
     // E. Setup Thin HTTP Controllers
     const authController = createAuthController({ authService, createApiError });
-    const sellerAuthController = createSellerAuthController({ sellerAuthService });
+    const sellerAuthController = createSellerAuthController({ sellerAuthService, createApiError });
     const productController = createProductController({ productService });
     const cartController = createCartController({ cartService });
     const wishlistController = createWishlistController({ wishlistService });
@@ -1027,6 +1028,40 @@ export const createApp = async ({ env, dbManager }) =>
         code: 'RATE_LIMIT_EXCEEDED',
     });
 
+    // Brute-force protection for the Seller password login endpoint.
+    // Mirrors the Customer configuration: in-memory fixed window (per
+    // process), keyed by client IP + normalized email.
+    const sellerPasswordLoginRateLimiter = createRateLimiter({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxAttempts: 10,
+        keyGenerator: (req) =>
+        {
+            const rawEmail = req.body && req.body.email;
+            const email = typeof rawEmail === 'string'
+                ? rawEmail.trim().toLowerCase()
+                : '';
+            return `${req.ip}:${email}`;
+        },
+        message: 'Too many login attempts. Please try again later.',
+        code: 'RATE_LIMIT_EXCEEDED',
+    });
+
+    // Abuse protection for the Seller password reset request endpoint.
+    const sellerPasswordResetRequestRateLimiter = createRateLimiter({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxAttempts: 5,
+        keyGenerator: (req) =>
+        {
+            const rawEmail = req.body && req.body.email;
+            const email = typeof rawEmail === 'string'
+                ? rawEmail.trim().toLowerCase()
+                : '';
+            return `${req.ip}:${email}`;
+        },
+        message: 'Too many password reset requests. Please try again later.',
+        code: 'RATE_LIMIT_EXCEEDED',
+    });
+
     const rawAuthRouterInstance = express.Router();
     const authRoutes = createAuthRoutes({
         router: rawAuthRouterInstance,
@@ -1036,6 +1071,8 @@ export const createApp = async ({ env, dbManager }) =>
         authorizeRoles,
         passwordLoginRateLimiter,
         passwordResetRequestRateLimiter,
+        sellerPasswordLoginRateLimiter,
+        sellerPasswordResetRequestRateLimiter,
         asyncHandler,
     });
 

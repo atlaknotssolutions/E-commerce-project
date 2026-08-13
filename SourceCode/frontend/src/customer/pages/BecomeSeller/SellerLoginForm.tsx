@@ -4,10 +4,11 @@ import OTPInput from '../../components/OtpFild/OTPInput'
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useAppDispatch, useAppSelector } from '../../../Redux Toolkit/Store';
-import { sendLoginOtp, verifyLoginOtp } from '../../../Redux Toolkit/Seller/sellerAuthenticationSlice';
+import { sendLoginOtp, verifyLoginOtp, clearSellerAuthMessages } from '../../../Redux Toolkit/Seller/sellerAuthenticationSlice';
 import { fetchSellerProfile } from '../../../Redux Toolkit/Seller/sellerSlice';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { notification } from '../../../services/notificationService';
+import SellerPasswordLoginForm from './SellerPasswordLoginForm';
 
 const SendOtpSchema = Yup.object({
     email: Yup.string()
@@ -29,6 +30,7 @@ const SellerLoginSchema = Yup.object({
 const SellerLoginForm = () => {
 
     const navigate = useNavigate();
+    const [loginMethod, setLoginMethod] = useState<'otp' | 'password'>('otp');
     const [timer, setTimer] = useState<number>(30); // Timer state
     const [isTimerActive, setIsTimerActive] = useState<boolean>(false);
     const dispatch=useAppDispatch();
@@ -39,8 +41,9 @@ const SellerLoginForm = () => {
             notification.success("OTP sent to your email!");
         } else if (sellerAuth.error) {
             notification.error(sellerAuth.error);
+            dispatch(clearSellerAuthMessages());
         }
-    }, [sellerAuth.otpSent, sellerAuth.error]);
+    }, [sellerAuth.otpSent, sellerAuth.error, dispatch]);
 
     const formik = useFormik({
         initialValues: {
@@ -138,69 +141,93 @@ const SellerLoginForm = () => {
 
     return (
         <div>
-            <h1 className='text-center font-bold text-xl text-primary-color pb-5'>Login As Seller</h1>
-            <form className="space-y-5">
+            {loginMethod === 'otp' ? (
+                <div>
+                    <h1 className='text-center font-bold text-xl text-primary-color pb-5'>Login As Seller</h1>
+                    <form className="space-y-5">
 
-                <TextField
-                    fullWidth
-                    name="email"
-                    label="Enter Your Email"
-                    value={formik.values.email}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.email && Boolean(formik.errors.email)}
-                    helperText={formik.touched.email ? formik.errors.email as string : undefined}
-                />
+                        <TextField
+                            fullWidth
+                            name="email"
+                            label="Enter Your Email"
+                            value={formik.values.email}
+                            onChange={formik.handleChange}
+                            onBlur={formik.handleBlur}
+                            error={formik.touched.email && Boolean(formik.errors.email)}
+                            helperText={formik.touched.email ? formik.errors.email as string : undefined}
+                        />
 
-                {sellerAuth.otpSent && <div className="space-y-2">
-                    <p className="font-medium text-sm">
-                        * Enter OTP sent to your email
+                        {sellerAuth.otpSent && <div className="space-y-2">
+                            <p className="font-medium text-sm">
+                                * Enter OTP sent to your email
+                            </p>
+                            <OTPInput
+                                length={6}
+                                onChange={handleOtpChange}
+                                error={Boolean(formik.touched.otp && formik.errors.otp)}
+                            />
+                            <p className="text-xs space-x-2">
+                                {isTimerActive ? (
+                                    <span>Resend OTP in {timer} seconds</span>
+                                ) : (
+                                    <>
+                                        Didn’t receive OTP?{" "}
+                                        <span
+                                            onClick={handleResendOtp}
+                                            className="text-teal-600 cursor-pointer hover:text-teal-800 font-semibold"
+                                        >
+                                            Resend OTP
+                                        </span>
+                                    </>
+                                )}
+                            </p>
+                            {formik.touched.otp && formik.errors.otp && <p className="text-sm text-red-500">{formik.errors.otp as string}</p>}
+                        </div>}
+
+                        {sellerAuth.otpSent &&<div>
+                            <Button onClick={handleLogin}
+                            disabled={sellerAuth.loading}
+                            fullWidth variant='contained' sx={{ py: "11px" }}>{
+                                sellerAuth.loading ? <CircularProgress  /> : "Login"}</Button>
+                        </div>}
+
+                        {!sellerAuth.otpSent && <Button
+                        disabled={sellerAuth.loading} 
+                        fullWidth 
+                        variant='contained' 
+                        onClick={handleSentOtp}
+                        sx={{ py: "11px" }}>{
+                            sellerAuth.loading ? <CircularProgress  />: "sent otp"}</Button>
+                        }
+
+                    </form>
+                </div>
+            ) : (
+                <SellerPasswordLoginForm />
+            )}
+
+            <div className='flex flex-col items-center gap-2 justify-center mt-5'>
+                {loginMethod === 'otp' ? (
+                    <p className="text-sm">
+                        Want to use a password?{" "}
+                        <span onClick={() => setLoginMethod('password')} className="text-teal-600 cursor-pointer hover:text-teal-800 font-semibold">
+                            Login with password
+                        </span>
                     </p>
-                    <OTPInput
-                        length={6}
-                        onChange={handleOtpChange}
-                        error={Boolean(formik.touched.otp && formik.errors.otp)}
-                    />
-                    <p className="text-xs space-x-2">
-                            {isTimerActive ? (
-                                <span>Resend OTP in {timer} seconds</span>
-                            ) : (
-                                <>
-                                    Didn’t receive OTP?{" "}
-                                    <span 
-                                        onClick={handleResendOtp} 
-                                        className="text-teal-600 cursor-pointer hover:text-teal-800 font-semibold"
-                                    >
-                                        Resend OTP
-                                    </span>
-                                </>
-                            )}
+                ) : (
+                    <>
+                        <p className="text-sm">
+                            Prefer OTP?{" "}
+                            <span onClick={() => setLoginMethod('otp')} className="text-teal-600 cursor-pointer hover:text-teal-800 font-semibold">
+                                Login with OTP
+                            </span>
                         </p>
-                    {formik.touched.otp && formik.errors.otp && <p className="text-sm text-red-500">{formik.errors.otp as string}</p>}
-                </div>}
-
-                {sellerAuth.otpSent &&<div>
-                    <Button onClick={handleLogin} 
-                    disabled={sellerAuth.loading}
-                    fullWidth variant='contained' sx={{ py: "11px" }}>{
-                        sellerAuth.loading ? <CircularProgress  /> : "Login"}</Button>
-                </div>}
-
-                {!sellerAuth.otpSent && <Button
-                disabled={sellerAuth.loading} 
-                fullWidth 
-                variant='contained' 
-                onClick={handleSentOtp}
-                sx={{ py: "11px" }}>{
-                    sellerAuth.loading ? <CircularProgress  />: "sent otp"}</Button>
-                }
-
-
-
-            </form>
-
-
-            
+                        <Link to="/seller/forgot-password" className="text-teal-600 hover:text-teal-800 font-semibold text-sm">
+                            Forgot password?
+                        </Link>
+                    </>
+                )}
+            </div>
         </div>
     )
 }

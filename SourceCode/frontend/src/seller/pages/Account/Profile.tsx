@@ -15,6 +15,8 @@ import PersonalDetailsForm from "./PersionalDetailsForm";
 import BusinessDetailsForm from "./BussinessDetailsForm";
 import PickupAddressForm from "./PickupAddressForm";
 import BankDetailsForm from "./BankDetailsForm";
+import SellerChangePassword from "./SellerChangePassword";
+import LockIcon from "@mui/icons-material/Lock";
 
 //Avtar style
 import IconButton from "@mui/material/IconButton";
@@ -60,6 +62,8 @@ const Profile = () =>
         return <PickupAddressForm onClose={handleClose} />;
       case "bankDetails":
         return <BankDetailsForm onClose={handleClose} />;
+      case "password":
+        return <SellerChangePassword onClose={handleClose} />;
       default:
         return null;
     }
@@ -287,6 +291,38 @@ const Profile = () =>
             <ProfileFildCard
               keys={"IFSC CODE"}
               value={sellers.profile?.bankDetails?.ifscCode}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-10 lg:w-[70%]">
+        <div className="flex items-center pb-3 justify-between">
+          <h1 className="text-2xl font-bold text-gray-600 ">
+            Password &amp; Security
+          </h1>
+          <div>
+            <Button
+              onClick={() => handleOpen("password")}
+              size="small"
+              sx={{ borderRadius: "2.9rem" }}
+              variant="contained"
+              className="w-16 h-16"
+            >
+              <LockIcon />
+            </Button>
+          </div>
+        </div>
+        <div className="space-y-5">
+          <div className="">
+            <ProfileFildCard
+              keys={"Password"}
+              value={"••••••••"}
+            />
+            <Divider />
+            <ProfileFildCard
+              keys={"Status"}
+              value={"Set / Change your password"}
             />
           </div>
         </div>

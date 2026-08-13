@@ -224,6 +224,7 @@ const OrderTable: React.FC = () => {
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mt: 0.3 }}>
                           {formatDate(order.orderDate)}
+                          {order.orderDate ? `, ${new Date(order.orderDate).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
                         </Typography>
                       </StyledTableCell>
 

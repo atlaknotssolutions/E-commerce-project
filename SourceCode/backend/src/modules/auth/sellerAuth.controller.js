@@ -2,7 +2,7 @@
  * Pure function-based factory representing the Merchant Seller Authentication HTTP Controllers.
  * Strictly enforces thin controller design principles, avoiding classes and context leaks.
  */
-export const createSellerAuthController = ({ sellerAuthService }) =>
+export const createSellerAuthController = ({ sellerAuthService, createApiError }) =>
 {
 
     /**
@@ -63,9 +63,109 @@ export const createSellerAuthController = ({ sellerAuthService }) =>
         const { otp } = req.params;
 
         // Support email extraction from either body context or optional query string structures
-        const email = req.body.email || req.query.email;
+        const email = (req.body && req.body.email) || req.query.email;
 
         const outcome = await sellerAuthService.verifySellerEmailByOtp({ email, otp });
+
+        res.status(200).json(outcome);
+    };
+
+    /**
+     * Authorizes existing sellers via email + bcrypt password.
+     * Maps exactly to: POST /sellers/password-login
+     */
+    const passwordSignin = async (req, res) =>
+    {
+        const { email, password } = req.body;
+
+        if (!email || !password)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Email and password are required.',
+            });
+        }
+
+        const outcome =
+            await sellerAuthService.signinSellerWithPassword({ email, password });
+
+        res.status(200).json(outcome);
+    };
+
+    /**
+     * Sets a password on an OTP-created Seller account, or changes an
+     * existing one after verifying the current password.
+     * Maps exactly to: POST /sellers/password (authenticated + ROLE_SELLER)
+     */
+    const setPassword = async (req, res) =>
+    {
+        const { password, currentPassword } = req.body;
+
+        if (!password)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'A new password is required.',
+            });
+        }
+
+        const outcome = await sellerAuthService.setSellerPassword({
+            sellerId: req.user.id,
+            password,
+            currentPassword,
+        });
+
+        res.status(200).json(outcome);
+    };
+
+    /**
+     * Initiates the Seller forgot-password workflow generating a temporary
+     * secure recovery link.
+     * Maps exactly to: POST /sellers/reset-password-request
+     */
+    const requestPasswordReset = async (req, res) =>
+    {
+        const { email } = req.body;
+
+        if (!email)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Email is required.',
+            });
+        }
+
+        const outcome =
+            await sellerAuthService.requestSellerPasswordReset({ email });
+
+        res.status(200).json(outcome);
+    };
+
+    /**
+     * Commits the Seller password modifications after validating the
+     * recovery token.
+     * Maps exactly to: POST /sellers/reset-password
+     */
+    const resetPassword = async (req, res) =>
+    {
+        const { token, password } = req.body;
+
+        if (!token || !password)
+        {
+            throw createApiError({
+                statusCode: 400,
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Token and new password are required.',
+            });
+        }
+
+        const outcome = await sellerAuthService.resetSellerPassword({
+            token,
+            newPassword: password,
+        });
 
         res.status(200).json(outcome);
     };
@@ -96,5 +196,9 @@ export const createSellerAuthController = ({ sellerAuthService }) =>
         signin,
         verifyEmail,
         verifyEmailLink,
+        passwordSignin,
+        setPassword,
+        requestPasswordReset,
+        resetPassword,
     });
 };

@@ -39,10 +39,13 @@ const PublicBrandList = () => {
         };
         if (search.trim()) params.search = search.trim();
         dispatch(fetchActiveBrands(params));
+    }, [dispatch, page, search]);
+
+    useEffect(() => {
         if (featuredBrands.length === 0) {
             dispatch(fetchFeaturedBrands(8));
         }
-    }, [dispatch, page, search, featuredBrands.length]);
+    }, [dispatch, featuredBrands.length]);
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearch(e.target.value);

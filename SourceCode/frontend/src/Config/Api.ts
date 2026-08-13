@@ -7,7 +7,11 @@ import { notification } from "../services/notificationService";
 const API_URL =
   window.location.hostname === "localhost"
     ? "http://localhost:5000"
-    : "http://192.168.1.22:5000";
+    : window.location.hostname === "192.168.1.22"
+      ? "http://192.168.1.22:5000"
+      : "https://e-commerce-project-1-sb2k.onrender.com";
+
+export { API_URL };
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -42,6 +46,10 @@ const AUTH_EXEMPT_PATHS = [
   "/auth/signup",
   "/sellers/sent/login-top",
   "/sellers/verify/login-top",
+  "/sellers/password-login",
+  "/sellers/password",
+  "/sellers/reset-password-request",
+  "/sellers/reset-password",
   "/auth/password-login",
   "/auth/password",
   "/auth/reset-password-request",

@@ -12,6 +12,8 @@ export const createAuthRoutes = ({
     authorizeRoles,
     passwordLoginRateLimiter,
     passwordResetRequestRateLimiter,
+    sellerPasswordLoginRateLimiter,
+    sellerPasswordResetRequestRateLimiter,
     asyncHandler
 }) =>
 {
@@ -45,7 +47,7 @@ export const createAuthRoutes = ({
     router.post('/auth/logout', authenticate, asyncHandler(authController.logout));
 
     // Customer Endpoint: Sets a first password on an OTP-created account, or changes an existing one (Guarded - Requires Authentication + Customer role)
-    router.post('/auth/password', authenticate, authorizeRoles(ROLES.CUSTOMER), asyncHandler(authController.setPassword));
+    router.post('/auth/password', authenticate, authorizeRoles(ROLES.CUSTOMER, ROLES.ADMIN), asyncHandler(authController.setPassword));
 
 
     // ============================================
@@ -60,6 +62,18 @@ export const createAuthRoutes = ({
 
     // Verifies OTP and generates session tokens for authorized merchants
     router.post('/sellers/verify/login-top', asyncHandler(sellerAuthController.signin));
+
+    // Authorizes existing sellers via email + password (Public Route, rate limited against brute force)
+    router.post('/sellers/password-login', sellerPasswordLoginRateLimiter, asyncHandler(sellerAuthController.passwordSignin));
+
+    // Seller Endpoint: Sets a first password on an OTP-created account, or changes an existing one (Guarded - Requires Authentication + Seller role)
+    router.post('/sellers/password', authenticate, authorizeRoles(ROLES.SELLER), asyncHandler(sellerAuthController.setPassword));
+
+    // Seller Endpoint: Initiates forgot-password workflow generating a temporary secure recovery link (Public Route, rate limited against abuse)
+    router.post('/sellers/reset-password-request', sellerPasswordResetRequestRateLimiter, asyncHandler(sellerAuthController.requestPasswordReset));
+
+    // Seller Endpoint: Commits the password modifications after validating the recovery token (Public Route)
+    router.post('/sellers/reset-password', asyncHandler(sellerAuthController.resetPassword));
 
     // Validates URL path parameter code to confirm and finalize merchant onboarding
     router.patch('/sellers/verify/:otp', asyncHandler(sellerAuthController.verifyEmail));
