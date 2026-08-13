@@ -80,6 +80,7 @@ export const createAiController = ({ aiService, logger = console }) =>
                 actionResult: result.actionResult || null,
                 cart: result.cart || null,
                 loginRequired: Boolean(result.loginRequired),
+                language: result.language || null,
             });
         }
         catch (err)
@@ -98,6 +99,7 @@ export const createAiController = ({ aiService, logger = console }) =>
                 actionResult: null,
                 cart: null,
                 loginRequired: false,
+                language: null,
             });
         }
     };

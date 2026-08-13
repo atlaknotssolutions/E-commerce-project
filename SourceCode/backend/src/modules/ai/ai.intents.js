@@ -3,15 +3,22 @@
  * local mock engine.
  *
  * Everything in this module is a deterministic pure function over strings and
- * plain product documents — no I/O, no dependencies — so it can be reasoned
- * about and tested in isolation. It is shared by the mock response pipeline
- * and the Groq source-enrichment path.
+ * plain product documents — no I/O, so it can be reasoned about and tested in
+ * isolation. It is shared by the mock response pipeline and the Groq
+ * source-enrichment path.
+ *
+ * Phase 5: Indic-script queries are transliterated to English search terms
+ * BEFORE tokenization, otherwise normalizeText would strip the Devanagari
+ * characters and a query like "मुझे टी-शर्ट चाहिए" would be classified as
+ * fallback instead of product search.
  *
  * Phase 4 adds deterministic ACTION recognition ("add to my cart",
  * "show my cart", "remove the first item", "make it 2") with entity
  * extraction (ordinal reference, product keyword, quantity). It is not an
  * NLP/ML system — just explicit, testable patterns.
  */
+
+import { transliterateCommerceTerms } from "./ai.language.js";
 
 // ------------------------------------------------------------
 // Text normalization
@@ -32,11 +39,12 @@ export const normalizeText = (value = "") =>
 /**
  * Splits normalized text into search tokens. Single-character tokens are
  * dropped ("t" from "t-shirt", "s" from "nike s") because they carry no
- * retrieval value and would only create noise.
+ * retrieval value and would only create noise. Hyphens are folded to spaces
+ * so "t-shirt" yields the same search token as the catalog title "T Shirt".
  */
 export const tokenize = (value = "") =>
   normalizeText(value)
-    .split(" ")
+    .split(/[\s-]+/)
     .filter((token) => token && token.length > 1);
 
 // ------------------------------------------------------------
@@ -58,7 +66,8 @@ export const STOP_WORDS = new Set([
   "here", "hers", "herself", "him", "himself", "his", "how", "i", "if",
   "in", "into", "is", "it", "its", "itself", "just", "like", "list",
   "looking", "me", "more", "most", "much", "my", "myself", "need", "no",
-  "nor", "not", "now", "of", "off", "offer", "offers", "on", "once", "only",
+  "nor", "not", "now", "of", "off", "offer", "offers", "on", "once", "one",
+  "ones", "only",
   "or", "other", "our", "ours", "ourselves", "out", "over", "own", "please",
   "price", "rate", "rates", "recommend", "quite", "same", "say", "search",
   "see", "she", "should", "show", "so", "some", "such", "tell", "than",
@@ -77,7 +86,8 @@ export const STOP_WORDS = new Set([
 export const GREETING_WORDS = new Set([
   "hi", "hello", "hey", "hola", "namaste", "namaskar", "namaskaram",
   "greetings", "heya", "howdy", "yo", "wassup", "sup", "good", "morning",
-  "afternoon", "evening",
+  "afternoon", "evening", "sat", "sri", "akal", "salaam", "salam",
+  "adab", "sasriyakal", "bhai", "bhaiji", "arey", "arre",
 ]);
 
 /**
@@ -90,6 +100,8 @@ export const SOCIAL_WORDS = new Set([
   "okay", "ok", "sure", "great", "cool", "nice", "fine", "awesome", "amazing",
   "perfect", "whats", "up", "today", "name", "human", "real", "bot",
   "work", "works", "working", "made", "created",
+  "shukriya", "sukriya", "shukria", "shukar", "dhanyavad", "dhanyavaad",
+  "sasriyakal", "alvida",
 ]);
 
 /** Words that route a query to the cart intent. */
@@ -150,7 +162,7 @@ export const parseCategorySelector = (query) =>
  */
 export const detectIntent = (query, { productId = null } = {}) =>
 {
-  const normalized = normalizeText(query);
+  const normalized = normalizeText(transliterateCommerceTerms(query));
   const tokens = tokenize(normalized);
 
   if (!normalized)
@@ -221,7 +233,7 @@ export const detectIntent = (query, { productId = null } = {}) =>
  * everything left after dropping stop/social/greeting filler.
  */
 export const getSearchTokens = (query = "") =>
-  tokenize(query).filter(
+  tokenize(transliterateCommerceTerms(query)).filter(
     (token) =>
       !STOP_WORDS.has(token) &&
       !SOCIAL_WORDS.has(token) &&
@@ -256,22 +268,46 @@ const matchField = (token, field, exactScore, partialScore) =>
     return 0;
   }
 
+  // Basic English singular/plural folding so "headphones" still matches the
+  // title "Gaming Headphone" (and vice versa). Safe under AND semantics: a
+  // fold can only raise ONE token's contribution, never bypass the
+  // every-token-must-hit filter.
+  const variants = [token];
+  if (token.length > 3 && token.endsWith("s"))
+  {
+    variants.push(token.slice(0, -1));
+  }
+  else if (token.length > 3 && !token.endsWith("s"))
+  {
+    variants.push(`${token}s`);
+  }
+
   const words = field.split(" ");
+  let best = 0;
 
-  if (field === token || words.includes(token))
+  for (const variant of variants)
   {
-    return exactScore;
+    let score = 0;
+
+    if (field === variant || words.includes(variant))
+    {
+      score = exactScore;
+    }
+    else if (
+      variant.length >= 3 &&
+      (field.includes(variant) || words.some((word) => word.startsWith(variant)))
+    )
+    {
+      score = partialScore;
+    }
+
+    if (score > best)
+    {
+      best = score;
+    }
   }
 
-  if (
-    token.length >= 3 &&
-    (field.includes(token) || words.some((word) => word.startsWith(token)))
-  )
-  {
-    return partialScore;
-  }
-
-  return 0;
+  return best;
 };
 
 /**
@@ -424,6 +460,10 @@ const ORDINAL_MAP = {
   third: 2, "3rd": 2, "3": 2,
   fourth: 3, "4th": 3, "4": 3,
   fifth: 4, "5th": 4, "5": 4,
+  // Romanized Indic ordinals (Task 7)
+  pehla: 0, pahla: 0, pehle: 0, pehli: 0, pehliyaan: 0,
+  doosra: 1, dooja: 1, dusra: 1, doosri: 1, duja: 1,
+  teesra: 2, tisra: 2, teesri: 2, tisri: 2,
 };
 
 /**
@@ -436,7 +476,9 @@ export const extractOrdinalIndex = (value = "") =>
 {
   const match = String(value)
     .toLowerCase()
-    .match(/\b(first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th|\d{1,2})\b/);
+    .match(
+      /\b(first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th|pehla|pahla|pehle|pehli|pehliyaan|doosra|dooja|dusra|doosri|duja|teesra|tisra|teesri|tisri|\d{1,2})\b/,
+    );
 
   if (!match)
   {
@@ -487,6 +529,15 @@ const PRODUCT_REF_STOP = new Set([
   "to", "my", "the", "this", "that", "from", "of", "in", "into", "on",
   "for", "please", "do", "can", "you", "me", "it", "them", "would",
   "like", "want", "with", "at", "a", "an", "is", "are",
+  // Romanized Indic (Task 7): action verbs + particles that must never
+  // become the product keyword when a reference is resolved.
+  "daal", "daalo", "daale", "rakh", "rakho", "rakhe", "rakhna",
+  "paa", "pao", "pa", "karo", "kar", "kijiye", "kare", "karne", "karke",
+  "hatao", "hata", "nikalo", "nikal", "kaddo", "kado", "kad",
+  "dikhao", "dikha", "dekh", "dekho", "vekho", "vekh", "batao", "bata",
+  "mein", "me", "kya", "mujhe", "mainu", "menu", "wala", "wali", "wale",
+  "ye", "yeh", "eh", "oh", "is", "us", "wo", "woh", "de", "da", "di",
+  "ne", "nu", "vich", "order", "orders",
 ]);
 
 /**
@@ -556,7 +607,7 @@ export const extractActionRequest = (query) =>
   const hasCartWord = CART_WORD.test(text);
 
   // --- ADD_TO_CART ---
-  const addVerb = /\b(add|put|include|place|drop)\b/.test(text);
+  const addVerb = /\b(add|put|include|place|drop|daal|daalo|daale|rakh|rakho|rakhe|paa|pao|pa)\b/.test(text);
   const addThis = /\badd\s+(this|that|it|them|the)\b/.test(text);
   const addCount = /\badd\b[^.]*\b\d+\b/.test(text);
 
@@ -573,8 +624,8 @@ export const extractActionRequest = (query) =>
   }
 
   // --- REMOVE_FROM_CART ---
-  const removeVerb = /\b(remove|delete|take\s+out|clear)\b/.test(text);
-  const removeTarget = hasCartWord || /\b(item|one|product|this|that|it|first|second|third)\b/.test(text);
+  const removeVerb = /\b(remove|delete|take\s+out|clear|hatao|hata|nikalo|nikal|kaddo|kado|kad)\b/.test(text);
+  const removeTarget = hasCartWord || /\b(item|one|product|this|that|it|first|second|third|pehla|pahla|pehle|doosra|dooja|teesra)\b/.test(text);
 
   if (removeVerb && removeTarget)
   {
@@ -584,7 +635,7 @@ export const extractActionRequest = (query) =>
 
   // --- UPDATE_CART_QUANTITY ---
   const quantity = extractQuantityNumber(text);
-  const quantityVerb = /\b(quantity|change|update|set|increase|decrease|reduce|make)\b/.test(text);
+  const quantityVerb = /\b(quantity|change|update|set|increase|decrease|reduce|make|karo|kar|kijiye|rakho)\b/.test(text);
 
   if (quantity !== null && quantityVerb)
   {
@@ -593,7 +644,7 @@ export const extractActionRequest = (query) =>
   }
 
   // --- VIEW_CART ---
-  const viewVerb = /\b(show|view|see|open|check|display|list|items|what|my|read)\b/.test(text);
+  const viewVerb = /\b(show|view|see|open|check|display|list|items|what|my|read|dikhao|dikha|dekh|dekho|vekho|vekh|batao|bata)\b/.test(text);
   if (hasCartWord && viewVerb)
   {
     return { type: "VIEW_CART" };

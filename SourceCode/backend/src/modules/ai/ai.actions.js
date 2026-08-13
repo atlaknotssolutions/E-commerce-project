@@ -15,6 +15,7 @@
  */
 
 import { toPublicProductSource } from "./ai.sources.js";
+import { t } from "./ai.language.js";
 
 // ------------------------------------------------------------
 // Action registry (the single source of truth)
@@ -220,12 +221,12 @@ export const createAiActionExecutor = ({
 
         if (Number.isNaN(parsed) || !Number.isInteger(parsed) || parsed < 1)
         {
-            return { error: true, message: 'Please choose a valid quantity.' };
+            return { error: true, errorCode: "invalid_quantity" };
         }
 
         if (parsed > MAX_CART_QUANTITY)
         {
-            return { error: true, message: `Quantity cannot exceed ${MAX_CART_QUANTITY}.` };
+            return { error: true, errorCode: "quantity_too_large", max: MAX_CART_QUANTITY };
         }
 
         return { value: parsed };
@@ -366,7 +367,7 @@ export const createAiActionExecutor = ({
     };
 
     const handlers = {
-        [ACTIONS.PRODUCT_DETAIL]: async ({ productId }) =>
+        [ACTIONS.PRODUCT_DETAIL]: async ({ productId, lang = "en" }) =>
         {
             const checked = await requirePublicProduct(productId);
 
@@ -375,7 +376,7 @@ export const createAiActionExecutor = ({
                 return {
                     success: false,
                     error: 'not_found',
-                    message: "I couldn't find that product.",
+                    message: t(lang, 'notFound'),
                 };
             }
 
@@ -386,11 +387,15 @@ export const createAiActionExecutor = ({
                 success: true,
                 product: toPublicProductResult(product),
                 sources: source ? [source] : [],
-                message: `Here are the details for **${product.title}**:\n\n- Selling Price: Rs. ${product.sellingPrice} (MRP: Rs. ${product.mrpPrice})\n- In-Stock Quantity: ${product.quantity} units available`,
+                message: t(lang, 'detail', {
+                    title: product.title,
+                    price: product.sellingPrice,
+                    stock: product.quantity,
+                }),
             };
         },
 
-        [ACTIONS.VIEW_CART]: async ({ userId }) =>
+        [ACTIONS.VIEW_CART]: async ({ userId, lang = "en" }) =>
         {
             let cartDto = null;
 
@@ -417,13 +422,17 @@ export const createAiActionExecutor = ({
                 success: true,
                 cart: summary,
                 message: isEmpty
-                    ? 'Your cart is currently empty. Would you like me to suggest some products?'
-                    : 'Here are the items in your cart.',
+                    ? `${t(lang, 'cartEmpty')} ${t(lang, 'cartEmptySuggest')}`
+                    : t(lang, 'cartView'),
             };
         },
 
-        [ACTIONS.ADD_TO_CART]: async ({ userId, productId, quantity = 1 }) =>
+        [ACTIONS.ADD_TO_CART]: async ({ userId, productId, quantity = 1, lang = "en" }) =>
         {
+            // Detected-language requests often carry no explicit count
+            // ("pehla wala cart mein daal do") — default to one.
+            if (quantity === null || quantity === "") quantity = 1;
+
             const checked = await requirePublicProduct(productId);
 
             if (checked.error === 'not_found')
@@ -431,7 +440,7 @@ export const createAiActionExecutor = ({
                 return {
                     success: false,
                     error: 'not_found',
-                    message: "I couldn't find that product.",
+                    message: t(lang, 'notFound'),
                 };
             }
 
@@ -440,7 +449,7 @@ export const createAiActionExecutor = ({
                 return {
                     success: false,
                     error: 'out_of_stock',
-                    message: 'Sorry, this product is currently unavailable.',
+                    message: t(lang, 'cartAddFailedStock', { title: productId }),
                 };
             }
 
@@ -449,7 +458,13 @@ export const createAiActionExecutor = ({
 
             if (qty.error)
             {
-                return { success: false, error: 'invalid_quantity', message: qty.message };
+                return {
+                    success: false,
+                    error: 'invalid_quantity',
+                    message: qty.errorCode === "quantity_too_large"
+                        ? t(lang, 'quantityTooLarge', { max: qty.max })
+                        : t(lang, 'quantityInvalid'),
+                };
             }
 
             if (qty.value > Number(product.quantity))
@@ -458,7 +473,7 @@ export const createAiActionExecutor = ({
                 return {
                     success: false,
                     error: 'out_of_stock',
-                    message: `Only ${available} unit${available > 1 ? 's' : ''} available in stock right now.`,
+                    message: t(lang, 'stockLimit', { count: available, s: available > 1 ? 's' : '' }),
                 };
             }
 
@@ -479,17 +494,23 @@ export const createAiActionExecutor = ({
                 product: toPublicProductResult(product),
                 quantity: qty.value,
                 cart: toPublicCartSummary(cartDto),
-                message: `Done! **${product.title}** has been added to your cart.`,
+                message: t(lang, 'cartAddDone', { title: product.title }),
             };
         },
 
-        [ACTIONS.UPDATE_CART_QUANTITY]: async ({ userId, cartItemId, ref, quantity }) =>
+        [ACTIONS.UPDATE_CART_QUANTITY]: async ({ userId, cartItemId, ref, quantity, lang = "en" }) =>
         {
             const qty = normalizeQuantity(quantity);
 
             if (qty.error)
             {
-                return { success: false, error: 'invalid_quantity', message: qty.message };
+                return {
+                    success: false,
+                    error: 'invalid_quantity',
+                    message: qty.errorCode === "quantity_too_large"
+                        ? t(lang, 'quantityTooLarge', { max: qty.max })
+                        : t(lang, 'quantityInvalid'),
+                };
             }
 
             const resolved = await resolveCartItem({ userId, cartItemId, ref });
@@ -499,7 +520,7 @@ export const createAiActionExecutor = ({
                 return {
                     success: false,
                     error: 'empty_cart',
-                    message: 'Your cart is currently empty.',
+                    message: t(lang, 'cartEmpty'),
                 };
             }
 
@@ -508,7 +529,7 @@ export const createAiActionExecutor = ({
                 return {
                     success: false,
                     error: 'item_not_found',
-                    message: "I couldn't find that item in your cart.",
+                    message: t(lang, 'cartItemNotFound'),
                 };
             }
 
@@ -530,7 +551,7 @@ export const createAiActionExecutor = ({
                 return {
                     success: false,
                     error: 'not_found',
-                    message: "I couldn't find that product.",
+                    message: t(lang, 'notFound'),
                 };
             }
 
@@ -540,7 +561,7 @@ export const createAiActionExecutor = ({
                 return {
                     success: false,
                     error: 'out_of_stock',
-                    message: `Only ${available} unit${available > 1 ? 's' : ''} available in stock right now.`,
+                    message: t(lang, 'stockLimit', { count: available, s: available > 1 ? 's' : '' }),
                 };
             }
 
@@ -554,11 +575,11 @@ export const createAiActionExecutor = ({
                 success: true,
                 quantity: qty.value,
                 cart: toPublicCartSummary(cartDto),
-                message: `Done! The quantity has been updated to ${qty.value}.`,
+                message: t(lang, 'cartUpdateDone', { quantity: qty.value }),
             };
         },
 
-        [ACTIONS.REMOVE_FROM_CART]: async ({ userId, cartItemId, ref }) =>
+        [ACTIONS.REMOVE_FROM_CART]: async ({ userId, cartItemId, ref, lang = "en" }) =>
         {
             const resolved = await resolveCartItem({ userId, cartItemId, ref });
 
@@ -567,7 +588,7 @@ export const createAiActionExecutor = ({
                 return {
                     success: false,
                     error: 'empty_cart',
-                    message: 'Your cart is currently empty.',
+                    message: t(lang, 'cartEmpty'),
                 };
             }
 
@@ -576,7 +597,7 @@ export const createAiActionExecutor = ({
                 return {
                     success: false,
                     error: 'item_not_found',
-                    message: "I couldn't find that item in your cart.",
+                    message: t(lang, 'cartItemNotFound'),
                 };
             }
 
@@ -588,7 +609,7 @@ export const createAiActionExecutor = ({
             return {
                 success: true,
                 cart: toPublicCartSummary(cartDto),
-                message: 'Done! The product has been removed from your cart.',
+                message: t(lang, 'cartRemoveDone'),
             };
         },
     };
@@ -601,7 +622,7 @@ export const createAiActionExecutor = ({
         typeof type === 'string' &&
         Object.prototype.hasOwnProperty.call(handlers, type);
 
-    const dispatchAction = async ({ type, ...params }) =>
+    const dispatchAction = async ({ type, lang = "en", ...params }) =>
     {
         if (!isRegistered(type))
         {
@@ -611,13 +632,13 @@ export const createAiActionExecutor = ({
                 action: type ?? 'UNKNOWN',
                 success: false,
                 error: 'unsupported',
-                message: "Sorry, I can't perform that action.",
+                message: t(lang, 'invalidAction'),
             };
         }
 
         try
         {
-            const result = await handlers[type](params);
+            const result = await handlers[type]({ ...params, lang });
             return { action: type, ...result };
         }
         catch (err)
@@ -636,7 +657,7 @@ export const createAiActionExecutor = ({
                     action: type,
                     success: false,
                     error: 'not_found',
-                    message: "I couldn't find that product.",
+                    message: t(lang, 'notFound'),
                 };
             }
 
@@ -646,7 +667,7 @@ export const createAiActionExecutor = ({
                     action: type,
                     success: false,
                     error: 'item_not_found',
-                    message: "I couldn't find that item in your cart.",
+                    message: t(lang, 'cartItemNotFound'),
                 };
             }
 
@@ -654,8 +675,7 @@ export const createAiActionExecutor = ({
                 action: type,
                 success: false,
                 error: statusCode ? 'cart_error' : 'internal',
-                message:
-                    "I couldn't perform that cart action. Please try again.",
+                message: t(lang, 'cartError'),
             };
         }
     };

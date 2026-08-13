@@ -13,6 +13,12 @@ import {
   INTENT_TO_ACTION,
   createAiActionExecutor,
 } from "./ai.actions.js";
+import {
+  detectLanguage,
+  t,
+  LANG,
+  normalizeCommerceQuery,
+} from "./ai.language.js";
 
 /**
  * Pure function-based factory representing the AI Chatbot Business Service layer.
@@ -50,6 +56,61 @@ export const createAiService = ({
       conversationStore.delete(oldestUserId);
     }
     conversationStore.set(userId, messages);
+  };
+
+  // ============================================================
+  // LANGUAGE PERSISTENCE (Phase 5)
+  // ============================================================
+
+  /**
+   * Per-user language memory. Keyed by the authenticated userId only, so a
+   * guest (userId null) is detected fresh on every message and never pollutes
+   * another user's conversation. Pure presentation state — never used for
+   * authorization or business rules.
+   */
+  const languageStore = new Map();
+  const LANGUAGE_STORE_MAX_USERS = 1000;
+
+  const saveLanguage = (userId, lang) => {
+    if (typeof userId !== "string" || !userId) return;
+
+    if (
+      languageStore.size >= LANGUAGE_STORE_MAX_USERS &&
+      !languageStore.has(userId)
+    ) {
+      const oldestUserId = languageStore.keys().next().value;
+      languageStore.delete(oldestUserId);
+    }
+
+    languageStore.set(userId, lang);
+  };
+
+  /**
+   * Detects the language for the current message. The previous conversation
+   * language (per user) is fed in so short contextual messages ("2000",
+   * "yes", "wireless wala") inherit it instead of flipping to English.
+   */
+  const resolveLanguage = (userId, prompt) => {
+    const previousLang =
+      typeof userId === "string" && userId ? languageStore.get(userId) : null;
+    const detection = detectLanguage(prompt, previousLang);
+    saveLanguage(userId, detection.code);
+    return detection.code;
+  };
+
+  const LANGUAGE_LABELS = {
+    [LANG.HI]: "Hindi",
+    [LANG.HILATN]: "Hinglish (romanized Hindi)",
+    [LANG.PA]: "Punjabi",
+    [LANG.PALATN]: "romanized Punjabi",
+    [LANG.MR]: "Marathi",
+    [LANG.BN]: "Bengali",
+    [LANG.GU]: "Gujarati",
+    [LANG.TA]: "Tamil",
+    [LANG.TE]: "Telugu",
+    [LANG.KN]: "Kannada",
+    [LANG.ML]: "Malayalam",
+    [LANG.UR]: "Urdu",
   };
 
   // ============================================================
@@ -114,9 +175,11 @@ export const createAiService = ({
 
   /**
    * Resolves a text product reference ("first one", "nike one", "this")
-   * against the products the assistant most recently surfaced.
+   * against the products the assistant most recently surfaced. A keyword
+   * reference ("the nike one", "add nike sneakers") falls back to a fresh
+   * catalog search so a named product works even on a brand-new session.
    */
-  const resolveProductReference = ({
+  const resolveProductReference = async ({
     userId,
     actionRequest,
     bodyProductId,
@@ -143,7 +206,17 @@ export const createAiService = ({
           product.title.toLowerCase().includes(token) ||
           product.brand.toLowerCase().includes(token),
       );
-      return match?.id || null;
+      if (match)
+      {
+        return match.id || null;
+      }
+
+      const [found] = await findMatchingProductsByQuery(token);
+      return (
+        found?._id?.toString?.() ||
+        found?.id ||
+        null
+      );
     }
 
     if (ref.kind === "last")
@@ -154,11 +227,11 @@ export const createAiService = ({
     return bodyProductId || null;
   };
 
-  const loginRequiredResponse = (actionType) => {
+  const loginRequiredResponse = (lang, actionType) => {
     const message =
       actionType === ACTIONS.VIEW_CART
-        ? "Please log in before I can show you your cart."
-        : "Please log in before I can modify your cart.";
+        ? t(lang, "loginRequiredView")
+        : t(lang, "loginRequiredAdd");
 
     return {
       response: message,
@@ -169,13 +242,14 @@ export const createAiService = ({
       actionResult: null,
       cart: null,
       loginRequired: true,
+      language: lang,
     };
   };
 
   /**
    * Wraps an executed action into the full structured chat response.
    */
-  const buildActionResponse = (result) => {
+  const buildActionResponse = (result, lang) => {
     const actions = [];
 
     if (result.success)
@@ -204,6 +278,7 @@ export const createAiService = ({
       },
       cart: result.cart || null,
       loginRequired: false,
+      language: lang,
     };
   };
 
@@ -211,13 +286,13 @@ export const createAiService = ({
    * Executes a structured action payload sent by the frontend action buttons.
    * The backend re-validates every field — the frontend is never trusted.
    */
-  const handleStructuredAction = async ({ action, userId }) => {
+  const handleStructuredAction = async ({ action, userId, lang }) => {
     const type = typeof action?.type === "string" ? action.type : null;
 
     if (!type)
     {
       return {
-        response: "I couldn't understand that request.",
+        response: t(lang, "invalidAction"),
         intent: "FALLBACK",
         mockMode: true,
         sources: [],
@@ -225,13 +300,14 @@ export const createAiService = ({
         actionResult: null,
         cart: null,
         loginRequired: false,
+        language: lang,
       };
     }
 
     if (!actionExecutor.isRegistered(type))
     {
       return {
-        response: "Sorry, I can't perform that action.",
+        response: t(lang, "invalidAction"),
         intent: type,
         mockMode: true,
         sources: [],
@@ -239,16 +315,18 @@ export const createAiService = ({
         actionResult: null,
         cart: null,
         loginRequired: false,
+        language: lang,
       };
     }
 
     if (AUTH_REQUIRED_ACTIONS.has(type) && !userId)
     {
-      return loginRequiredResponse(type);
+      return loginRequiredResponse(lang, type);
     }
 
     const result = await actionExecutor.dispatchAction({
       type,
+      lang,
       userId,
       productId: typeof action.productId === "string" ? action.productId : null,
       cartItemId:
@@ -256,7 +334,7 @@ export const createAiService = ({
       quantity: action.quantity,
     });
 
-    return buildActionResponse(result);
+    return buildActionResponse(result, lang);
   };
 
   /**
@@ -269,6 +347,7 @@ export const createAiService = ({
     prompt,
     userId,
     bodyProductId,
+    lang,
   }) => {
     const type = actionRequest.type;
 
@@ -276,8 +355,7 @@ export const createAiService = ({
     if (type === "UNSUPPORTED")
     {
       return {
-        response:
-          "Sorry, I can't do that. I can help you search products and manage your cart.",
+        response: t(lang, "unsupported"),
         intent: "FALLBACK",
         mockMode: true,
         sources: [],
@@ -285,13 +363,14 @@ export const createAiService = ({
         actionResult: null,
         cart: null,
         loginRequired: false,
+        language: lang,
       };
     }
 
     if (!actionExecutor.isRegistered(type))
     {
       return {
-        response: "Sorry, I can't perform that action.",
+        response: t(lang, "invalidAction"),
         intent: type,
         mockMode: true,
         sources: [],
@@ -299,19 +378,20 @@ export const createAiService = ({
         actionResult: null,
         cart: null,
         loginRequired: false,
+        language: lang,
       };
     }
 
     if (AUTH_REQUIRED_ACTIONS.has(type) && !userId)
     {
-      return loginRequiredResponse(type);
+      return loginRequiredResponse(lang, type);
     }
 
     let productId = bodyProductId;
 
     if (type === ACTIONS.ADD_TO_CART)
     {
-      productId = resolveProductReference({
+      productId = await resolveProductReference({
         userId,
         actionRequest,
         bodyProductId,
@@ -320,8 +400,7 @@ export const createAiService = ({
       if (!productId)
       {
         return {
-          response:
-            "Which product would you like me to add? You can tell me, like \"the first one\" or its name.",
+          response: t(lang, "askWhichProduct"),
           intent: ACTIONS.ADD_TO_CART,
           mockMode: true,
           sources: [],
@@ -329,19 +408,21 @@ export const createAiService = ({
           actionResult: null,
           cart: null,
           loginRequired: false,
+          language: lang,
         };
       }
     }
 
     const result = await actionExecutor.dispatchAction({
       type,
+      lang,
       userId,
       productId,
       quantity: actionRequest.quantity,
       ref: actionRequest.ref,
     });
 
-    return buildActionResponse(result);
+    return buildActionResponse(result, lang);
   };
 
   const buildSourceActions = (sources) =>
@@ -455,6 +536,7 @@ Payment: ${lastOrder.paymentStatus}
     productContext = "",
     cartContext = "",
     orderContext = "",
+    language = "en",
   }) => `
 ${COMPANY_CONTEXT}
 
@@ -463,6 +545,8 @@ ${productContext}
 ${cartContext}
 
 ${orderContext}
+
+${language === "en" ? "" : `Reply in the customer's language (${LANGUAGE_LABELS[language] || language}).`}
 
 Customer Question:
 
@@ -480,10 +564,43 @@ ${prompt}
     mockMode: isMockMode(),
   });
 
+  /**
+   * Extracts a budget ceiling from the raw prompt, e.g. "2000 ke under",
+   * "under ₹1500", "1000 de andar", "budget 3000". Returns null when no
+   * budget phrasing is present so model numbers ("nike air 1") never get
+   * misread as price constraints.
+   */
+  const extractBudgetNumber = (prompt = "") =>
+  {
+    const text = String(prompt);
+    const lead =
+      text.match(/(?:under|below|within|less\s+than|up\s+to|budget|max)\b[^₹\d]*₹?\s*(\d{2,})/i);
+    if (lead)
+    {
+      return Number(lead[1]);
+    }
+
+    const trail =
+      text.match(/₹?\s*(\d{2,})\s*(?:ke\s+under|ke\s+andar|de\s+andar|de\s+under|se\s+kam|under\s*price|के\s+अंदर|के\s+भीतर)/i);
+    return trail ? Number(trail[1]) : null;
+  };
+
   const findMatchingProductsByQuery = async (query) =>
     {
-        const searchTokens = getSearchTokens(query);
+        // Phase 5: normalize Indic/romanized queries to English search terms,
+        // then drop pure-numeric budget tokens ("2000") so they cannot break
+        // the AND-semantics of multi-token relevance matching.
+        const normalizedQuery = normalizeCommerceQuery(query);
+        const searchTokens = getSearchTokens(normalizedQuery).filter(
+            // Budget/price tokens ("2000", "₹1000", "₹ 1,000") must not break
+            // the AND-semantics of multi-token relevance matching.
+            (token) => !/^₹?\s?\d[\d,]*$/.test(token),
+        );
         if (searchTokens.length === 0) return [];
+
+        // "X ke under/andar" budget phrased in the raw prompt constrains the
+        // catalog, mirroring the RAG service's maxPrice behaviour.
+        const maxPrice = extractBudgetNumber(query);
 
         try
         {
@@ -496,7 +613,13 @@ ${prompt}
 
             const products = Array.isArray(result?.content) ? result.content : [];
 
-            return rankProducts(products, searchTokens);
+            const withinBudget = maxPrice
+                ? products.filter(
+                      (product) => Number(product.sellingPrice) <= maxPrice,
+                  )
+                : products;
+
+            return rankProducts(withinBudget, searchTokens);
         } catch (error)
         {
             console.warn("[AI Service] Product query matching error:", error.message);
@@ -519,13 +642,13 @@ ${prompt}
    * Parses prompts and leverages injected repository data to generate context-aware solutions.
    * Enables seamless local development/testing without any external API keys or network dependencies.
    */
-  const processMockResponseInternal = async ({ prompt, productId, userId }) => {
+  const processMockResponseInternal = async ({ prompt, productId, userId, lang = "en" }) => {
     const intent = detectIntent(prompt, { productId });
 
     // Greeting / small talk
     if (intent.type === "greeting") {
       return {
-        text: "Hello! How can I help you today? I can find products, show categories, check your cart, or track your orders.",
+        text: `${t(lang, "greeting")} ${t(lang, "capability")}`,
         products: [],
       };
     }
@@ -534,15 +657,22 @@ ${prompt}
     if (intent.type === "cart") {
       if (!userId) {
         return {
-          text: "Please log in to your account first so I can retrieve and review your active shopping cart details.",
+          text: t(lang, "loginRequiredView"),
           products: [],
         };
       }
 
-      const cart = await cartRepository.findByUserId({ userId });
+      let cart = null;
+      try {
+        cart = await cartRepository.findByUserId({ userId });
+      } catch (err) {
+        // Non-ObjectId user claim: treat as no cart rather than crashing.
+        console.warn("[AI Service] Cart lookup error:", err.message);
+        cart = null;
+      }
       if (!cart || cart.items.length === 0) {
         return {
-          text: "I reviewed your active profile and noticed your shopping cart is currently empty. Would you like some product recommendations from our latest catalog?",
+          text: `${t(lang, "cartEmpty")} ${t(lang, "cartEmptySuggest")}`,
           products: [],
         };
       }
@@ -555,7 +685,7 @@ ${prompt}
         .join("\n");
 
       return {
-        text: `I accessed your shopping cart session securely! Here is the list of items currently saved in your basket:\n\n${cartSummaryList}\n\n**Subtotal Selling Price**: Rs. ${cart.totalSellingPrice}\n**Total Articles**: ${cart.totalItem} items\n\nWould you like me to apply a promotional coupon or help you proceed directly to our secure checkout portal?`,
+        text: `${t(lang, "cartView")}\n\n${cartSummaryList}\n\n**Subtotal Selling Price**: Rs. ${cart.totalSellingPrice}\n**Total Articles**: ${cart.totalItem} items`,
         products: [],
       };
     }
@@ -564,15 +694,23 @@ ${prompt}
     if (intent.type === "order") {
       if (!userId) {
         return {
-          text: "Authorization needed: Please authenticate into your account to securely track your sales orders history.",
+          text: t(lang, "orderLoginRequired"),
           products: [],
         };
       }
 
-      const orders = await orderRepository.findByUser({ userId });
+      let orders = [];
+      try {
+        orders = await orderRepository.findByUser({ userId });
+      } catch (err) {
+        // A malformed/non-ObjectId user claim must never 502 the chat —
+        // degrade to the same "no orders" reply as an empty history.
+        console.warn("[AI Service] Order history lookup error:", err.message);
+        orders = [];
+      }
       if (!orders || orders.length === 0) {
         return {
-          text: "I checked your accounting history logs and found zero active orders registered under your profile. Start shopping and I will help you track them!",
+          text: t(lang, "orderEmpty"),
           products: [],
         };
       }
@@ -586,7 +724,7 @@ ${prompt}
         .join("\n");
 
       return {
-        text: `I accessed your secure ledger accounts! Here are details of your most recent transactions (showing top 3 orders):\n\n${orderSummaryList}\n\nHow can I assist you further with shipping tracking or cancellations?`,
+        text: `${t(lang, "orderFound", { count: orders.length, s: orders.length > 1 ? "s" : "" })}\n\n${orderSummaryList}`,
         products: [],
       };
     }
@@ -599,7 +737,7 @@ ${prompt}
           rememberLastProduct(userId, product._id?.toString?.() || product.id);
 
           return {
-            text: `Here are the details for **${product.title}**:\n\n- Selling Price: Rs. ${product.sellingPrice} (MRP: Rs. ${product.mrpPrice})\n- Discount Offered: ${product.discountPercent}% off\n- In-Stock Quantity: ${product.quantity} units available\n- Color Variant: ${product.color || "Not specified"}\n- Sizes Available: ${product.sizes || "Not specified"}\n\nWould you like me to add this verified catalog item to your cart?`,
+            text: `${t(lang, "detail", { title: product.title, price: product.sellingPrice, stock: product.quantity })}\n\n- Discount Offered: ${product.discountPercent}% off\n- Color Variant: ${product.color || "Not specified"}\n- Sizes Available: ${product.sizes || "Not specified"}\n\n${t(lang, "detailAddPrompt")}`,
             products: [product],
           };
         }
@@ -608,7 +746,7 @@ ${prompt}
       }
 
       return {
-        text: "I couldn't find that product in our current public catalog. It may have been removed or is not yet available for sale.",
+        text: t(lang, "detailNotFound"),
         products: [],
       };
     }
@@ -620,7 +758,7 @@ ${prompt}
 
         if (!categories || categories.length === 0) {
           return {
-            text: "I'm sorry, we currently don't have any categories available in our system. Please check back later!",
+            text: t(lang, "noCategories"),
             products: [],
           };
         }
@@ -631,7 +769,7 @@ ${prompt}
           .join("\n");
 
         return {
-          text: `Great! Here are some popular shopping categories to explore:\n\n${categoryListText}\n\nPlease reply with the category number (1, 2, or 3) to see products in that category. For example: "Show me category 1" or just reply "1".`,
+          text: `${t(lang, "categoryPrompt")}\n\n${categoryListText}\n\n${t(lang, "categoryPickHint")}`,
           products: [],
         };
       } catch (err) {
@@ -646,14 +784,14 @@ ${prompt}
 
         if (!categories || categories.length === 0) {
           return {
-            text: "I'm sorry, no categories available right now.",
+            text: t(lang, "noCategories"),
             products: [],
           };
         }
 
         if (intent.index >= categories.length) {
           return {
-            text: `That category number is out of range. Please select from 1 to ${Math.min(3, categories.length)}.`,
+            text: t(lang, "categoryOutOfRange", { max: Math.min(3, categories.length) }),
             products: [],
           };
         }
@@ -669,7 +807,7 @@ ${prompt}
 
         if (products.length === 0) {
           return {
-            text: `I found the **${selectedCategory.name}** category, but unfortunately there are no products available in it at the moment. Would you like to explore another category?`,
+            text: t(lang, "categoryEmpty", { name: selectedCategory.name }),
             products: [],
           };
         }
@@ -677,7 +815,7 @@ ${prompt}
         const productListText = formatProductListText(products);
 
         return {
-          text: `Perfect! Here are the top products in the **${selectedCategory.name}** category:\n\n${productListText}\n\nWould you like to add any of these to your cart, or see more products from this category?`,
+          text: `${t(lang, "categoryProducts", { name: selectedCategory.name })}\n\n${productListText}\n\n${t(lang, "searchActions")}`,
           products,
         };
       } catch (err) {
@@ -691,34 +829,34 @@ ${prompt}
 
       if (normalized.includes("your name")) {
         return {
-          text: `I'm your **${branding.appName} AI Assistant**. I can help you find products, browse categories, review your cart, and track orders.`,
+          text: t(lang, "identity"),
           products: [],
         };
       }
 
       if (normalized.includes("who are you") || normalized.includes("what are you")) {
         return {
-          text: `I'm **${AI_NAME}**, your AI shopping assistant. Ask me about products, categories, cart, orders, or delivery.`,
+          text: t(lang, "identity"),
           products: [],
         };
       }
 
-      if (normalized.includes("thank")) {
+      if (normalized.includes("thank") || /shukriya|sukriya|shukria|shukar|dhanyavad|dhanyavaad/.test(normalized)) {
         return {
-          text: "You're welcome! Is there anything else I can help you with today?",
+          text: t(lang, "thanks"),
           products: [],
         };
       }
 
       if (normalized.includes("bye") || normalized.includes("goodbye")) {
         return {
-          text: "Goodbye! Thanks for chatting with me. Happy shopping!",
+          text: t(lang, "bye"),
           products: [],
         };
       }
 
       return {
-        text: "I'm here to help you shop. Ask me to find products, show categories, check your cart, or track your orders.",
+        text: t(lang, "capability"),
         products: [],
       };
     }
@@ -729,20 +867,20 @@ ${prompt}
 
       if (matchedProducts.length > 0) {
         return {
-          text: `Here are products I found matching your query:\n\n${formatProductListText(matchedProducts.slice(0, 3))}\n\nLet me know if you want to view one in detail or add it to your cart.`,
+          text: `${t(lang, "searchFound", { count: matchedProducts.length, s: matchedProducts.length > 1 ? "s" : "", query: prompt })}\n\n${formatProductListText(matchedProducts.slice(0, 3))}\n\n${t(lang, "searchActions")}`,
           products: matchedProducts,
         };
       }
 
       return {
-        text: 'I couldn\'t find any products matching that query in our current catalog. Try a different search, such as "nike sneakers" or "t shirt", or ask me to show available categories.',
+        text: t(lang, "searchEmpty"),
         products: [],
       };
     }
 
     // Fallback: generic help
     return {
-      text: `Hello! I am your **${branding.appName} AI Assistant** chatbot.\n\nI can help you with:\n- "Show me categories" - Browse shopping categories\n- "What is in my cart?" - View your cart\n- "Show my recent orders" - Track orders\n- "Tell me about this product" - Product information\n\nHow can I assist you with your shopping experience today?`,
+      text: `${t(lang, "identity")}\n\n${t(lang, "capability")}`,
       products: [],
     };
   };
@@ -751,9 +889,9 @@ ${prompt}
    * Public mock entry point — attaches the detected intent so responses can
    * carry the structured `intent` field without touching every return above.
    */
-  const processMockResponse = async ({ prompt, productId, userId }) => {
+  const processMockResponse = async ({ prompt, productId, userId, lang }) => {
     const intent = detectIntent(prompt, { productId });
-    const result = await processMockResponseInternal({ prompt, productId, userId });
+    const result = await processMockResponseInternal({ prompt, productId, userId, lang });
 
     return {
       ...result,
@@ -777,11 +915,15 @@ ${prompt}
     const isMockMode =
       !groqKey || groqKey.includes("MOCK") || process.env.NODE_ENV === "test";
 
+    // Phase 5: resolve the conversation language BEFORE any action/intent
+    // handling so every response path can localize. Purely presentational.
+    const lang = resolveLanguage(userId, prompt);
+
     // =========================================
     // Phase 4: structured action from UI buttons
     // =========================================
     if (action && typeof action === "object") {
-      return handleStructuredAction({ action, userId });
+      return handleStructuredAction({ action, userId, lang });
     }
 
     // =========================================
@@ -794,6 +936,7 @@ ${prompt}
         prompt,
         userId,
         bodyProductId: productId,
+        lang,
       });
     }
 
@@ -802,6 +945,7 @@ ${prompt}
         prompt,
         productId,
         userId,
+        lang,
       });
 
       const sources = mapPublicProductSources(mockResult.products).slice(0, 3);
@@ -820,6 +964,7 @@ ${prompt}
         actionResult: null,
         cart: null,
         loginRequired: false,
+        language: lang,
       };
     }
 
@@ -886,6 +1031,7 @@ ${prompt}
         productContext: buildProductContext(product),
         cartContext: buildCartContext(cart),
         orderContext: buildOrderContext(orders),
+        language: lang,
       });
       // =========================================
       // Gemini API
@@ -983,6 +1129,7 @@ ${prompt}
           actionResult: null,
           cart: null,
           loginRequired: false,
+          language: lang,
         };
       } catch (error) {
         if (error.name === "AbortError") {
@@ -1001,6 +1148,7 @@ ${prompt}
           actionResult: null,
           cart: null,
           loginRequired: false,
+          language: lang,
         };
       } finally {
         clearTimeout(timeoutId);
@@ -1018,6 +1166,7 @@ ${prompt}
         actionResult: null,
         cart: null,
         loginRequired: false,
+        language: lang,
       };
     }
   };
