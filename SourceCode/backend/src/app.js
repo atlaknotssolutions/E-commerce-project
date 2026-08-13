@@ -685,8 +685,10 @@ export const createApp = async ({ env, dbManager }) =>
 
     const aiService = createAiService({
         cartRepository,
+        cartService,
         productRepository,
         orderRepository,
+        categoryRepository,
         createApiError,
     });
 
@@ -1062,6 +1064,23 @@ export const createApp = async ({ env, dbManager }) =>
         code: 'RATE_LIMIT_EXCEEDED',
     });
 
+    // Abuse / cost protection for the AI chatbot endpoints.
+    // Guests are throttled per client IP; authenticated users get their own
+    // per-user bucket so one person cannot exhaust an IP's quota.
+    // NOTE: in-memory fixed window (per process) — like the other limiters in
+    // this app it is NOT distributed across multiple server instances.
+    const aiChatRateLimiter = createRateLimiter({
+        windowMs: 60 * 1000, // 1 minute
+        maxAttempts: 30,
+        keyGenerator: (req) =>
+        {
+            const userId = req.user && req.user.id;
+            return userId ? `user:${userId}` : `ip:${req.ip}`;
+        },
+        message: 'Too many chatbot requests. Please try again in a moment.',
+        code: 'RATE_LIMIT_EXCEEDED',
+    });
+
     const rawAuthRouterInstance = express.Router();
     const authRoutes = createAuthRoutes({
         router: rawAuthRouterInstance,
@@ -1188,6 +1207,7 @@ export const createApp = async ({ env, dbManager }) =>
         aiController,
         authenticate,
         asyncHandler,
+        aiRateLimiter: aiChatRateLimiter,
     });
 
     const rawDealRouterInstance = express.Router();

@@ -64,6 +64,7 @@ useEffect(() => {
       <Suspense fallback={<LegalFallback />}>
       <Routes>
         <Route path='/' element={<Home />} />
+        <Route path='/products' element={<Products />} />
         <Route path='/products/:categoryId' element={<Products />} />
         <Route path='/search-products' element={<SearchProducts />} />
         <Route path='/reviews/:productId' element={<Reviews />} />

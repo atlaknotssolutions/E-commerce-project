@@ -249,7 +249,7 @@ const SearchBar: React.FC = () => {
   );
 
   return (
-    <div ref={containerRef} className="relative w-full lg:w-[420px]">
+    <div ref={containerRef} className="relative w-full lg:w-[210px]">
       <form onSubmit={handleSubmit} className="w-full">
         <TextField
           fullWidth

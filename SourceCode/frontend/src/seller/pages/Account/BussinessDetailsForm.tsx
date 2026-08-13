@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { TextField, Button } from "@mui/material";
@@ -12,10 +12,11 @@ const BusinessDetailsForm = ({ onClose }: UpdateDetailsFormProps) => {
   const dispatch = useAppDispatch();
   const { sellers } = useAppSelector((store) => store);
   const formik = useFormik({
+    enableReinitialize: true,
     initialValues: {
-      businessName: "",
-      gstin: "",
-      accountStatus: "",
+      businessName: sellers.profile?.businessDetails?.businessName || "",
+      gstin: sellers.profile?.gstin || "",
+      accountStatus: sellers.profile?.accountStatus ?? "",
     },
     validationSchema: Yup.object({
       businessName: Yup.string().required("Business Name is required"),
@@ -33,16 +34,6 @@ const BusinessDetailsForm = ({ onClose }: UpdateDetailsFormProps) => {
       onClose();
     },
   });
-
-  useEffect(() => {
-    if (sellers.profile) {
-      formik.setValues({
-        businessName: sellers.profile?.businessDetails?.businessName,
-        gstin: sellers.profile?.gstin,
-        accountStatus: sellers.profile?.accountStatus ?? "",
-      });
-    }
-  }, [sellers.profile, formik]);
 
   return (
     <>

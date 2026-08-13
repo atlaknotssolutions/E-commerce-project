@@ -165,11 +165,13 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
-import { chatBot } from "../../../Redux Toolkit/Customer/AiChatBotSlice";
+import { chatBot, clearChat } from "../../../Redux Toolkit/Customer/AiChatBotSlice";
+import type { ChatAction } from "../../../Redux Toolkit/Customer/AiChatBotSlice";
 import { IconButton } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import CloseIcon from "@mui/icons-material/Close";
 import MinimizeIcon from "@mui/icons-material/Minimize";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import PromptMessage from "./PromptMessage";
 import ResponseMessage from "./ResponseMessage";
@@ -188,6 +190,25 @@ const SUGGESTED_PROMPTS = [
   "Compare popular products",
   "Show me categories",
 ];
+
+const actionToPrompt = (action: ChatAction): string => {
+  const target = action.title || action.productId || "this item";
+
+  switch (action.type) {
+    case "ADD_TO_CART":
+      return `Add ${target} to my cart`;
+    case "VIEW_CART":
+      return "Show my cart";
+    case "PRODUCT_DETAIL":
+      return `Show me details for ${target}`;
+    case "UPDATE_CART_QUANTITY":
+      return `Update the quantity of ${target} in my cart`;
+    case "REMOVE_FROM_CART":
+      return `Remove ${target} from my cart`;
+    default:
+      return "Continue";
+  }
+};
 
 const ChatBot = ({ handleClose, productId }: ChatBotProps) => {
   const dispatch = useAppDispatch();
@@ -215,6 +236,23 @@ const ChatBot = ({ handleClose, productId }: ChatBotProps) => {
       e.preventDefault();
       handleGivePrompt();
     }
+  };
+
+  const handleActionClick = (action: ChatAction) => {
+    if (aiChatBot.loading) return;
+
+    dispatch(
+      chatBot({
+        prompt: { prompt: actionToPrompt(action) },
+        productId,
+        action: {
+          type: action.type,
+          productId: action.productId,
+          cartItemId: action.cartItemId,
+          quantity: action.quantity ?? 1,
+        },
+      }),
+    );
   };
 
   useEffect(() => {
@@ -280,6 +318,15 @@ const ChatBot = ({ handleClose, productId }: ChatBotProps) => {
             </IconButton>
             <IconButton
               size="small"
+              onClick={() => dispatch(clearChat())}
+              disabled={aiChatBot.messages.length === 0 && !aiChatBot.error}
+              title="Clear chat"
+              sx={{ color: "white", "&.Mui-disabled": { color: "rgba(255,255,255,0.4)" } }}
+            >
+              <DeleteSweepIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
               onClick={handleClose}
               sx={{ color: "white" }}
             >
@@ -338,6 +385,9 @@ const ChatBot = ({ handleClose, productId }: ChatBotProps) => {
                 <ResponseMessage
                   message={item.message}
                   sources={item.sources || []}
+                  actions={item.actions || []}
+                  loginRequired={item.loginRequired}
+                  onActionClick={handleActionClick}
                 />
               )}
             </div>

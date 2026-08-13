@@ -9,6 +9,7 @@ export const createAiRoutes = ({
   aiController,
   authenticate,
   asyncHandler,
+  aiRateLimiter,
 }) =>
 {
   const optionalAuthenticate = (req, res, next) =>
@@ -21,12 +22,22 @@ export const createAiRoutes = ({
     return authenticate(req, res, next);
   };
 
-  // router.post("/chat", optionalAuthenticate, asyncHandler(aiController.chat));
-  // router.post("/chat/demo", asyncHandler(aiController.chatDemo));
-  // router.get("/health", aiController.health);
+  // /ai/chat: optional auth runs FIRST so the rate limiter can scope
+  // authenticated users by user id while guests stay IP-throttled.
+  router.post(
+    "/ai/chat",
+    optionalAuthenticate,
+    aiRateLimiter,
+    asyncHandler(aiController.chat),
+  );
 
-  router.post("/ai/chat", optionalAuthenticate, asyncHandler(aiController.chat));
-  router.post("/ai/chat/demo", asyncHandler(aiController.chatDemo));
+  // /ai/chat/demo: no auth, so the limiter throttles purely by IP.
+  router.post(
+    "/ai/chat/demo",
+    aiRateLimiter,
+    asyncHandler(aiController.chatDemo),
+  );
+
   router.get("/ai/health", aiController.health);
 
   return router;

@@ -18,6 +18,7 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import type { ChatAction } from "../../../Redux Toolkit/Customer/AiChatBotSlice";
 
 interface ProductSource {
   id?: string;
@@ -34,9 +35,35 @@ interface ProductSource {
 interface ResponseMessageProps {
   message: string;
   sources?: ProductSource[];
+  actions?: ChatAction[];
+  loginRequired?: boolean;
+  onActionClick?: (action: ChatAction) => void;
 }
 
-const ResponseMessage = ({ message, sources = [] }: ResponseMessageProps) => {
+const ACTION_LABELS: Record<string, string> = {
+  PRODUCT_DETAIL: "View Product",
+  ADD_TO_CART: "Add to Cart",
+  VIEW_CART: "View Cart",
+  UPDATE_CART_QUANTITY: "Update Quantity",
+  REMOVE_FROM_CART: "Remove",
+  PRODUCT_SEARCH: "Search",
+  CATEGORY_LIST: "Browse",
+  CATEGORY_SELECT: "Select",
+  LOGIN_REQUIRED: "Login",
+};
+
+const getActionLabel = (action: ChatAction) =>
+  action.label ||
+  ACTION_LABELS[action.type] ||
+  action.type.replace(/_/g, " ").toLowerCase();
+
+const ResponseMessage = ({
+  message,
+  sources = [],
+  actions = [],
+  loginRequired = false,
+  onActionClick,
+}: ResponseMessageProps) => {
   const navigate = useNavigate();
 
   const formatMessage = (text: string) => {
@@ -60,6 +87,10 @@ const ResponseMessage = ({ message, sources = [] }: ResponseMessageProps) => {
     const categoryId = product.category?.categoryId || "all";
     const productTitle = product.title || "product";
     navigate(`/product-details/${categoryId}/${productTitle}/${product.id}`);
+  };
+
+  const handleLoginRequired = () => {
+    navigate("/login");
   };
 
   return (
@@ -104,6 +135,37 @@ const ResponseMessage = ({ message, sources = [] }: ResponseMessageProps) => {
             );
           })}
         </div>
+      )}
+
+      {actions.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {actions.map((action, index) => (
+            <button
+              key={`${action.type}-${index}`}
+              type="button"
+              onClick={() => {
+                if (action.type === "LOGIN_REQUIRED") {
+                  handleLoginRequired();
+                } else {
+                  onActionClick?.(action);
+                }
+              }}
+              className="rounded-full border border-teal-600 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 transition hover:bg-teal-600 hover:text-white"
+            >
+              {getActionLabel(action)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {loginRequired && actions.length === 0 && (
+        <button
+          type="button"
+          onClick={handleLoginRequired}
+          className="mt-3 rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-teal-700"
+        >
+          Login to Continue
+        </button>
       )}
     </div>
   );

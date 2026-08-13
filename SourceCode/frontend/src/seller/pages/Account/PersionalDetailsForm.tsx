@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { TextField, Button } from "@mui/material";
@@ -11,14 +11,13 @@ const PersonalDetailsForm = ({ onClose }: UpdateDetailsFormProps) => {
     const dispatch=useAppDispatch();
 
     const formik = useFormik({
+        enableReinitialize: true,
         initialValues: {
-            sellerName: '',
-            email: '',
-            mobile: '',
+            sellerName: sellers.profile?.sellerName || '',
+            mobile: sellers.profile?.mobile || '',
         },
         validationSchema: Yup.object({
             sellerName: Yup.string().required("Seller Name is required"),
-            email: Yup.string().email("Invalid email address").required("Email is required"),
             mobile: Yup.string().required("Mobile number is required"),
         }),
         onSubmit: (values) => {
@@ -28,19 +27,6 @@ const PersonalDetailsForm = ({ onClose }: UpdateDetailsFormProps) => {
             onClose()
         },
     });
-
-    useEffect(() => {
-
-        if (sellers.profile) {
-            formik.setValues({
-                sellerName: sellers.profile?.sellerName,
-                email: sellers.profile?.email,
-                mobile: sellers.profile?.mobile,
-
-            })
-        }
-
-    }, [sellers.profile, formik])
 
     return (
         <>
@@ -57,16 +43,6 @@ const PersonalDetailsForm = ({ onClose }: UpdateDetailsFormProps) => {
                     onChange={formik.handleChange}
                     error={formik.touched.sellerName && Boolean(formik.errors.sellerName)}
                     helperText={formik.touched.sellerName && formik.errors.sellerName}
-                />
-                <TextField
-                    fullWidth
-                    id="email"
-                    name="email"
-                    label="Seller Email"
-                    value={formik.values.email}
-                    onChange={formik.handleChange}
-                    error={formik.touched.email && Boolean(formik.errors.email)}
-                    helperText={formik.touched.email && formik.errors.email}
                 />
                 <TextField
                     fullWidth

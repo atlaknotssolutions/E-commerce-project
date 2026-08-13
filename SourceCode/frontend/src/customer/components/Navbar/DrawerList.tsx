@@ -94,7 +94,14 @@ const DrawerList = ({toggleDrawer}:any) => {
       </ListItem>
 
       {mainCategory.map((item) => <ListItem key={item.name} disablePadding>
-        <ListItemButton onClick={()=>setSelectedCategory(item.categoryId)}>
+        <ListItemButton onClick={() => {
+          if (item.categoryId === "all") {
+            setSelectedCategory("");
+            handleNavigate('/products');
+          } else {
+            setSelectedCategory(item.categoryId);
+          }
+        }}>
           <ListItemText primary={item.name} />
         </ListItemButton>
       </ListItem>

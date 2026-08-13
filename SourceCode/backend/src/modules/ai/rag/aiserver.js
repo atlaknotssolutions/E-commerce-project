@@ -2,8 +2,10 @@
 
 import cron from "node-cron";
 
-
-//yaha add karna tha 
+// Credential VALUES live only in the backend .env file (GROQ_API_KEY,
+// VOYAGE_API_KEY, GROQ_MODEL). They are read from process.env here so no
+// literal secret ever appears in source code.
+const REQUIRED_ENV = ["GROQ_API_KEY", "VOYAGE_API_KEY"];
 
 export const createAiService = ({ logger = console } = {}) =>
 {

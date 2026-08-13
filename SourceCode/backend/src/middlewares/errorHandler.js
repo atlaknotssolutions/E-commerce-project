@@ -30,6 +30,16 @@ export const createErrorHandlerMiddleware = ({ nodeEnv } = { nodeEnv: 'developme
             message = 'The identifier provided in the request is invalid.';
         }
 
+        // Normalize malformed JSON body parser failures. The raw body-parser
+        // message exposes parser internals (snippet of the invalid payload,
+        // positions, etc.) — replace it with a generic, client-safe message.
+        if (err.type === 'entity.parse.failed' || err.type === 'entity.verify.failed')
+        {
+            statusCode = 400;
+            code = 'INVALID_JSON';
+            message = 'Invalid JSON request body.';
+        }
+
         // Normalize JWT failures to 401 (unauthenticated)
         if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError')
         {

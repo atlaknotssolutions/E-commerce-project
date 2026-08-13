@@ -1,0 +1,603 @@
+/**
+ * Pure intent-detection and relevance-scoring utilities for the AI chatbot's
+ * local mock engine.
+ *
+ * Everything in this module is a deterministic pure function over strings and
+ * plain product documents — no I/O, no dependencies — so it can be reasoned
+ * about and tested in isolation. It is shared by the mock response pipeline
+ * and the Groq source-enrichment path.
+ *
+ * Phase 4 adds deterministic ACTION recognition ("add to my cart",
+ * "show my cart", "remove the first item", "make it 2") with entity
+ * extraction (ordinal reference, product keyword, quantity). It is not an
+ * NLP/ML system — just explicit, testable patterns.
+ */
+
+// ------------------------------------------------------------
+// Text normalization
+// ------------------------------------------------------------
+
+/**
+ * Lowercases, trims and collapses punctuation/whitespace to single spaces.
+ * Keeps letters and digits only, so "Men's T-Shirt" becomes "mens t shirt".
+ */
+export const normalizeText = (value = "") =>
+  String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * Splits normalized text into search tokens. Single-character tokens are
+ * dropped ("t" from "t-shirt", "s" from "nike s") because they carry no
+ * retrieval value and would only create noise.
+ */
+export const tokenize = (value = "") =>
+  normalizeText(value)
+    .split(" ")
+    .filter((token) => token && token.length > 1);
+
+// ------------------------------------------------------------
+// Vocabulary
+// ------------------------------------------------------------
+
+/**
+ * High-frequency English filler with no product relevance. Also covers the
+ * common shop verbs ("show", "want", "find", "buy") so a query like
+ * "show me some nike sneakers" reduces cleanly to ["nike", "sneakers"].
+ */
+export const STOP_WORDS = new Set([
+  "about", "after", "again", "all", "also", "am", "an", "and", "any", "are",
+  "as", "at", "be", "because", "been", "before", "being", "between", "both",
+  "best", "but", "buy", "by", "can", "cheap", "cost", "could", "deal",
+  "deals", "did", "do", "does", "doing", "down", "discount", "during",
+  "each", "expensive", "find", "few", "for", "from", "further", "get",
+  "give", "got", "had", "has", "have", "having", "he", "help", "her",
+  "here", "hers", "herself", "him", "himself", "his", "how", "i", "if",
+  "in", "into", "is", "it", "its", "itself", "just", "like", "list",
+  "looking", "me", "more", "most", "much", "my", "myself", "need", "no",
+  "nor", "not", "now", "of", "off", "offer", "offers", "on", "once", "only",
+  "or", "other", "our", "ours", "ourselves", "out", "over", "own", "please",
+  "price", "rate", "rates", "recommend", "quite", "same", "say", "search",
+  "see", "she", "should", "show", "so", "some", "such", "tell", "than",
+  "that", "the", "their", "theirs", "them", "themselves", "then", "there",
+  "these", "they", "this", "those", "through", "to", "too", "top", "under",
+  "until", "up", "upon", "us", "very", "want", "was", "we", "were", "what",
+  "when", "where", "which", "while", "who", "whom", "why", "will", "with",
+  "worth", "would", "you", "your", "yours", "yourself", "yourselves",
+]);
+
+/**
+ * Bare greetings that map to a simple welcome reply instead of a product
+ * search. A phrase is only treated as a greeting when it is short (<= 3
+ * tokens) and every token is greeting/social/stop filler.
+ */
+export const GREETING_WORDS = new Set([
+  "hi", "hello", "hey", "hola", "namaste", "namaskar", "namaskaram",
+  "greetings", "heya", "howdy", "yo", "wassup", "sup", "good", "morning",
+  "afternoon", "evening",
+]);
+
+/**
+ * Small-talk words. When every token of a short phrase is filler (stop,
+ * social or greeting) the query is treated as conversation rather than a
+ * product request. "how are you" must never become a product search.
+ */
+export const SOCIAL_WORDS = new Set([
+  "how", "are", "doing", "thanks", "thank", "welcome", "bye", "goodbye",
+  "okay", "ok", "sure", "great", "cool", "nice", "fine", "awesome", "amazing",
+  "perfect", "whats", "up", "today", "name", "human", "real", "bot",
+  "work", "works", "working", "made", "created",
+]);
+
+/** Words that route a query to the cart intent. */
+export const CART_KEYWORDS = new Set(["cart", "basket", "bag"]);
+
+/** Words that route a query to the order/tracking intent. */
+export const ORDER_KEYWORDS = new Set([
+  "order", "orders", "purchase", "purchases", "track", "tracking", "delivery",
+  "deliveries", "shipped", "shipping", "return", "returns", "refund",
+  "refunds", "cancel", "cancellation",
+]);
+
+/** Words that route a query to the category browser intent. */
+export const CATEGORY_LIST_KEYWORDS = new Set([
+  "category", "categories", "browse", "collection", "collections", "type",
+  "shop", "explore", "products",
+]);
+
+const CATEGORY_INDEX_MAP = {
+  "1": 0, "one": 0, "first": 0,
+  "2": 1, "two": 1, "second": 1,
+  "3": 2, "three": 2, "third": 2,
+};
+
+/**
+ * Parses a category-selection reply such as "1", "category two", "show me
+ * category 3" or "select first". Returns { index, label } or null.
+ */
+export const parseCategorySelector = (query) =>
+{
+  const normalized = normalizeText(query);
+  if (!normalized)
+  {
+    return null;
+  }
+
+  const anchored =
+    normalized.match(/^(1|2|3|one|two|three|first|second|third)$/);
+  if (anchored)
+  {
+    return { index: CATEGORY_INDEX_MAP[anchored[1]], label: anchored[1] };
+  }
+
+  const prefixed =
+    normalized.match(/(?:category|select|number|option)\s*(1|2|3|one|two|three|first|second|third)/);
+  if (prefixed)
+  {
+    return { index: CATEGORY_INDEX_MAP[prefixed[1]], label: prefixed[1] };
+  }
+
+  return null;
+};
+
+/**
+ * Classifies a user prompt into a single intent. Priority order:
+ * greeting -> cart -> order -> detail (productId) -> category-select ->
+ * category-list -> general small-talk -> search.
+ */
+export const detectIntent = (query, { productId = null } = {}) =>
+{
+  const normalized = normalizeText(query);
+  const tokens = tokenize(normalized);
+
+  if (!normalized)
+  {
+    return { type: "fallback" };
+  }
+
+  const isFiller = (token) =>
+    STOP_WORDS.has(token) || SOCIAL_WORDS.has(token) || GREETING_WORDS.has(token);
+
+  // A clicked product card always wins over keyword guessing.
+  if (productId)
+  {
+    return { type: "detail" };
+  }
+
+  const significantTokens = tokens.filter((token) => !isFiller(token));
+
+  // Greeting / small talk — only for very short all-filler phrases.
+  if (
+    tokens.length <= 3 &&
+    tokens.some((token) => GREETING_WORDS.has(token)) &&
+    tokens.every((token) => isFiller(token))
+  )
+  {
+    return { type: "greeting" };
+  }
+
+  if (tokens.some((token) => CART_KEYWORDS.has(token)))
+  {
+    return { type: "cart" };
+  }
+
+  if (tokens.some((token) => ORDER_KEYWORDS.has(token)))
+  {
+    return { type: "order" };
+  }
+
+  const categorySelector = parseCategorySelector(normalized);
+  if (categorySelector)
+  {
+    return { type: "category-select", ...categorySelector };
+  }
+
+  if (
+    tokens.some((token) => CATEGORY_LIST_KEYWORDS.has(token)) ||
+    normalized.includes("what do you have")
+  )
+  {
+    return { type: "category-list" };
+  }
+
+  // "how are you", "thanks", "bye" and friends are conversation, not search.
+  if (significantTokens.length === 0)
+  {
+    return { type: "general" };
+  }
+
+  return { type: "search" };
+};
+
+// ------------------------------------------------------------
+// Relevance scoring
+// ------------------------------------------------------------
+
+/**
+ * Reduces a prompt to the tokens that should actually drive a product search:
+ * everything left after dropping stop/social/greeting filler.
+ */
+export const getSearchTokens = (query = "") =>
+  tokenize(query).filter(
+    (token) =>
+      !STOP_WORDS.has(token) &&
+      !SOCIAL_WORDS.has(token) &&
+      !GREETING_WORDS.has(token),
+  );
+
+const SCORE_TITLE_EXACT = 6;
+const SCORE_TITLE_PARTIAL = 4;
+const SCORE_BRAND_EXACT = 5;
+const SCORE_BRAND_PARTIAL = 3;
+const SCORE_CATEGORY_EXACT = 4;
+const SCORE_CATEGORY_PARTIAL = 3;
+const SCORE_COLOR_EXACT = 3;
+const SCORE_COLOR_PARTIAL = 2;
+const SCORE_SIZE_EXACT = 3;
+const SCORE_SIZE_PARTIAL = 2;
+const SCORE_VARIANT_EXACT = 3;
+const SCORE_VARIANT_PARTIAL = 2;
+
+/** Minimum cumulative score a product needs to be surfaced as a match. */
+export const MIN_RELEVANCE_SCORE = 4;
+
+/**
+ * Scores a single token against one text field.
+ * Returns the exact weight when the token is a whole word of the field and
+ * the partial weight when the token is a prefix/substring of length >= 3.
+ */
+const matchField = (token, field, exactScore, partialScore) =>
+{
+  if (!field)
+  {
+    return 0;
+  }
+
+  const words = field.split(" ");
+
+  if (field === token || words.includes(token))
+  {
+    return exactScore;
+  }
+
+  if (
+    token.length >= 3 &&
+    (field.includes(token) || words.some((word) => word.startsWith(token)))
+  )
+  {
+    return partialScore;
+  }
+
+  return 0;
+};
+
+/**
+ * Collects normalized per-variant attribute values (color, size, storage,
+ * ram, custom + dynamic attribute values) for attribute-level matching.
+ */
+const collectVariantTokens = (product) =>
+{
+  const tokens = [];
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+
+  for (const variant of variants)
+  {
+    const attrs = variant?.attributes || {};
+    const values = [
+      attrs.color,
+      attrs.size,
+      attrs.storage,
+      attrs.ram,
+      ...(Array.isArray(attrs.custom) ? attrs.custom.map((a) => a?.value) : []),
+      ...(Array.isArray(attrs.dynamic) ? attrs.dynamic.map((a) => a?.value) : []),
+    ].filter(Boolean);
+
+    for (const value of values)
+    {
+      const normalized = normalizeText(value);
+      if (normalized)
+      {
+        tokens.push(normalized);
+      }
+    }
+  }
+
+  return [...new Set(tokens)];
+};
+
+/**
+ * Computes a weighted relevance score for a product against a set of tokens.
+ * Weights: title > brand > category > color/size/variant.
+ *
+ * Description text is intentionally excluded: descriptions are long, free-form
+ * seller copy that cross-matches unrelated queries (e.g. a T-shirt whose
+ * description happens to mention "jeans"), which destroys precision.
+ * A per-token variant contribution is capped at the exact-variant weight so a
+ * token that repeats across every variant cannot dominate.
+ */
+export const scoreProduct = (product, tokens) =>
+{
+  if (!product || !Array.isArray(tokens) || tokens.length === 0)
+  {
+    return 0;
+  }
+
+  const title = normalizeText(product.title);
+  const brand = normalizeText(product.brand);
+  const categoryName = normalizeText(product.category?.name);
+  const categoryId = normalizeText(product.category?.categoryId);
+  const color = normalizeText(
+    Array.isArray(product.color) ? product.color.join(" ") : product.color,
+  );
+  const sizes = normalizeText(product.sizes);
+  const variantTokens = collectVariantTokens(product);
+
+  let score = 0;
+
+  for (const token of tokens)
+  {
+    score += matchField(token, title, SCORE_TITLE_EXACT, SCORE_TITLE_PARTIAL);
+    score += matchField(token, brand, SCORE_BRAND_EXACT, SCORE_BRAND_PARTIAL);
+    score += matchField(token, categoryName, SCORE_CATEGORY_EXACT, SCORE_CATEGORY_PARTIAL);
+    score += matchField(token, categoryId, SCORE_CATEGORY_EXACT, SCORE_CATEGORY_PARTIAL);
+    score += matchField(token, color, SCORE_COLOR_EXACT, SCORE_COLOR_PARTIAL);
+    score += matchField(token, sizes, SCORE_SIZE_EXACT, SCORE_SIZE_PARTIAL);
+
+    let bestVariantScore = 0;
+    for (const variantToken of variantTokens)
+    {
+      const variantScore = matchField(
+        token,
+        variantToken,
+        SCORE_VARIANT_EXACT,
+        SCORE_VARIANT_PARTIAL,
+      );
+      if (variantScore > bestVariantScore)
+      {
+        bestVariantScore = variantScore;
+      }
+    }
+    score += bestVariantScore;
+  }
+
+  return score;
+};
+
+/**
+ * Sorts a public-catalog array by relevance to the given search tokens and
+ * keeps only products that clear MIN_RELEVANCE_SCORE.
+ *
+ * Multi-token queries use AND semantics: every search token must individually
+ * contribute to a product's score. This keeps a generic qualifier like "men"
+ * from pulling in unrelated categories ("men jeans" must return jeans, not
+ * every "Men ..." category product). Ties break by title.
+ */
+export const rankProducts = (products = [], searchTokens = []) =>
+{
+  if (!Array.isArray(products) || searchTokens.length === 0)
+  {
+    return [];
+  }
+
+  return products
+    .map((product) => {
+      const perToken = searchTokens.map((token) =>
+        scoreProduct(product, [token]),
+      );
+      const total = perToken.reduce((sum, score) => sum + score, 0);
+
+      return { product, total, perToken };
+    })
+    .filter(
+      ({ total, perToken }) =>
+        total >= MIN_RELEVANCE_SCORE &&
+        perToken.every((score) => score > 0),
+    )
+    .sort(
+      (a, b) =>
+        b.total - a.total ||
+        String(a.product.title || "").localeCompare(
+          String(b.product.title || ""),
+        ),
+    )
+    .map(({ product }) => product);
+};
+
+// ------------------------------------------------------------
+// ACTION recognition (Phase 4)
+// ------------------------------------------------------------
+
+/** Words/phrases that must never be treated as shopping actions. */
+const DESTRUCTIVE_PATTERNS = [
+  /\b(delete|drop|remove|erase|wipe|clear)\b.*\b(database|account|everything|all|every)\b/,
+  /\b(delete|drop)\b.*\b(marketplace|server|system|data)\b/,
+];
+
+const CART_WORD = /\b(cart|basket|bag)\b/;
+
+const ORDINAL_MAP = {
+  first: 0, "1st": 0, "1": 0,
+  second: 1, "2nd": 1, "2": 1,
+  third: 2, "3rd": 2, "3": 2,
+  fourth: 3, "4th": 3, "4": 3,
+  fifth: 4, "5th": 4, "5": 4,
+};
+
+/**
+ * Extracts an explicit ordinal reference ("first", "2", "the second one").
+ * Plain words like "one"/"two" are deliberately NOT matched so that "the
+ * nike one" is treated as a product keyword, not the first search result.
+ * Returns { index, label } or null.
+ */
+export const extractOrdinalIndex = (value = "") =>
+{
+  const match = String(value)
+    .toLowerCase()
+    .match(/\b(first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th|\d{1,2})\b/);
+
+  if (!match)
+  {
+    return null;
+  }
+
+  const index = ORDINAL_MAP[match[1]];
+  if (index === undefined)
+  {
+    return null;
+  }
+
+  return { index, label: match[1] };
+};
+
+/**
+ * Extracts a requested numeric quantity. Supports:
+ *   "quantity to 3", "make it 2", "set it to 5", "change to 3",
+ *   "increase this to 5", "reduce to 2", "add 3"
+ * Returns an integer or null.
+ */
+export const extractQuantityNumber = (value = "") =>
+{
+  const text = String(value).toLowerCase();
+
+  const direct = text.match(
+    /(?:quantity|make\s+(?:it|that)|set\s+it|set|change\s+it|change|update|increase|decrease|reduce)\b[^.]*?\b(\d{1,2})\b/
+  );
+  if (direct)
+  {
+    return parseInt(direct[1], 10);
+  }
+
+  const add = text.match(/\badd\b[^.]*?\b(\d{1,2})\b/);
+  if (add)
+  {
+    return parseInt(add[1], 10);
+  }
+
+  return null;
+};
+
+/** Words that carry no product-identity value for keyword extraction. */
+const PRODUCT_REF_STOP = new Set([
+  "add", "put", "remove", "delete", "update", "change", "increase",
+  "decrease", "reduce", "set", "make", "quantity", "cart", "basket",
+  "bag", "item", "product", "one", "two", "three", "four", "five",
+  "to", "my", "the", "this", "that", "from", "of", "in", "into", "on",
+  "for", "please", "do", "can", "you", "me", "it", "them", "would",
+  "like", "want", "with", "at", "a", "an", "is", "are",
+]);
+
+/**
+ * Extracts a product reference from an action phrase:
+ *   { kind: "index", index }   -> "the first one"
+ *   { kind: "keyword", text }  -> "the nike one"
+ *   { kind: "last" }           -> "this product" / "that product"
+ * Returns null when nothing resolvable is present.
+ */
+export const extractProductRef = (value = "") =>
+{
+  const normalized = normalizeText(value);
+
+  const ordinal = extractOrdinalIndex(normalized);
+  if (ordinal)
+  {
+    return { kind: "index", index: ordinal.index };
+  }
+
+  const keyword = normalized
+    .split(" ")
+    .filter((token) => token && !PRODUCT_REF_STOP.has(token))
+    .find((token) => token.length > 2);
+
+  if (keyword)
+  {
+    return { kind: "keyword", text: keyword };
+  }
+
+  if (/\b(this|that)\b/.test(normalized))
+  {
+    return { kind: "last" };
+  }
+
+  return null;
+};
+
+/**
+ * Classifies a free-text prompt into a shopping ACTION or null.
+ *
+ * Priority: destructive/unsupported guard -> ADD -> REMOVE -> UPDATE -> VIEW.
+ * Questions ("what is in my cart?") are still interpreted, but meta-questions
+ * about the assistant ("how do I add to cart") are left to normal chat.
+ */
+export const extractActionRequest = (query) =>
+{
+  const raw = String(query || "");
+  const text = raw.toLowerCase().trim();
+
+  if (!text)
+  {
+    return null;
+  }
+
+  // Prompt-injection / destructive attempts -> explicit unsupported marker.
+  if (DESTRUCTIVE_PATTERNS.some((pattern) => pattern.test(text)))
+  {
+    return { type: "UNSUPPORTED" };
+  }
+
+  // Meta questions ("how do I add to cart?") are conversation, not commands.
+  if (/\bhow\s+(do|can|would)\s+(i|you)\b/.test(text))
+  {
+    return null;
+  }
+
+  const hasCartWord = CART_WORD.test(text);
+
+  // --- ADD_TO_CART ---
+  const addVerb = /\b(add|put|include|place|drop)\b/.test(text);
+  const addThis = /\badd\s+(this|that|it|them|the)\b/.test(text);
+  const addCount = /\badd\b[^.]*\b\d+\b/.test(text);
+
+  if (
+    (addVerb && hasCartWord) ||
+    addThis ||
+    addCount
+  )
+  {
+    const quantity = extractQuantityNumber(text);
+    const ref = extractProductRef(normalizeText(text));
+
+    return { type: "ADD_TO_CART", ref, quantity };
+  }
+
+  // --- REMOVE_FROM_CART ---
+  const removeVerb = /\b(remove|delete|take\s+out|clear)\b/.test(text);
+  const removeTarget = hasCartWord || /\b(item|one|product|this|that|it|first|second|third)\b/.test(text);
+
+  if (removeVerb && removeTarget)
+  {
+    const ref = extractProductRef(normalizeText(text));
+    return { type: "REMOVE_FROM_CART", ref };
+  }
+
+  // --- UPDATE_CART_QUANTITY ---
+  const quantity = extractQuantityNumber(text);
+  const quantityVerb = /\b(quantity|change|update|set|increase|decrease|reduce|make)\b/.test(text);
+
+  if (quantity !== null && quantityVerb)
+  {
+    const ref = extractProductRef(normalizeText(text));
+    return { type: "UPDATE_CART_QUANTITY", quantity, ref };
+  }
+
+  // --- VIEW_CART ---
+  const viewVerb = /\b(show|view|see|open|check|display|list|items|what|my|read)\b/.test(text);
+  if (hasCartWord && viewVerb)
+  {
+    return { type: "VIEW_CART" };
+  }
+
+  return null;
+};

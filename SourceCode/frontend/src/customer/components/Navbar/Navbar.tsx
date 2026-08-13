@@ -125,10 +125,18 @@ const Navbar = () =>
               {mainCategory.map((item) => (
                 <li
                   key={item.categoryId}
+                  onClick={() => {
+                    if (item.categoryId === "all") {
+                      setShowSheet(false);
+                      navigate("/products");
+                    }
+                  }}
                   onMouseLeave={() => setShowSheet(false)}
                   onMouseEnter={() => {
-                    setSelectedCategory(item.categoryId);
-                    setShowSheet(true);
+                    if (item.categoryId !== "all") {
+                      setSelectedCategory(item.categoryId);
+                      setShowSheet(true);
+                    }
                   }}
                   className="cursor-pointer h-[68px] px-3 flex items-center text-[13px] font-semibold text-gray-600 hover:text-[#00927c] border-b-2 border-transparent hover:border-[#00927c] transition-all duration-200 uppercase tracking-wide"
                 >

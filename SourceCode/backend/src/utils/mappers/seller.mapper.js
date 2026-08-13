@@ -102,9 +102,7 @@ export const mapSeller = (
             ? {
                 name: seller.pickupAddress.name,
                 mobile:
-                    seller.pickupAddress?.mobile ??
-                    seller.mobile ??
-                    "",
+                    seller.pickupAddress.mobile ?? "",
                 pincode:
                     seller.pickupAddress.pinCode ??
                     seller.pickupAddress.pincode ??
@@ -210,25 +208,30 @@ export const mapSellerUpdatePayload = (
 
     if (payload.pickupAddress)
     {
+        const existingPickup = existingSeller.pickupAddress ?? {};
+
         normalized.pickupAddress = {
             streetAddress:
                 payload.pickupAddress.address ??
                 payload.pickupAddress.streetAddress ??
-                existingSeller.pickupAddress.streetAddress,
+                existingPickup.streetAddress,
 
             city:
                 payload.pickupAddress.city ??
-                existingSeller.pickupAddress.city,
+                existingPickup.city,
 
             state:
                 payload.pickupAddress.state ??
-                existingSeller.pickupAddress.state,
+                existingPickup.state,
 
             pinCode:
-                payload.pickupAddress.mobile ??
                 payload.pickupAddress.pinCode ??
                 payload.pickupAddress.pincode ??
-                existingSeller.pickupAddress.pinCode,
+                existingPickup.pinCode,
+
+            mobile:
+                payload.pickupAddress.mobile ??
+                existingPickup.mobile,
         };
     }
 

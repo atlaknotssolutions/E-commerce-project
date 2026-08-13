@@ -1,5 +1,10 @@
 export const mainCategory = [
   {
+    name: "All",
+    categoryId: "all",
+    level: 1,
+  },
+  {
     name: "Men",
     categoryId: "men",
     level: 1,

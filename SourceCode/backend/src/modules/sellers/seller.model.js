@@ -25,6 +25,10 @@ const PickupAddressSchema = new mongoose.Schema({
         required: [true, 'Pickup pin code is required'],
         trim: true,
     },
+    mobile: {
+        type: String,
+        trim: true,
+    },
 }, {
     // A seller has only one pickup address.
     _id: false,

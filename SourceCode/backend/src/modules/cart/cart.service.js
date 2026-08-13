@@ -81,7 +81,9 @@ export const createCartService = ({
         // Business specification alignment: Return existing item immediately if duplicate is located
         if (existingDuplicate)
         {
-            return existingDuplicate;
+            // Return the authoritative full cart DTO (same shape as the
+            // normal path) so the client never receives a bare item line.
+            return toCartDto(cart);
         }
 
         const product = await productRepository.findById(productId);

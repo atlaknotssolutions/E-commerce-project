@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { TextField, Button } from "@mui/material";
@@ -11,16 +11,19 @@ const PickupAddressForm = ({ onClose }: UpdateDetailsFormProps) => {
   const dispatch = useAppDispatch();
 
   const formik = useFormik({
+    enableReinitialize: true,
     initialValues: {
-      address: "",
-      city: "",
-      state: "",
-      mobile: "",
+      address: sellers.profile?.pickupAddress?.address || "",
+      city: sellers.profile?.pickupAddress?.city || "",
+      state: sellers.profile?.pickupAddress?.state || "",
+      pincode: sellers.profile?.pickupAddress?.pincode ?? "",
+      mobile: sellers.profile?.pickupAddress?.mobile ?? "",
     },
     validationSchema: Yup.object({
       address: Yup.string().required("Address is required"),
       city: Yup.string().required("City is required"),
       state: Yup.string().required("State is required"),
+      pincode: Yup.string().required("Pin code is required"),
       mobile: Yup.string().required("Mobile number is required"),
     }),
     onSubmit: (values) => {
@@ -34,17 +37,6 @@ const PickupAddressForm = ({ onClose }: UpdateDetailsFormProps) => {
       onClose();
     },
   });
-
-  useEffect(() => {
-    if (sellers.profile) {
-      formik.setValues({
-        address: sellers.profile.pickupAddress.address,
-        city: sellers.profile.pickupAddress.city,
-        state: sellers.profile.pickupAddress.state,
-        mobile: sellers.profile.pickupAddress.mobile,
-      });
-    }
-  }, [sellers.profile, formik]);
 
   return (
     <>
@@ -81,6 +73,16 @@ const PickupAddressForm = ({ onClose }: UpdateDetailsFormProps) => {
           onChange={formik.handleChange}
           error={formik.touched.state && Boolean(formik.errors.state)}
           helperText={formik.touched.state && formik.errors.state}
+        />
+        <TextField
+          fullWidth
+          id="pincode"
+          name="pincode"
+          label="Pin Code"
+          value={formik.values.pincode}
+          onChange={formik.handleChange}
+          error={formik.touched.pincode && Boolean(formik.errors.pincode)}
+          helperText={formik.touched.pincode && formik.errors.pincode}
         />
         <TextField
           fullWidth

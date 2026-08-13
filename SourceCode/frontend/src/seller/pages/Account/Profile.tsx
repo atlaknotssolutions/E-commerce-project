@@ -253,6 +253,11 @@ const Profile = () =>
             />
             <Divider />
             <ProfileFildCard
+              keys={"Pin Code"}
+              value={sellers.profile?.pickupAddress?.pincode || "not provided"}
+            />
+            <Divider />
+            <ProfileFildCard
               keys={"Mobile"}
               value={sellers.profile?.pickupAddress?.mobile}
             />

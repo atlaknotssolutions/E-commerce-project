@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { TextField, Button } from "@mui/material";
@@ -11,10 +11,11 @@ const BankDetailsForm = ({ onClose }: UpdateDetailsFormProps) => {
   const dispatch = useAppDispatch();
 
   const formik = useFormik({
+    enableReinitialize: true,
     initialValues: {
-      accountHolderName: "",
-      accountNumber: "",
-      ifscCode: "",
+      accountHolderName: sellers.profile?.bankDetails?.accountHolderName || "",
+      accountNumber: sellers.profile?.bankDetails?.accountNumber || "",
+      ifscCode: sellers.profile?.bankDetails?.ifscCode || "",
     },
     validationSchema: Yup.object({
       accountHolderName: Yup.string().required(
@@ -34,16 +35,6 @@ const BankDetailsForm = ({ onClose }: UpdateDetailsFormProps) => {
       onClose();
     },
   });
-
-  useEffect(() => {
-    if (sellers.profile) {
-      formik.setValues({
-        accountHolderName: sellers.profile.bankDetails?.accountHolderName || "",
-        accountNumber: sellers.profile.bankDetails?.accountNumber || "",
-        ifscCode: sellers.profile.bankDetails?.ifscCode || "",
-      });
-    }
-  }, [sellers.profile, formik]);
 
   return (
     <>

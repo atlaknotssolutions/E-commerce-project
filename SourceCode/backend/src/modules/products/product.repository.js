@@ -255,6 +255,80 @@ export const createProductRepository = ({ Product }) =>
         // console.log(product);
     };
 
+    // ==========================================
+    // PUBLIC CATALOG QUERIES (marketplace-facing only)
+    // ==========================================
+
+    /**
+     * Public product detail lookup. ONLY returns products that are
+     * APPROVED + PUBLISHED and not soft-deleted. The seller reference is
+     * intentionally NOT populated so private seller metadata (email,
+     * mobile, GSTIN, business address) never enters memory or responses.
+     */
+    const findPublicById = async (id, options = {}) =>
+    {
+        return Product.findOne(
+            {
+                _id: id,
+                approvalStatus: 'APPROVED',
+                publishStatus: 'PUBLISHED',
+                isDeleted: { $ne: true },
+            },
+            null,
+            options
+        )
+            .populate('category') // Category is public display data (name / categoryId)
+            .lean();
+    };
+
+    /**
+     * Paginated public catalog listing for the chatbot / any guest-facing
+     * consumer. Enforces the same APPROVED + PUBLISHED + not-deleted rules
+     * and never populates the seller reference.
+     */
+    const getPublicProducts = async ({
+        category = null,
+        categoryIds = null,
+        pageNumber = 0,
+        sizeLimit = 10,
+    } = {}) =>
+    {
+        const filterQuery = {
+            approvalStatus: 'APPROVED',
+            publishStatus: 'PUBLISHED',
+            isDeleted: { $ne: true },
+        };
+
+        if (Array.isArray(categoryIds) && categoryIds.length > 0)
+        {
+            filterQuery.category = { $in: categoryIds };
+        }
+        else if (category)
+        {
+            filterQuery.category = category;
+        }
+
+        const skipOffset = Math.max(0, parseInt(pageNumber, 10)) * parseInt(sizeLimit, 10);
+        const limitConstraint = Math.max(1, parseInt(sizeLimit, 10));
+
+        const [content, totalElements] = await Promise.all([
+            Product.find(filterQuery)
+                .sort({ createdAt: -1 })
+                .skip(skipOffset)
+                .limit(limitConstraint)
+                .populate('category')
+                .lean(),
+            Product.countDocuments(filterQuery),
+        ]);
+
+        return {
+            content,
+            totalPages: Math.ceil(totalElements / limitConstraint),
+            totalElements,
+            pageNumber: parseInt(pageNumber, 10),
+        };
+    };
+
     /**
      * Modifies an existing product document. Returns the newly updated state.
      */
@@ -927,6 +1001,8 @@ export const createProductRepository = ({ Product }) =>
     return Object.freeze({
         create,
         findById,
+        findPublicById,
+        getPublicProducts,
         update,
         delete: deleteProduct,
         findBySellerId,
