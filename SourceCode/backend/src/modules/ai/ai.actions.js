@@ -30,6 +30,7 @@ export const ACTIONS = Object.freeze({
   ADD_TO_CART: "ADD_TO_CART",
   UPDATE_CART_QUANTITY: "UPDATE_CART_QUANTITY",
   REMOVE_FROM_CART: "REMOVE_FROM_CART",
+  ADD_TO_WISHLIST: "ADD_TO_WISHLIST",
   LOGIN_REQUIRED: "LOGIN_REQUIRED",
 });
 
@@ -42,6 +43,7 @@ export const AUTH_REQUIRED_ACTIONS = new Set([
   ACTIONS.ADD_TO_CART,
   ACTIONS.UPDATE_CART_QUANTITY,
   ACTIONS.REMOVE_FROM_CART,
+  ACTIONS.ADD_TO_WISHLIST,
 ]);
 
 /** Maps the Phase-2 intent names to the public action names used in responses. */

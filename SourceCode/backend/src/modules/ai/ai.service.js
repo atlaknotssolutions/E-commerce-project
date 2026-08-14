@@ -280,14 +280,16 @@ export const createAiService = ({
     const message =
       actionType === ACTIONS.VIEW_CART
         ? t(lang, "loginRequiredView")
-        : t(lang, "loginRequiredAdd");
+        : actionType === ACTIONS.ADD_TO_WISHLIST
+          ? t(lang, "loginRequiredWishlist")
+          : t(lang, "loginRequiredAdd");
 
     return {
       response: message,
       intent: ACTIONS.LOGIN_REQUIRED,
       mockMode: true,
       sources: [],
-      actions: [{ type: ACTIONS.LOGIN_REQUIRED, label: "Login" }],
+      actions: [{ type: ACTIONS.LOGIN_REQUIRED, label: "Login to Continue" }],
       actionResult: null,
       cart: null,
       loginRequired: true,
@@ -353,6 +355,11 @@ export const createAiService = ({
       };
     }
 
+    if (AUTH_REQUIRED_ACTIONS.has(type) && !userId)
+    {
+      return loginRequiredResponse(lang, type);
+    }
+
     if (!actionExecutor.isRegistered(type))
     {
       return {
@@ -366,11 +373,6 @@ export const createAiService = ({
         loginRequired: false,
         language: lang,
       };
-    }
-
-    if (AUTH_REQUIRED_ACTIONS.has(type) && !userId)
-    {
-      return loginRequiredResponse(lang, type);
     }
 
     const result = await actionExecutor.dispatchAction({
@@ -416,6 +418,11 @@ export const createAiService = ({
       };
     }
 
+    if (AUTH_REQUIRED_ACTIONS.has(type) && !userId)
+    {
+      return loginRequiredResponse(lang, type);
+    }
+
     if (!actionExecutor.isRegistered(type))
     {
       return {
@@ -429,11 +436,6 @@ export const createAiService = ({
         loginRequired: false,
         language: lang,
       };
-    }
-
-    if (AUTH_REQUIRED_ACTIONS.has(type) && !userId)
-    {
-      return loginRequiredResponse(lang, type);
     }
 
     let productId = bodyProductId;
@@ -1263,7 +1265,11 @@ ${prompt}
 
       if (matchedProducts.length > 0) {
         return {
-          text: t(lang, "searchFound", { count: matchedProducts.length, s: matchedProducts.length > 1 ? "s" : "", query: prompt }),
+          text: t(
+            lang,
+            matchedProducts.length === 1 ? "searchFoundOne" : "searchFoundMany",
+            { count: matchedProducts.length, query: prompt },
+          ),
           products: matchedProducts,
           intent: intent.type,
         };

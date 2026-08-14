@@ -7,8 +7,9 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import type { ChatAction } from "../../../Redux Toolkit/Customer/AiChatBotSlice";
 import { useAppDispatch, useAppSelector } from "../../../Redux Toolkit/Store";
 import { addProductToWishlist } from "../../../Redux Toolkit/Customer/WishlistSlice";
+import { chatBot } from "../../../Redux Toolkit/Customer/AiChatBotSlice";
 import { isWishlisted } from "../../../util/isWishlisted";
-import { requireAuthentication } from "../../../util/requireAuth";
+import { isAuthenticated } from "../../../util/requireAuth";
 import { notification } from "../../../services/notificationService";
 
 interface ProductSource {
@@ -43,7 +44,7 @@ const ACTION_LABELS: Record<string, string> = {
   PRODUCT_SEARCH: "Search",
   CATEGORY_LIST: "Browse",
   CATEGORY_SELECT: "Select",
-  LOGIN_REQUIRED: "Login",
+  LOGIN_REQUIRED: "Login to Continue",
 };
 
 const getActionLabel = (action: ChatAction) =>
@@ -215,25 +216,22 @@ const ResponseMessage = ({
         </button>
       )}
 
-      {/* Standalone actions (view cart, login, etc.) */}
+      {/* Standalone actions (view cart, etc.) — the login CTA is rendered by
+          the block below so LOGIN_REQUIRED buttons never double up here. */}
       {actions.length > 0 && displayedSources.length === 0 && (
         <div className="flex flex-wrap gap-2">
-          {actions.map((action, index) => (
-            <button
-              key={`${action.type}-${index}`}
-              type="button"
-              onClick={() => {
-                if (action.type === "LOGIN_REQUIRED") {
-                  handleLoginRequired();
-                } else {
-                  onActionClick?.(action);
-                }
-              }}
-              className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700"
-            >
-              {getActionLabel(action)}
-            </button>
-          ))}
+          {actions
+            .filter((action) => action.type !== "LOGIN_REQUIRED")
+            .map((action, index) => (
+              <button
+                key={`${action.type}-${index}`}
+                type="button"
+                onClick={() => onActionClick?.(action)}
+                className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700"
+              >
+                {getActionLabel(action)}
+              </button>
+            ))}
         </div>
       )}
 
@@ -290,11 +288,19 @@ const ProductCard = ({
     event.stopPropagation();
     if (!product.id || wishlistBusy) return;
 
-    const loginPath = requireAuthentication("Please login to add items to wishlist");
-    if (loginPath) {
-      navigate(loginPath, {
-        state: { from: `${window.location.pathname}${window.location.search}` },
-      });
+    // Guests: route through the existing loginRequired chat flow so the
+    // assistant answers with a wishlist login prompt + ONE "Login to
+    // Continue" CTA instead of silently bouncing to /login.
+    if (!isAuthenticated()) {
+      dispatch(
+        chatBot({
+          prompt: {
+            prompt: `Add ${product.title || "this product"} to my wishlist`,
+          },
+          productId: null,
+          action: { type: "ADD_TO_WISHLIST", productId: product.id },
+        }) as any,
+      );
       return;
     }
 

@@ -299,10 +299,12 @@ export const transliterateCommerceTerms = (text = "") => {
       out = out.split(term).join(" ");
     }
   }
-  return out
-    .replace(/[^\p{L}\p{N}\s₹]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return resolveCommerceAliases(
+    out
+      .replace(/[^\p{L}\p{N}\s₹]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
 };
 
 // ------------------------------------------------------------
@@ -376,6 +378,44 @@ const ROMAN_COMMERCE_MAP = {
   bhoora: "brown", bhoore: "brown",
 };
 
+// ------------------------------------------------------------
+// Centralized commerce alias layer
+// ------------------------------------------------------------
+
+/**
+ * THE single place canonical product-name spelling variants map to their
+ * catalog-canonical forms. The catalog stores "T Shirt" (space-separated);
+ * users type "tshirt", "t-shirt", "tee", "tees". Rewriting these whole-word
+ * aliases into the canonical form BEFORE tokenization lets the ordinary
+ * token pipeline match the catalog — no per-function hacks. Entries are
+ * sorted longest-first on purpose so "tshirts" wins over "tshirt".
+ */
+export const COMMERCE_ALIASES = Object.freeze({
+  tshirts: "t shirts",
+  tshirt: "t shirt",
+  tees: "t shirts",
+  tee: "t shirt",
+});
+
+/**
+ * Replaces whole-word commerce aliases with their canonical spelling. Only
+ * boundaries ("\\b") are matched so "tshirt" inside a longer unrelated word
+ * can never be rewritten (avoids false positives).
+ */
+export const resolveCommerceAliases = (text = "") =>
+{
+  let out = String(text).toLowerCase();
+
+  for (const [alias, replacement] of Object.entries(COMMERCE_ALIASES).sort(
+    (a, b) => b[0].length - a[0].length,
+  ))
+  {
+    out = out.replace(new RegExp(`\\b${alias}\\b`, "g"), ` ${replacement} `);
+  }
+
+  return out.replace(/\s+/g, " ").trim();
+};
+
 /**
  * Reduces any user query to the English search tokens that should drive the
  * product matcher. Scripted input goes through the transliteration map;
@@ -401,10 +441,12 @@ export const normalizeCommerceQuery = (text = "") => {
   const particles =
     detection.code === LANG.EN ? ROMAN_PARTICLES_EN_SAFE : ROMAN_PARTICLES;
 
-  return cleaned
-    .split(" ")
-    .filter((token) => token && !particles.has(token))
-    .join(" ");
+  return resolveCommerceAliases(
+    cleaned
+      .split(" ")
+      .filter((token) => token && !particles.has(token))
+      .join(" "),
+  );
 };
 
 // ------------------------------------------------------------
@@ -423,7 +465,8 @@ const RESPONSES = {
     offTopic:
       "I can't check {topic} right now, but I can help you with products, recommendations, and your cart.",
     budgetQuestion: "Sure. What is your budget?",
-    searchFound: 'I found {count} matching option{s} for "{query}".',
+    searchFoundOne: 'I found 1 matching option for "{query}".',
+    searchFoundMany: 'I found {count} matching options for "{query}".',
     searchEmpty:
       "I couldn't find any products matching that. Try a different search, or ask me to show categories.",
     recommendIntro: "I'd recommend the first option — it best matches what you asked for.",
@@ -454,6 +497,7 @@ const RESPONSES = {
     cartEmpty: "Your cart is currently empty.",
     loginRequiredAdd: "Please log in before adding products to your cart.",
     loginRequiredView: "Please log in before I can show you your cart.",
+    loginRequiredWishlist: "Please log in before adding products to your wishlist.",
     clarifyProduct: "Which product do you mean — the first one or the second one?",
     invalidAction: "Sorry, I can't perform that action.",
     unsupported: "Sorry, I can't do that. I can help you search products and manage your cart.",
@@ -495,7 +539,8 @@ const RESPONSES = {
     offTopic:
       "Main abhi {topic} check nahi kar sakta, lekin main products, recommendations aur aapke cart mein help kar sakta hoon.",
     budgetQuestion: "Bilkul. Aapka budget kya hai?",
-    searchFound: '"{query}" ke liye mujhe {count} matching option{s} mile hain.',
+    searchFoundOne: '"{query}" ke liye mujhe 1 matching option mila.',
+    searchFoundMany: '"{query}" ke liye mujhe {count} matching options mile hain.',
     searchEmpty:
       "Mujhe is query ke liye koi product nahi mila. Koi aur search try karein, ya categories dekhne ke liye poochein.",
     recommendIntro: "Main pehla option recommend karunga — ye aapki requirement se sabse achha match karta hai.",
@@ -526,6 +571,7 @@ const RESPONSES = {
     cartEmpty: "Aapka cart abhi khali hai.",
     loginRequiredAdd: "Cart mein product add karne ke liye pehle login karein.",
     loginRequiredView: "Cart dikhane ke liye pehle login karein.",
+    loginRequiredWishlist: "Wishlist mein products add karne ke liye pehle login karein.",
     clarifyProduct: "Aapka matlab kaunsa product hai — pehla ya doosra?",
     invalidAction: "Sorry, main ye action perform nahi kar sakta.",
     unsupported: "Sorry, main ye nahi kar sakta. Main products search karne aur cart manage karne mein help kar sakta hoon.",
@@ -567,7 +613,8 @@ const RESPONSES = {
     offTopic:
       "मैं अभी {topic} नहीं देख सकता, लेकिन मैं उत्पादों, सुझावों और आपके कार्ट में मदद कर सकता हूँ।",
     budgetQuestion: "बिल्कुल। आपका बजट क्या है?",
-    searchFound: '"{query}" के लिए मुझे {count} मिलान विकल्प{s} मिले।',
+    searchFoundOne: '"{query}" के लिए मुझे 1 मिलान विकल्प मिला।',
+    searchFoundMany: '"{query}" के लिए मुझे {count} मिलान विकल्प मिले।',
     searchEmpty:
       "मुझे इस खोज के लिए कोई उत्पाद नहीं मिला। कोई और खोज आज़माएँ, या श्रेणियाँ देखने के लिए पूछें।",
     recommendIntro: "मैं पहला विकल्प सुझाऊँगा — यह आपकी ज़रूरत से सबसे अच्छा मेल खाता है।",
@@ -598,6 +645,7 @@ const RESPONSES = {
     cartEmpty: "आपका कार्ट अभी खाली है।",
     loginRequiredAdd: "कार्ट में उत्पाद जोड़ने के लिए पहले लॉगिन करें।",
     loginRequiredView: "कार्ट दिखाने के लिए पहले लॉगिन करें।",
+    loginRequiredWishlist: "विशलिस्ट में उत्पाद जोड़ने के लिए पहले लॉगिन करें।",
     clarifyProduct: "आपका मतलब कौन सा उत्पाद है — पहला या दूसरा?",
     invalidAction: "क्षमा करें, मैं यह कार्य नहीं कर सकता।",
     unsupported: "क्षमा करें, मैं यह नहीं कर सकता। मैं उत्पाद खोजने और कार्ट प्रबंधित करने में मदद कर सकता हूँ।",
@@ -639,7 +687,8 @@ const RESPONSES = {
     offTopic:
       "ਮੈਂ ਹੁਣ {topic} ਨਹੀਂ ਵੇਖ ਸਕਦਾ, ਪਰ ਮੈਂ ਉਤਪਾਦਾਂ, ਸੁਝਾਵਾਂ ਅਤੇ ਤੁਹਾਡੇ ਕਾਰਟ ਵਿੱਚ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ।",
     budgetQuestion: "ਬਿਲਕੁਲ। ਤੁਹਾਡਾ ਬਜਟ ਕਿੰਨਾ ਹੈ?",
-    searchFound: '"{query}" ਲਈ ਮੈਨੂੰ {count} ਮਿਲਦੇ ਵਿਕਲਪ{s} ਮਿਲੇ।',
+    searchFoundOne: '"{query}" ਲਈ ਮੈਨੂੰ 1 ਮਿਲਦਾ ਵਿਕਲਪ ਮਿਲਿਆ।',
+    searchFoundMany: '"{query}" ਲਈ ਮੈਨੂੰ {count} ਮਿਲਦੇ ਵਿਕਲਪ ਮਿਲੇ।',
     searchEmpty:
       "ਮੈਨੂੰ ਇਸ ਖੋਜ ਲਈ ਕੋਈ ਉਤਪਾਦ ਨਹੀਂ ਮਿਲਿਆ। ਕੋਈ ਹੋਰ ਖੋਜ ਕਰੋ, ਜਾਂ ਸ਼੍ਰੇਣੀਆਂ ਦੇਖਣ ਲਈ ਪੁੱਛੋ।",
     recommendIntro: "ਮੈਂ ਪਹਿਲਾ ਵਿਕਲਪ ਸੁਝਾਵਾਂਗਾ — ਇਹ ਤੁਹਾਡੀ ਲੋੜ ਨਾਲ ਸਭ ਤੋਂ ਚੰਗਾ ਮੇਲ ਖਾਂਦਾ ਹੈ।",
@@ -670,6 +719,7 @@ const RESPONSES = {
     cartEmpty: "ਤੁਹਾਡਾ ਕਾਰਟ ਹੁਣ ਖਾਲੀ ਹੈ।",
     loginRequiredAdd: "ਕਾਰਟ ਵਿੱਚ ਉਤਪਾਦ ਜੋੜਨ ਲਈ ਪਹਿਲਾਂ ਲੌਗਇਨ ਕਰੋ।",
     loginRequiredView: "ਕਾਰਟ ਵੇਖਾਉਣ ਲਈ ਪਹਿਲਾਂ ਲੌਗਇਨ ਕਰੋ।",
+    loginRequiredWishlist: "ਵਿਸ਼ਲਿਸਟ ਵਿੱਚ ਉਤਪਾਦ ਜੋੜਨ ਲਈ ਪਹਿਲਾਂ ਲੌਗਇਨ ਕਰੋ।",
     clarifyProduct: "ਤੁਹਾਡਾ ਮਤਲਬ ਕਿਹੜਾ ਉਤਪਾਦ ਹੈ — ਪਹਿਲਾ ਜਾਂ ਦੂਜਾ?",
     invalidAction: "ਮਾਫ ਕਰੋ, ਮੈਂ ਇਹ ਕਾਰਵਾਈ ਨਹੀਂ ਕਰ ਸਕਦਾ।",
     unsupported: "ਮਾਫ ਕਰੋ, ਮੈਂ ਇਹ ਨਹੀਂ ਕਰ ਸਕਦਾ। ਮੈਂ ਉਤਪਾਦ ਲੱਭਣ ਅਤੇ ਕਾਰਟ ਪ੍ਰਬੰਧ ਵਿੱਚ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ।",
@@ -709,7 +759,8 @@ const RESPONSES = {
     offTopic:
       "Main hun {topic} check nahi kar sakda, par main products, suggestions te tuhade cart vich madad kar sakda haan.",
     budgetQuestion: "Bilkul. Tuhada budget kitna hai?",
-    searchFound: '"{query}" lai mainu {count} match hunde option{s} mile ne.',
+    searchFoundOne: '"{query}" lai mainu 1 match hunda option mila.',
+    searchFoundMany: '"{query}" lai mainu {count} match hunde options mile ne.',
     searchEmpty:
       "Menu is search lai koi product nahi milia. Hor search karo, ya categories vekhan lai puchho.",
     recommendIntro: "Main pehla option suggest karanga — eh tuhadi lod naal sab ton changa match karda hai.",
@@ -740,6 +791,7 @@ const RESPONSES = {
     cartEmpty: "Tuhada cart hun khali hai.",
     loginRequiredAdd: "Cart vich product add karan lai pehla login karo.",
     loginRequiredView: "Cart dikhaun lai pehla login karo.",
+    loginRequiredWishlist: "Wishlist vich products add karan lai pehla login karo.",
     clarifyProduct: "Tuhada matlab kehda product hai — pehla ya dooja?",
     invalidAction: "Maaf karo, main eh action nahi kar sakda.",
     unsupported: "Maaf karo, main eh nahi kar sakda. Main products labhan te cart manage karan vich madad kar sakda haan.",
@@ -779,7 +831,8 @@ const RESPONSES = {
     offTopic:
       "मी आत्ता {topic} तपासू शकत नाही, पण मी उत्पादने, सूचना आणि तुमच्या कार्टमध्ये मदत करू शकतो.",
     budgetQuestion: "ठीक आहे. तुमचा बजेट किती आहे?",
-    searchFound: '"{query}" साठी मला {count} जुळणारे पर्याय{s} मिळाले.',
+    searchFoundOne: '"{query}" साठी मला 1 जुळणारा पर्याय मिळाला.',
+    searchFoundMany: '"{query}" साठी मला {count} जुळणारे पर्याय मिळाले.',
     searchEmpty:
       "मला या शोधासाठी कोणतेही उत्पादन मिळाले नाही. वेगळा शोध करा किंवा श्रेणी पाहण्यासाठी विचारा.",
     recommendIntro: "मी पहिला पर्याय सुचवेन — तो तुमच्या गरजेशी सर्वात चांगला जुळतो.",
@@ -810,6 +863,7 @@ const RESPONSES = {
     cartEmpty: "तुमचे कार्ट आत्ता रिकामे आहे.",
     loginRequiredAdd: "कार्टमध्ये उत्पादन जोडण्यासाठी आधी लॉगिन करा.",
     loginRequiredView: "कार्ट दाखवण्यासाठी आधी लॉगिन करा.",
+    loginRequiredWishlist: "विशलिस्टमध्ये उत्पादने जोडण्यासाठी आधी लॉगिन करा.",
     clarifyProduct: "तुमचा अर्थ कोणता उत्पादन आहे — पहिला की दुसरा?",
     invalidAction: "क्षमस्व, मी ही क्रिया करू शकत नाही.",
     unsupported: "क्षमस्व, मी हे करू शकत नाही. मी उत्पादने शोधण्यात आणि कार्ट व्यवस्थापित करण्यात मदत करू शकतो.",
@@ -849,7 +903,8 @@ const RESPONSES = {
     offTopic:
       "আমি এখন {topic} দেখতে পারছি না, তবে আমি পণ্য, পরামর্শ এবং আপনার কার্টে সাহায্য করতে পারি।",
     budgetQuestion: "ঠিক আছে। আপনার বাজেট কত?",
-    searchFound: '"{query}" এর জন্য আমি {count}টি মিলে যাওয়া বিকল্প{s} পেয়েছি।',
+    searchFoundOne: '"{query}" এর জন্য আমি 1টি মিলে যাওয়া বিকল্প পেয়েছি।',
+    searchFoundMany: '"{query}" এর জন্য আমি {count}টি মিলে যাওয়া বিকল্প পেয়েছি।',
     searchEmpty:
       "আমি এই অনুসন্ধানের জন্য কোনো পণ্য পাইনি। অন্য কিছু খুঁজুন, বা বিভাগ দেখতে বলুন।",
     recommendIntro: "আমি প্রথম বিকল্পটি সুপারিশ করব — এটি আপনার চাহিদার সঙ্গে সবচেয়ে ভালো মেলে।",
@@ -880,6 +935,7 @@ const RESPONSES = {
     cartEmpty: "আপনার কার্ট এখন খালি।",
     loginRequiredAdd: "কার্টে পণ্য যোগ করতে প্রথমে লগইন করুন।",
     loginRequiredView: "কার্ট দেখাতে প্রথমে লগইন করুন।",
+    loginRequiredWishlist: "উইশলিস্টে পণ্য যোগ করতে প্রথমে লগইন করুন।",
     clarifyProduct: "আপনার মানে কোন পণ্য — প্রথমটি না দ্বিতীয়টি?",
     invalidAction: "দুঃখিত, আমি এই কাজটি করতে পারছি না।",
     unsupported: "দুঃখিত, আমি এটি করতে পারছি না। আমি পণ্য খোঁজা এবং কার্ট পরিচালনায় সাহায্য করতে পারি।",
@@ -919,7 +975,8 @@ const RESPONSES = {
     offTopic:
       "હું હમણાં {topic} ચકાસી શકતો નથી, પણ હું ઉત્પાદનો, સૂચનો અને તમારા કાર્ટમાં મદદ કરી શકું છું.",
     budgetQuestion: "ઠીક છે. તમારું બજેટ કેટલું છે?",
-    searchFound: '"{query}" માટે મને {count} મળતા વિકલ્પ{s} મળ્યા.',
+    searchFoundOne: '"{query}" માટે મને 1 મળતો વિકલ્પ મળ્યો.',
+    searchFoundMany: '"{query}" માટે મને {count} મળતા વિકલ્પ મળ્યા.',
     searchEmpty:
       "મને આ શોધ માટે કોઈ ઉત્પાદન નથી મળ્યું. બીજી શોધ કરો, અથવા શ્રેણીઓ જોવા માટે પૂછો.",
     recommendIntro: "હું પહેલો વિકલ્પ સૂચવીશ — તે તમારી જરૂરિયાત સાથે સૌથી સારો મેળ ખાય છે.",
@@ -950,6 +1007,7 @@ const RESPONSES = {
     cartEmpty: "તમારું કાર્ટ હમણાં ખાલી છે.",
     loginRequiredAdd: "કાર્ટમાં ઉત્પાદન ઉમેરવા પહેલા લોગિન કરો.",
     loginRequiredView: "કાર્ટ બતાવવા પહેલા લોગિન કરો.",
+    loginRequiredWishlist: "વિશલિસ્ટમાં ઉત્પાદન ઉમેરવા પહેલા લોગિન કરો.",
     clarifyProduct: "તમારો મતલબ કયું ઉત્પાદન છે — પહેલું કે બીજું?",
     invalidAction: "માફ કરશો, હું આ ક્રિયા કરી શકતો નથી.",
     unsupported: "માફ કરશો, હું આ કરી શકતો નથી. હું ઉત્પાદનો શોધવા અને કાર્ટ સંચાલનમાં મદદ કરી શકું છું.",
@@ -989,7 +1047,8 @@ const RESPONSES = {
     offTopic:
       "நான் இப்போது {topic} சரிபார்க்க முடியாது, ஆனால் பொருட்கள், பரிந்துரைகள் மற்றும் உங்கள் கார்ட்டில் உதவ முடியும்.",
     budgetQuestion: "சரி. உங்கள் பட்ஜெட் என்ன?",
-    searchFound: '"{query}"க்கு {count} பொருந்தும் விருப்ப{s} கிடைத்தன.',
+    searchFoundOne: '"{query}"க்கு 1 பொருந்தும் விருப்பம் கிடைத்தது.',
+    searchFoundMany: '"{query}"க்கு {count} பொருந்தும் விருப்பங்கள் கிடைத்தன.',
     searchEmpty:
       "இந்தத் தேடலுக்கு எந்தப் பொருளும் கிடைக்கவில்லை. வேறு தேடலை முயற்சிக்கவும், அல்லது பிரிவுகளைப் பார்க்கக் கேளுங்கள்.",
     recommendIntro: "நான் முதல் விருப்பத்தைப் பரிந்துரைக்கிறேன் — இது உங்கள் தேவைக்கு மிகவும் பொருந்துகிறது.",
@@ -1020,6 +1079,7 @@ const RESPONSES = {
     cartEmpty: "உங்கள் கார்ட் இப்போது காலியாக உள்ளது.",
     loginRequiredAdd: "கார்ட்டில் சேர்க்க முதலில் லாகின் செய்யவும்.",
     loginRequiredView: "கார்ட் காட்ட முதலில் லாகின் செய்யவும்.",
+    loginRequiredWishlist: "விஷ்லிஸ்டில் சேர்க்க முதலில் லாகின் செய்யவும்.",
     clarifyProduct: "உங்கள் கருத்துப்படி எந்தப் பொருள் — முதலாவதா அல்லது இரண்டாவதா?",
     invalidAction: "மன்னிக்கவும், இந்த செயலை என்னால் செய்ய முடியாது.",
     unsupported: "மன்னிக்கவும், இதை என்னால் செய்ய முடியாது. நான் பொருட்களைத் தேடி கார்ட்டை நிர்வகிக்க உதவ முடியும்.",
@@ -1059,7 +1119,8 @@ const RESPONSES = {
     offTopic:
       "నేను ప్రస్తుతం {topic} తనిఖీ చేయలేను, కానీ ఉత్పత్తులు, సూచనలు మరియు మీ కార్ట్లో సహాయం చేయగలను.",
     budgetQuestion: "సరే. మీ బడ్జెట్ ఎంత?",
-    searchFound: '"{query}" కోసం {count} సరిపోయే ఎంపిక{s} దొరికాయి.',
+    searchFoundOne: '"{query}" కోసం 1 సరిపోయే ఎంపిక దొరికింది.',
+    searchFoundMany: '"{query}" కోసం {count} సరిపోయే ఎంపికలు దొరికాయి.',
     searchEmpty:
       "ఈ శోధనకు ఎలాంటి ఉత్పత్తి దొరకలేదు. వేరే శోధన ప్రయత్నించండి, లేదా వర్గాలను చూడమని అడగండి.",
     recommendIntro: "నేను మొదటి ఎంపికను సిఫార్సు చేస్తాను — ఇది మీ అవసరానికి బాగా సరిపోతుంది.",
@@ -1090,6 +1151,7 @@ const RESPONSES = {
     cartEmpty: "మీ కార్ట్ ప్రస్తుతం ఖాళీగా ఉంది.",
     loginRequiredAdd: "కార్ట్కు జోడించడానికి ముందు లాగిన్ చేయండి.",
     loginRequiredView: "కార్ట్ చూపించడానికి ముందు లాగిన్ చేయండి.",
+    loginRequiredWishlist: "విష్లిస్ట్కు జోడించడానికి ముందు లాగిన్ చేయండి.",
     clarifyProduct: "మీ ఉద్దేశ్యం ఏ ఉత్పత్తి — మొదటిదా లేదా రెండవదా?",
     invalidAction: "క్షమించండి, నేను ఈ చర్య చేయలేను.",
     unsupported: "క్షమించండి, నేను దీన్ని చేయలేను. నేను ఉత్పత్తులను వెతకడానికి మరియు కార్ట్ నిర్వహణకు సహాయం చేయగలను.",
@@ -1129,7 +1191,8 @@ const RESPONSES = {
     offTopic:
       "ನಾನು ಈಗ {topic} ಪರಿಶೀಲಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ, ಆದರೆ ಉತ್ಪನ್ನಗಳು, ಸಲಹೆಗಳು ಮತ್ತು ನಿಮ್ಮ ಕಾರ್ಟ್ನಲ್ಲಿ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ.",
     budgetQuestion: "ಸರಿ. ನಿಮ್ಮ ಬಜೆಟ್ ಎಷ್ಟು?",
-    searchFound: '"{query}"ಗಾಗಿ {count} ಹೊಂದಾಣಿಕೆಯ ಆಯ್ಕೆ{s} ಸಿಕ್ಕವು.',
+    searchFoundOne: '"{query}"ಗಾಗಿ 1 ಹೊಂದಾಣಿಕೆಯ ಆಯ್ಕೆ ಸಿಕ್ಕಿತು.',
+    searchFoundMany: '"{query}"ಗಾಗಿ {count} ಹೊಂದಾಣಿಕೆಯ ಆಯ್ಕೆಗಳು ಸಿಕ್ಕವು.',
     searchEmpty:
       "ಈ ಹುಡುಕಾಟಕ್ಕೆ ಯಾವುದೇ ಉತ್ಪನ್ನ ಸಿಗಲಿಲ್ಲ. ಬೇರೆ ಹುಡುಕಾಟ ಪ್ರಯತ್ನಿಸಿ, ಅಥವಾ ವರ್ಗಗಳನ್ನು ನೋಡಲು ಕೇಳಿ.",
     recommendIntro: "ನಾನು ಮೊದಲ ಆಯ್ಕೆಯನ್ನು ಶಿಫಾರಸು ಮಾಡುತ್ತೇನೆ — ಇದು ನಿಮ್ಮ ಅಗತ್ಯಕ್ಕೆ ಉತ್ತಮವಾಗಿ ಹೊಂದುತ್ತದೆ.",
@@ -1160,6 +1223,7 @@ const RESPONSES = {
     cartEmpty: "ನಿಮ್ಮ ಕಾರ್ಟ್ ಈಗ ಖಾಲಿಯಾಗಿದೆ.",
     loginRequiredAdd: "ಕಾರ್ಟ್ಗೆ ಸೇರಿಸಲು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ.",
     loginRequiredView: "ಕಾರ್ಟ್ ತೋರಿಸಲು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ.",
+    loginRequiredWishlist: "ವಿಶ್‌ಲಿಸ್ಟ್ಗೆ ಸೇರಿಸಲು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ.",
     clarifyProduct: "ನಿಮ್ಮ ಅಭಿಪ್ರಾಯದಲ್ಲಿ ಯಾವ ಉತ್ಪನ್ನ — ಮೊದಲನೆಯದಾ ಅಥವಾ ಎರಡನೆಯದಾ?",
     invalidAction: "ಕ್ಷಮಿಸಿ, ಈ ಕ್ರಿಯೆಯನ್ನು ನಾನು ಮಾಡಲಾರೆ.",
     unsupported: "ಕ್ಷಮಿಸಿ, ಇದನ್ನು ನಾನು ಮಾಡಲಾರೆ. ನಾನು ಉತ್ಪನ್ನಗಳನ್ನು ಹುಡುಕಲು ಮತ್ತು ಕಾರ್ಟ್ ನಿರ್ವಹಣೆಗೆ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ.",
@@ -1199,7 +1263,8 @@ const RESPONSES = {
     offTopic:
       "എനിക്ക് ഇപ്പോൾ {topic} പരിശോധിക്കാനാകില്ല, പക്ഷേ ഉൽപ്പന്നങ്ങൾ, നിർദ്ദേശങ്ങൾ, നിങ്ങളുടെ കാർട്ട് എന്നിവയിൽ സഹായിക്കാനാകും.",
     budgetQuestion: "ശരി. നിങ്ങളുടെ ബജറ്റ് എത്രയാണ്?",
-    searchFound: '"{query}"ന് {count} യോജിക്കുന്ന ഓപ്ഷൻ{s} ലഭിച്ചു.',
+    searchFoundOne: '"{query}"ന് 1 യോജിക്കുന്ന ഓപ്ഷൻ ലഭിച്ചു.',
+    searchFoundMany: '"{query}"ന് {count} യോജിക്കുന്ന ഓപ്ഷനുകൾ ലഭിച്ചു.',
     searchEmpty:
       "ഈ തിരയലിന് ഒരു ഉൽപ്പന്നവും ലഭിച്ചില്ല. മറ്റ് തിരയൽ ശ്രമിക്കുക, അല്ലെങ്കിൽ വിഭാഗങ്ങൾ കാണാൻ ചോദിക്കുക.",
     recommendIntro: "ഞാൻ ആദ്യ ഓപ്ഷൻ ശുപാർശ ചെയ്യുന്നു — ഇത് നിങ്ങളുടെ ആവശ്യത്തിന് ഏറ്റവും അനുയോജ്യമാണ്.",
@@ -1230,6 +1295,7 @@ const RESPONSES = {
     cartEmpty: "നിങ്ങളുടെ കാർട്ട് ഇപ്പോൾ ശൂന്യമാണ്.",
     loginRequiredAdd: "കാർട്ടിൽ ചേർക്കാൻ ആദ്യം ലോഗിൻ ചെയ്യുക.",
     loginRequiredView: "കാർട്ട് കാണിക്കാൻ ആദ്യം ലോഗിൻ ചെയ്യുക.",
+    loginRequiredWishlist: "വിഷ്‌ലിസ്റ്റിൽ ചേർക്കാൻ ആദ്യം ലോഗിൻ ചെയ്യുക.",
     clarifyProduct: "ഏത് ഉൽപ്പന്നം — ആദ്യത്തേതോ രണ്ടാമത്തേതോ?",
     invalidAction: "ക്ഷമിക്കണം, എനിക്ക് ഈ പ്രവർത്തനം ചെയ്യാനാകില്ല.",
     unsupported: "ക്ഷമിക്കണം, എനിക്ക് ഇത് ചെയ്യാനാകില്ല. ഉൽപ്പന്നങ്ങൾ കണ്ടെത്താനും കാർട്ട് കൈകാര്യം ചെയ്യാനും എനിക്ക് സഹായിക്കാനാകും.",
@@ -1269,7 +1335,8 @@ const RESPONSES = {
     offTopic:
       "میں ابھی {topic} چیک نہیں کر سکتا، لیکن میں مصنوعات، تجاویز اور آپ کے کارٹ میں مدد کر سکتا ہوں۔",
     budgetQuestion: "بالکل۔ آپ کا بجٹ کیا ہے؟",
-    searchFound: '"{query}" کے لیے مجھے {count} ملتے جلتے آپشن{s} ملے۔',
+    searchFoundOne: '"{query}" کے لیے مجھے 1 ملتا جلتا آپشن ملا۔',
+    searchFoundMany: '"{query}" کے لیے مجھے {count} ملتے جلتے آپشن ملے۔',
     searchEmpty:
       "مجھے اس تلاش کے لیے کوئی مصنوعہ نہیں ملا۔ کوئی اور تلاش آزمائیں، یا کیٹیگریز دیکھنے کے لیے پوچھیں۔",
     recommendIntro: "میں پہلا آپشن تجویز کروں گا — یہ آپ کی ضرورت سے سب سے بہتر میل کھاتا ہے۔",
@@ -1300,6 +1367,7 @@ const RESPONSES = {
     cartEmpty: "آپ کا کارٹ ابھی خالی ہے۔",
     loginRequiredAdd: "کارٹ میں مصنوعہ شامل کرنے کے لیے پہلے لاگ ان کریں۔",
     loginRequiredView: "کارٹ دکھانے کے لیے پہلے لاگ ان کریں۔",
+    loginRequiredWishlist: "وِش‌لسٹ میں مصنوعات شامل کرنے کے لیے پہلے لاگ ان کریں۔",
     clarifyProduct: "آپ کا مطلب کونسی مصنوعہ ہے — پہلی یا دوسری؟",
     invalidAction: "معذرت، میں یہ کارروائی نہیں کر سکتا۔",
     unsupported: "معذرت، میں یہ نہیں کر سکتا۔ میں مصنوعات تلاش کرنے اور کارٹ منظم کرنے میں مدد کر سکتا ہوں۔",
