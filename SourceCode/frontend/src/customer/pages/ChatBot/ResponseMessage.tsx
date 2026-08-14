@@ -264,7 +264,6 @@ const ProductCard = ({
   onView,
   onAction,
 }: ProductCardProps) => {
-  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const wishlistState = useAppSelector((store) => store.wishlist);
   const [wishlistBusy, setWishlistBusy] = useState(false);
