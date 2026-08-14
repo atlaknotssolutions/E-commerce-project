@@ -538,6 +538,17 @@ const PRODUCT_REF_STOP = new Set([
   "mein", "me", "kya", "mujhe", "mainu", "menu", "wala", "wali", "wale",
   "ye", "yeh", "eh", "oh", "is", "us", "wo", "woh", "de", "da", "di",
   "ne", "nu", "vich", "order", "orders",
+  // Demonstrative pronouns that point at the selected/last product.
+  "isko", "isse", "usko", "usse", "usee", "ehnu", "esnu", "eh", "isnu",
+  "usanu", "inun", "ehna", "ehda",
+]);
+
+/**
+ * Words that make "this one" references without mentioning a product noun.
+ */
+const DEMONSTRATIVE_REF_WORDS = new Set([
+  "isko", "isse", "usko", "usse", "usee", "ehnu", "esnu", "isnu",
+  "usanu", "inun", "ehna", "ehda",
 ]);
 
 /**
@@ -557,6 +568,11 @@ export const extractProductRef = (value = "") =>
     return { kind: "index", index: ordinal.index };
   }
 
+  if (/\b(this|that|it)\b/.test(normalized) || DEMONSTRATIVE_REF_WORDS.has(normalized) || normalized.split(" ").some((token) => DEMONSTRATIVE_REF_WORDS.has(token)))
+  {
+    return { kind: "last" };
+  }
+
   const keyword = normalized
     .split(" ")
     .filter((token) => token && !PRODUCT_REF_STOP.has(token))
@@ -565,11 +581,6 @@ export const extractProductRef = (value = "") =>
   if (keyword)
   {
     return { kind: "keyword", text: keyword };
-  }
-
-  if (/\b(this|that)\b/.test(normalized))
-  {
-    return { kind: "last" };
   }
 
   return null;
@@ -585,7 +596,7 @@ export const extractProductRef = (value = "") =>
 export const extractActionRequest = (query) =>
 {
   const raw = String(query || "");
-  const text = raw.toLowerCase().trim();
+  const text = transliterateCommerceTerms(raw).toLowerCase().trim();
 
   if (!text)
   {

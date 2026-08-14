@@ -34,7 +34,7 @@ import { computeReviewStatistics } from '../../../../util/reviewStatistics';
 import { normalizeSizes } from '../../../../util/normalizeSizes';
 import VariantSelector from '../../../components/VariantSelector';
 import { ProductImage, Product } from '../../../../types/productTypes';
-import { requireAuthentication } from '../../../../util/requireAuth';
+import { isAuthenticated, requireAuthentication } from '../../../../util/requireAuth';
 import { notification } from '../../../../services/notificationService';
 
 const ProductDetails = () => {
@@ -156,6 +156,7 @@ const ProductDetails = () => {
   }, [dispatch, categoryId]);
 
   useEffect(() => {
+    if (!isAuthenticated()) return;
     if (!coupone.customerCouponsLoaded) {
       dispatch(fetchCustomerCoupons());
     }
@@ -871,7 +872,7 @@ const ProductDetails = () => {
       </div>
 
       {/* AI Shopping Assistant */}
-      <section className="fixed bottom-6 right-6 z-40">
+      <section className="fixed bottom-4 right-4 z-40 sm:bottom-6 sm:right-6">
         {showChatBot ? (
           <ChatBot handleClose={() => { setShowChatBot(false); setSelectedAiProduct(null); }} productId={selectedAiProduct?.id} />
         ) : (

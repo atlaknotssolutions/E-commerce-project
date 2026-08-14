@@ -55,6 +55,13 @@ export const INTENT_TO_ACTION = {
   cart: ACTIONS.VIEW_CART,
   order: "ORDER_STATUS",
   fallback: "FALLBACK",
+  gift: "GIFT",
+  comparison: "COMPARISON",
+  recommendation: "RECOMMENDATION",
+  refine: "REFINE",
+  "show-more": "SHOW_MORE",
+  alternatives: "ALTERNATIVES",
+  select: "SELECT",
 };
 
 /** Upper bound on any quantity accepted from the chatbot. */

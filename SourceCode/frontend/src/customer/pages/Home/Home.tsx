@@ -114,7 +114,7 @@ const Home = () =>
                     </section>
                 </div>
 
-                <section className='fixed bottom-10 right-10 z-50'>
+                <section className='fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6'>
                     {showChatBot ? <ChatBot handleClose={handleCloseChatBot} /> : <Button
                         onClick={handleShowChatBot}
                         sx={{

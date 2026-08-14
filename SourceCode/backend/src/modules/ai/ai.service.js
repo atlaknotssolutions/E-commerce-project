@@ -19,6 +19,20 @@ import {
   LANG,
   normalizeCommerceQuery,
 } from "./ai.language.js";
+import {
+  detectShoppingIntent,
+  extractShoppingConstraints,
+  extractComparisonTargets,
+  mergeShoppingConstraints,
+  SHOPPING_INTENTS,
+} from "./ai.shopping.js";
+import {
+  rankShoppingProducts,
+  pickComparableProducts,
+  buildComparisonText,
+  buildTopPickExplanation,
+} from "./ai.recommendations.js";
+import { createShoppingContextStore } from "./ai.context.js";
 
 /**
  * Pure function-based factory representing the AI Chatbot Business Service layer.
@@ -32,9 +46,6 @@ export const createAiService = ({
   categoryRepository,
   createApiError,
 }) => {
-  // ============================================================
-  // AI CONFIGURATION
-  // ============================================================
   // ============================================================
   // AI CONFIGURATION
   // ============================================================
@@ -165,6 +176,28 @@ export const createAiService = ({
     });
   };
 
+  const productIdOfDoc = (product) =>
+    product?._id?.toString?.() || product?.id || null;
+
+  /**
+   * Records the ids the assistant just surfaced in the shopping episode so a
+   * follow-up "aur options" pages forward instead of repeating the same top 3.
+   */
+  const rememberShownProducts = (userId, products = []) => {
+    const key = shoppingSessionKey(userId);
+    if (!key) return;
+    const prev = shoppingContextStore.get(key) || {};
+    const existing = new Set(Array.isArray(prev.shownIds) ? prev.shownIds : []);
+    (Array.isArray(products) ? products : []).forEach((product) => {
+      const id = productIdOfDoc(product);
+      if (id) existing.add(id);
+    });
+    shoppingContextStore.save(key, {
+      ...prev,
+      shownIds: [...existing],
+    });
+  };
+
   const rememberLastProduct = (userId, productId) => {
     const previous = searchContextStore.get(userId) || { products: [] };
     saveSearchContext(userId, {
@@ -172,6 +205,19 @@ export const createAiService = ({
       lastProductId: productId || null,
     });
   };
+
+  /**
+   * Per-user memory of the most recent shopping episode (query, parsed
+   * constraints, ranked result ids). Used only to resolve follow-up shopping
+   * intents ("pehla wala better hai?", "aur options dikhao") in the same
+   * conversation language. Pure presentation state — never authorization.
+   */
+  const shoppingContextStore = createShoppingContextStore({
+    maxSessions: 1000,
+  });
+
+  const shoppingSessionKey = (userId) =>
+    typeof userId === "string" && userId ? userId : null;
 
   /**
    * Resolves a text product reference ("first one", "nike one", "this")
@@ -185,11 +231,14 @@ export const createAiService = ({
     bodyProductId,
   }) => {
     const context = searchContextStore.get(userId) || { products: [] };
+    const selectedContext = shoppingContextStore.get(shoppingSessionKey(userId));
+    const selectedProductId = selectedContext?.selectedProductId || null;
     const ref = actionRequest?.ref;
 
     if (!ref)
     {
-      return bodyProductId || null;
+      // "cart me daal do" right after a product was selected -> that product.
+      return bodyProductId || selectedProductId || null;
     }
 
     if (ref.kind === "index")
@@ -221,10 +270,10 @@ export const createAiService = ({
 
     if (ref.kind === "last")
     {
-      return context.lastProductId || bodyProductId || null;
+      return context.lastProductId || bodyProductId || selectedProductId || null;
     }
 
-    return bodyProductId || null;
+    return bodyProductId || selectedProductId || null;
   };
 
   const loginRequiredResponse = (lang, actionType) => {
@@ -637,6 +686,337 @@ ${prompt}
         return `${idx + 1}. **${product.title}**\n   - Category: ${categoryName}\n   - Price: Rs. ${product.sellingPrice} (MRP: Rs. ${product.mrpPrice})\n   - Stock: ${product.quantity} units available`;
       })
       .join("\n");
+
+  /**
+   * Phase 6 Smart Shopping: builds a localized recommendation/gift/comparison
+   * reply from the parsed constraints, ranked public catalog and the existing
+   * RESPONSES templates. All explanatory text flows through t(lang, ...) so
+   * the reply follows the detected conversation language; product data is
+   * never translated or modified.
+   */
+  const processShoppingResponse = async ({ prompt, lang, userId }) => {
+    const context = shoppingContextStore.get(shoppingSessionKey(userId));
+    const hasContext = Boolean(context?.resultIds?.length);
+
+    const intent = detectShoppingIntent({
+      raw: prompt,
+      hasContext,
+      context,
+    });
+    const type = intent?.type;
+
+    const constraints = extractShoppingConstraints(prompt);
+    const tokens = getSearchTokens(normalizeCommerceQuery(prompt)).filter(
+      (token) => !/^₹?\s?\d[\d,]*$/.test(token),
+    );
+    const maxPrice = constraints?.budget?.maxPrice || extractBudgetNumber(prompt);
+
+    let products = [];
+    try {
+      const result = await productRepository.getPublicProducts({
+        pageNumber: 0,
+        sizeLimit: 50,
+      });
+      products = Array.isArray(result?.content) ? result.content : [];
+    } catch (err) {
+      console.warn("[AI Service] Shopping pool fetch error:", err.message);
+      products = [];
+    }
+
+    if (maxPrice) {
+      products = products.filter(
+        (product) => Number(product.sellingPrice) <= maxPrice,
+      );
+    }
+
+    const ranked = rankShoppingProducts(products, constraints, tokens);
+
+    const rememberShoppingEpisode = (episodeIntent = type) => {
+      const key = shoppingSessionKey(userId);
+      if (!key) return;
+      const prev = shoppingContextStore.get(key) || {};
+      shoppingContextStore.save(key, {
+        ...prev,
+        lastQuery: prompt,
+        constraints,
+        resultIds: ranked.slice(0, 5).map((item) => item.product?._id?.toString?.() || item.product?.id),
+        rankMap: ranked.slice(0, 5).map((item) => item.product),
+        found: ranked.length > 0,
+        intent: episodeIntent,
+      });
+    };
+
+    // Plain product search stays on the existing search path, but the ranked
+    // episode is recorded so follow-ups ("wireless wale", "aur options") can
+    // refine against the same pool instead of losing the original query.
+    if (!type || type === SHOPPING_INTENTS.SEARCH) {
+      rememberShoppingEpisode("search");
+      return null;
+    }
+
+    const productIdOf = (product) =>
+      product?._id?.toString?.() || product?.id || null;
+
+    /** Records the ids the assistant actually surfaced so "aur options" /
+     *  "kuch aur" can page forward instead of repeating the same top 3. */
+    const trackShown = (products = []) => {
+      const key = shoppingSessionKey(userId);
+      if (!key) return;
+      const prev = shoppingContextStore.get(key) || {};
+      const existing = new Set(Array.isArray(prev.shownIds) ? prev.shownIds : []);
+      (Array.isArray(products) ? products : []).forEach((product) => {
+        const id = productIdOf(product);
+        if (id) existing.add(id);
+      });
+      shoppingContextStore.save(key, {
+        ...prev,
+        shownIds: [...existing],
+      });
+    };
+
+    const rememberSelection = (selectedProduct) => {
+      const key = shoppingSessionKey(userId);
+      if (!key) return;
+      const prev = shoppingContextStore.get(key) || {};
+      shoppingContextStore.save(key, {
+        ...prev,
+        lastQuery: prompt,
+        selectedProductId: productIdOf(selectedProduct),
+        intent: type,
+      });
+    };
+
+    const noResultText = () =>
+      t(lang, "shoppingNoResult", { query: prompt, suggestion: "" })
+        .replace(/\s*\.\s*$/, ".")
+        .replace(/\s*$/, "");
+
+    const numberedList = (items) =>
+      items
+        .map(
+          (item, idx) =>
+            `${idx + 1}. **${item.product.title}** — Rs. ${item.product.sellingPrice}`,
+        )
+        .join("\n");
+
+    // ---- GIFT ----
+    if (type === SHOPPING_INTENTS.GIFT) {
+      rememberShoppingEpisode();
+      if (ranked.length === 0) {
+        return { text: noResultText(), products: [], intent: type };
+      }
+      const top = ranked.slice(0, 3);
+      return {
+        text: t(lang, "giftIntro"),
+        products: top.map((item) => item.product),
+        intent: type,
+      };
+    }
+
+    // ---- COMPARISON ----
+    if (type === SHOPPING_INTENTS.COMPARISON) {
+      const targets = extractComparisonTargets(prompt, context);
+      let items = null;
+      if (targets && context?.rankMap?.length) {
+        const picked = targets
+          .map((target) => context.rankMap[target.index])
+          .filter(Boolean);
+        if (picked.length >= 2) {
+          items = picked.map((product) => ({ product, score: 0, reasons: [] }));
+        }
+      }
+      if (!items) {
+        items = pickComparableProducts(ranked, 2);
+      }
+
+      rememberShoppingEpisode();
+      if (!items || items.length < 2) {
+        return { text: noResultText(), products: [], intent: type };
+      }
+
+      const text = buildComparisonText({
+        items,
+        constraints,
+        t,
+        lang,
+      });
+      if (!text) {
+        return { text: noResultText(), products: [], intent: type };
+      }
+      return {
+        text,
+        products: items.map((item) => item.product),
+        intent: type,
+      };
+    }
+
+    // ---- DETAIL: "iska price kya hai" / "iske baare mein batao" ----
+    if (type === SHOPPING_INTENTS.DETAIL) {
+      const selectedId = context?.selectedProductId || null;
+      let product = null;
+      if (selectedId) {
+        product = (Array.isArray(context?.rankMap) ? context.rankMap : [])
+          .find((p) => productIdOf(p) === selectedId) || null;
+      }
+      if (!product && selectedId) {
+        try {
+          product = await productRepository.findPublicById(selectedId);
+        } catch (err) {
+          console.warn("[AI Service] Selected product detail lookup error:", err.message);
+          product = null;
+        }
+      }
+      if (!product) {
+        return { text: t(lang, "detailNotFound"), products: [], intent: type };
+      }
+      trackShown([product]);
+      return {
+        text: `${t(lang, "detail", { title: product.title, price: product.sellingPrice, stock: product.quantity })}\n\n- Discount Offered: ${product.discountPercent}% off\n- Color Variant: ${product.color || "Not specified"}\n- Sizes Available: ${product.sizes || "Not specified"}\n\n${t(lang, "detailAddPrompt")}`,
+        products: [product],
+        intent: type,
+      };
+    }
+
+    // ---- SELECT: "second wala", "ye wala", "pehla wala" ----
+    if (type === SHOPPING_INTENTS.SELECT) {
+      const ref = intent?.reference || null;
+      let selectedProduct = null;
+
+      if (ref?.kind === "index") {
+        if (ref.outOfRange) {
+          const count = Array.isArray(context?.rankMap) ? context.rankMap.length : 0;
+          return {
+            text: t(lang, "selectionOutOfRange", { count, s: count === 1 ? "" : "s" }),
+            products: [],
+            intent: type,
+          };
+        }
+        selectedProduct = Array.isArray(context?.rankMap) ? context.rankMap[ref.index] : null;
+      }
+
+      if (!selectedProduct) {
+        return { text: noResultText(), products: [], intent: type };
+      }
+
+      rememberSelection(selectedProduct);
+      trackShown([selectedProduct]);
+      return {
+        text: `${t(lang, "detailShort", { title: selectedProduct.title, price: selectedProduct.sellingPrice })}\n\n${t(lang, "detailAddPrompt")}`,
+        products: [selectedProduct],
+        intent: type,
+      };
+    }
+
+    // ---- RECOMMENDATION / SHOW_MORE / ALTERNATIVES / REFINE ----
+    const isFollowUp = type === SHOPPING_INTENTS.SHOW_MORE ||
+      type === SHOPPING_INTENTS.ALTERNATIVES ||
+      type === SHOPPING_INTENTS.REFINE;
+    const effectivePrompt = isFollowUp ? (context?.lastQuery || prompt) : prompt;
+
+    // Follow-ups inherit the earlier constraints so a budget/colour chosen in
+    // the original query still filters "aur options" / "wireless wale".
+    const effectiveConstraints = isFollowUp
+      ? mergeShoppingConstraints(context?.constraints || {}, constraints)
+      : constraints;
+
+    let effectiveRanked = ranked;
+    if (effectivePrompt !== prompt) {
+      const tokens2 = getSearchTokens(normalizeCommerceQuery(effectivePrompt)).filter(
+        (token) => !/^₹?\s?\d[\d,]*$/.test(token),
+      );
+      const max2 = extractBudgetNumber(effectivePrompt);
+      let pool = products;
+      if (max2) {
+        pool = pool.filter(
+          (product) => Number(product.sellingPrice) <= max2,
+        );
+      }
+      effectiveRanked = rankShoppingProducts(pool, effectiveConstraints, tokens2);
+    }
+
+    // "aur options" / "kuch aur" page forward past already-shown results.
+    let nextBatch = effectiveRanked;
+    if (type === SHOPPING_INTENTS.SHOW_MORE || type === SHOPPING_INTENTS.ALTERNATIVES) {
+      const shown = new Set(Array.isArray(context?.shownIds) ? context.shownIds : []);
+      nextBatch = effectiveRanked.filter((item) => !shown.has(productIdOf(item.product)));
+    }
+
+    rememberShoppingEpisode();
+    if (nextBatch.length === 0) {
+      return { text: t(lang, "noMoreOptions", { suggestion: "" }), products: [], intent: type };
+    }
+
+    const top = nextBatch.slice(0, 3);
+    trackShown(top.map((item) => item.product));
+    const topPick = buildTopPickExplanation(nextBatch, effectiveConstraints, t, lang);
+    return {
+      text: `${t(lang, "recommendList")}\n\n${topPick}`,
+      products: top.map((item) => item.product),
+      intent: type,
+    };
+  };
+
+  /**
+   * Voices a clarifying question when the user asks for a recommendation
+   * without enough signal ("show me something good" / "something for my
+   * brother"). Avoids a confusing empty-search reply and keeps the
+   * conversation human-like. Returns null when the prompt has real search
+   * signal and should flow through the normal pipeline.
+   */
+  const buildLowSignalClarification = async ({ prompt, lang }) => {
+    const raw = String(prompt);
+    const norm = normalizeCommerceQuery(raw).toLowerCase();
+
+    // Low-signal recipient ("something for my brother/dad/sister") -> ask the
+    // budget so the follow-up can be constrained instead of a blind search.
+    const recipientPattern =
+      /\b(something|some|kuch|koi|gift|tohfa)\b[\s\S]*\b(for|ke\s+liye|ke\s+wat|ler|ke\s+waste|vaste)\b[\s\S]*\b(brother|bhai|bhaiya|sister|behen|bhabhi|father|dad|papa|mother|mom|mummy|maa|friend|dost|wife|patni|husband|pati|son|beta|beti|daughter|girl|boy|ladka|ladki|uncle|chacha|aunty|bua|bibi)\b/i;
+
+    // Pure nudge ("show me something good", "kuch achha dikhao", "suggest
+    // something nice") -> surface categories so the user can pick a direction.
+    const vagueSuggestionPattern =
+      /\b(show|give|suggest|recommend|recommend|find|dikhao|dikha|batao|bata|suggest)\b[\s\S]*\b(something|some|kuch|koi)\b[\s\S]*\b(good|nice|best|great|awesome|accha|achha|achhi|badhiya|theek)\b/i;
+
+    if (recipientPattern.test(raw)) {
+      return {
+        text: t(lang, "budgetQuestion"),
+        products: [],
+        intent: "general",
+      };
+    }
+
+    if (vagueSuggestionPattern.test(raw)) {
+      try {
+        const categories = await categoryRepository.findAll();
+        if (categories && categories.length > 0) {
+          const topCategories = categories.slice(0, 3);
+          const categoryListText = topCategories
+            .map((cat, idx) => `${idx + 1}. **${cat.name}**`)
+            .join("\n");
+
+          return {
+            text: `${t(lang, "budgetQuestion")}\n\n${t(lang, "categoryPrompt")}\n\n${categoryListText}\n\n${t(lang, "categoryPickHint")}`,
+            products: [],
+            intent: "category-list",
+          };
+        }
+      } catch (err) {
+        console.warn(
+          "[AI Service] Category clarification fetch error:",
+          err.message,
+        );
+      }
+
+      return {
+        text: t(lang, "budgetQuestion"),
+        products: [],
+        intent: "general",
+      };
+    }
+
+    return null;
+  };
+
   /**
    * High-Intelligence Local Mock AI Processor.
    * Parses prompts and leverages injected repository data to generate context-aware solutions.
@@ -809,14 +1189,14 @@ ${prompt}
           return {
             text: t(lang, "categoryEmpty", { name: selectedCategory.name }),
             products: [],
+            intent: intent.type,
           };
         }
 
-        const productListText = formatProductListText(products);
-
         return {
-          text: `${t(lang, "categoryProducts", { name: selectedCategory.name })}\n\n${productListText}\n\n${t(lang, "searchActions")}`,
+          text: t(lang, "categoryProducts", { name: selectedCategory.name }),
           products,
+          intent: intent.type,
         };
       } catch (err) {
         console.log("[AI Service] Category products fetch error:", err.message);
@@ -863,18 +1243,36 @@ ${prompt}
 
     // Product search
     if (intent.type === "search") {
+      // Phase 6C.2: before hitting the catalog, voice a clarifying question for
+      // low-signal nudges ("show me something good", "something for my brother")
+      // instead of returning a confusing empty-search reply.
+      const clarification = await buildLowSignalClarification({ prompt, lang });
+      if (clarification) {
+        return clarification;
+      }
+
+      // Phase 6: route recommendation / gift / comparison prompts through the
+      // localized shopping pipeline. Plain product searches keep the existing
+      // search path (searchFound / searchEmpty).
+      const shoppingReply = await processShoppingResponse({ prompt, lang, userId });
+      if (shoppingReply) {
+        return shoppingReply;
+      }
+
       const matchedProducts = await findMatchingProductsByQuery(prompt);
 
       if (matchedProducts.length > 0) {
         return {
-          text: `${t(lang, "searchFound", { count: matchedProducts.length, s: matchedProducts.length > 1 ? "s" : "", query: prompt })}\n\n${formatProductListText(matchedProducts.slice(0, 3))}\n\n${t(lang, "searchActions")}`,
+          text: t(lang, "searchFound", { count: matchedProducts.length, s: matchedProducts.length > 1 ? "s" : "", query: prompt }),
           products: matchedProducts,
+          intent: intent.type,
         };
       }
 
       return {
         text: t(lang, "searchEmpty"),
         products: [],
+        intent: intent.type,
       };
     }
 
@@ -897,6 +1295,108 @@ ${prompt}
       ...result,
       intent: result.intent || intent.type,
     };
+  };
+
+  /**
+   * Builds the full structured chat payload for a deterministic mock result.
+   * Used in mock mode, for shopping intents in Groq mode, and as the safe
+   * fallback whenever the provider is unavailable or returns unusable text.
+   */
+  const buildMockChatResponse = async ({ mockResult, userId, lang }) => {
+    const sources = mapPublicProductSources(mockResult.products).slice(0, 3);
+
+    if (userId) {
+      rememberProductList(userId, mockResult.products.slice(0, 5));
+      rememberShownProducts(userId, mockResult.products.slice(0, 3));
+    }
+
+    return {
+      response: mockResult.text,
+      mockMode: true,
+      sources,
+      intent: INTENT_TO_ACTION[mockResult.intent] || "SEARCH",
+      actions: buildSourceActions(sources),
+      actionResult: null,
+      cart: null,
+      loginRequired: false,
+      language: lang,
+    };
+  };
+
+  /**
+   * Reduces open-ended provider text to the short, clean, human-like shape the
+   * assistant promises: strip markdown/code blocks, drop list decorators and
+   * headings, collapse whitespace and cap at ~2 sentences / ~220 characters.
+   */
+  const normalizeGroqConversationText = (raw) => {
+    if (typeof raw !== "string") return "";
+
+    const text = raw
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`([^`]*)`/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/^\s*([>-]|\d+[.)])\s+/gm, "")
+      .replace(/[_\u00A0]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!text) return "";
+
+    const sentences = text.match(/[^.!?]+[.!?]?/g) || [];
+    let capped = sentences.slice(0, 2).join(" ").trim();
+
+    if (capped.length > 220) {
+      capped = `${capped.slice(0, 220).replace(/\s+\S*$/, "")}...`;
+    }
+
+    return capped;
+  };
+
+  /**
+   * True only when the text actually says something usable. Provider boilerplate
+   * ("Sorry, I couldn't generate a response.") must never be shown to the user —
+   * it is treated as a failure and routed to the deterministic fallback.
+   */
+  const isUsableGroqText = (text) =>
+    typeof text === "string" &&
+    text.trim().length >= 2 &&
+    !/^(sorry|i'?m|i am|i cannot|could not|couldn|unable|error|oops)/i.test(
+      text.trim(),
+    );
+
+  /**
+   * Safe deterministic fallback used when the provider fails (timeout, error,
+   * unusable output). Keeps every reply short, localized and human-like instead
+   * of surfacing a bare English provider error.
+   */
+  const safeFallbackResponse = async ({ prompt, productId, userId, lang }) => {
+    try {
+      const mockResult = await processMockResponse({
+        prompt,
+        productId,
+        userId,
+        lang,
+      });
+      return buildMockChatResponse({ mockResult, userId, lang });
+    } catch (err) {
+      console.warn(
+        "[AI Service] Deterministic fallback failed:",
+        err.message,
+      );
+      return {
+        response: t(lang, "providerUnavailable"),
+        mockMode: true,
+        sources: [],
+        intent: "FALLBACK",
+        actions: [],
+        actionResult: null,
+        cart: null,
+        loginRequired: false,
+        language: lang,
+      };
+    }
   };
 
   /**
@@ -948,24 +1448,34 @@ ${prompt}
         lang,
       });
 
-      const sources = mapPublicProductSources(mockResult.products).slice(0, 3);
+      return buildMockChatResponse({ mockResult, userId, lang });
+    }
 
-      // Remember the surfaced products so "the first one" references resolve.
-      if (userId) {
-        rememberProductList(userId, mockResult.products.slice(0, 5));
-      }
+    // =========================================
+    // Phase 6C.2: deterministic intent routing.
+    // Shopping intents (search, category browsing, product detail) run through
+    // the SAME localized pipeline in both mock and Groq mode, so behavior is
+    // identical and never leaks raw provider output. Groq is reserved for
+    // open-ended general conversation.
+    // =========================================
+    const intent = detectIntent(prompt, { productId });
 
-      return {
-        response: mockResult.text,
-        mockMode: true,
-        sources,
-        intent: INTENT_TO_ACTION[mockResult.intent] || "SEARCH",
-        actions: buildSourceActions(sources),
-        actionResult: null,
-        cart: null,
-        loginRequired: false,
-        language: lang,
-      };
+    const DETERMINISTIC_INTENTS = new Set([
+      "search",
+      "category-list",
+      "category-select",
+      "detail",
+    ]);
+
+    if (DETERMINISTIC_INTENTS.has(intent.type)) {
+      const mockResult = await processMockResponse({
+        prompt,
+        productId,
+        userId,
+        lang,
+      });
+
+      return buildMockChatResponse({ mockResult, userId, lang });
     }
 
     try {
@@ -1084,9 +1594,17 @@ ${prompt}
 
         console.log("[AI Service] Groq response received.");
 
-        const generatedText =
-          data.choices?.[0]?.message?.content ||
-          "Sorry, I couldn't generate a response.";
+        const generatedText = normalizeGroqConversationText(
+          data.choices?.[0]?.message?.content || "",
+        );
+
+        // Provider boilerplate / refusal text must never reach the user.
+        if (!isUsableGroqText(generatedText)) {
+          console.warn(
+            "[AI Service] Groq returned unusable text; using deterministic response.",
+          );
+          return safeFallbackResponse({ prompt, productId, userId, lang });
+        }
 
         if (userId) {
           const previousMessages = conversationStore.get(userId) || [];
@@ -1124,7 +1642,7 @@ ${prompt}
           response: generatedText,
           mockMode: false,
           sources,
-          intent: INTENT_TO_ACTION[detectIntent(prompt, { productId }).type] || "SEARCH",
+          intent: INTENT_TO_ACTION[intent.type] || "SEARCH",
           actions: buildSourceActions(sources),
           actionResult: null,
           cart: null,
@@ -1138,36 +1656,14 @@ ${prompt}
           console.error("[AI Service] Groq request failed:", error.message);
         }
 
-        return {
-          response:
-            "I'm currently unable to connect to the AI service. Please try again in a moment.",
-          mockMode: false,
-          sources: [],
-          intent: "FALLBACK",
-          actions: [],
-          actionResult: null,
-          cart: null,
-          loginRequired: false,
-          language: lang,
-        };
+        return safeFallbackResponse({ prompt, productId, userId, lang });
       } finally {
         clearTimeout(timeoutId);
       }
     } catch (error) {
       console.error("[AI Service] Groq request failed:", error.message);
 
-      return {
-        response:
-          "I'm currently unable to connect to the AI service. Please try again in a moment.",
-        mockMode: false,
-        sources: [],
-        intent: "FALLBACK",
-        actions: [],
-        actionResult: null,
-        cart: null,
-        loginRequired: false,
-        language: lang,
-      };
+      return safeFallbackResponse({ prompt, productId, userId, lang });
     }
   };
 

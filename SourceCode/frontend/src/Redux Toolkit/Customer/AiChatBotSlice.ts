@@ -29,6 +29,7 @@ interface ChatMessage {
   actions?: ChatAction[];
   intent?: string | null;
   loginRequired?: boolean;
+  isError?: boolean;
 }
 
 interface ChatResponse {
@@ -201,6 +202,7 @@ const aiChatBotSlice = createSlice({
         state.messages.push({
           role: "assistant",
           message,
+          isError: true,
         });
       });
   },
