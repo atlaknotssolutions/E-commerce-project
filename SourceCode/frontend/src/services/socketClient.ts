@@ -1,6 +1,9 @@
 import { io, Socket } from 'socket.io-client';
+import { API_URL } from '../Config/Api';
 
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// Reuses the single source-of-truth API origin (Config/Api.ts) which already
+// resolves the correct backend per environment. Env overrides take precedence.
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_API_URL || API_URL;
 
 let socket: Socket | null = null;
 

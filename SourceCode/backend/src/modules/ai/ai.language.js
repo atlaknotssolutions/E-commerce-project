@@ -338,6 +338,13 @@ const ROMAN_PARTICLES = new Set([
   "aapke", "aapki", "aapka", "apne", "unke", "unki", "unka", "inke",
   "inki", "inka", "paas", "pass", "pss", "ke_paas", "ke_pss",
   "ek", "acha", "achi", "achhi", "acchi", "achhe", "acche", "waise",
+  // High-confidence typo variants of the acha/achi/achhi particles
+  // ("aachhi", "aachi", "aacha", "aachha") plus the emphatic intensifier
+  // "si" from "achi si" — all carry zero product identity.
+  "aachhi", "aachi", "aacchi", "aacha", "aachha", "achhaa",
+  "si", "sii", "siii",
+  // Conversational address/filler (never a product term).
+  "yaar", "dost", "dosto", "mast", "badhiya", "zabardast", "kamaal",
   "chahidi", "chahindi", "chahinda", "chahinde", "chahinden",
   "puchna", "pooch", "poocha", "liye", "ke_liye",
 ]);
@@ -417,6 +424,68 @@ export const resolveCommerceAliases = (text = "") =>
 };
 
 /**
+ * Maps a search token to a display label for the "we found X for you" line, so
+ * responses stay product-type aware without ever clamping on the raw query.
+ * Returns { singular, plural } or null when the token is not a known category.
+ */
+const PRODUCT_NOUN_LABELS = Object.freeze({
+  shirt: { singular: "T-Shirt", plural: "T-Shirts" },
+  shirts: { singular: "T-Shirt", plural: "T-Shirts" },
+  tshirt: { singular: "T-Shirt", plural: "T-Shirts" },
+  tshirts: { singular: "T-Shirt", plural: "T-Shirts" },
+  tee: { singular: "T-Shirt", plural: "T-Shirts" },
+  tees: { singular: "T-Shirt", plural: "T-Shirts" },
+  jeans: { singular: "Jean", plural: "Jeans" },
+  denim: { singular: "Jean", plural: "Jeans" },
+  pant: { singular: "Trouser", plural: "Trousers" },
+  pants: { singular: "Trouser", plural: "Trousers" },
+  trouser: { singular: "Trouser", plural: "Trousers" },
+  trousers: { singular: "Trouser", plural: "Trousers" },
+  sneaker: { singular: "Sneaker", plural: "Sneakers" },
+  sneakers: { singular: "Sneaker", plural: "Sneakers" },
+  shoe: { singular: "Shoe", plural: "Shoes" },
+  shoes: { singular: "Shoe", plural: "Shoes" },
+  headphone: { singular: "Headphone", plural: "Headphones" },
+  headphones: { singular: "Headphone", plural: "Headphones" },
+  watch: { singular: "Watch", plural: "Watches" },
+  watches: { singular: "Watch", plural: "Watches" },
+  laptop: { singular: "Laptop", plural: "Laptops" },
+  laptops: { singular: "Laptop", plural: "Laptops" },
+  mobile: { singular: "Mobile", plural: "Mobiles" },
+  mobiles: { singular: "Mobile", plural: "Mobiles" },
+  phone: { singular: "Phone", plural: "Phones" },
+  phones: { singular: "Phone", plural: "Phones" },
+  kurta: { singular: "Kurta", plural: "Kurtas" },
+  kurtas: { singular: "Kurta", plural: "Kurtas" },
+  saree: { singular: "Saree", plural: "Sarees" },
+  sari: { singular: "Saree", plural: "Sarees" },
+  backpack: { singular: "Backpack", plural: "Backpacks" },
+  backpacks: { singular: "Backpack", plural: "Backpacks" },
+  bag: { singular: "Bag", plural: "Bags" },
+  bags: { singular: "Bag", plural: "Bags" },
+  speaker: { singular: "Speaker", plural: "Speakers" },
+  speakers: { singular: "Speaker", plural: "Speakers" },
+});
+
+/**
+ * Resolves a product-type display label from search tokens so the
+ * "I found X for you" response is product-type aware:
+ *   ["shirt"]           -> { singular: "T-Shirt", plural: "T-Shirts" }
+ *   ["nike","sneakers"] -> { singular: "Sneaker", plural: "Sneakers" }
+ * Returns null when no known category noun is present so callers can fall back
+ * to a generic countable ("option"/"options").
+ */
+export const deriveProductTopic = (tokens = []) =>
+{
+  if (!Array.isArray(tokens)) return null;
+  for (const token of tokens) {
+    const label = PRODUCT_NOUN_LABELS[token];
+    if (label) return label;
+  }
+  return null;
+};
+
+/**
  * Reduces any user query to the English search tokens that should drive the
  * product matcher. Scripted input goes through the transliteration map;
  * romanized input gets the commerce word-map + particle stripping. The
@@ -465,10 +534,10 @@ const RESPONSES = {
     offTopic:
       "I can't check {topic} right now, but I can help you with products, recommendations, and your cart.",
     budgetQuestion: "Sure. What is your budget?",
-    searchFoundOne: 'I found 1 matching option for "{query}".',
-    searchFoundMany: 'I found {count} matching options for "{query}".',
+    searchFoundOne: 'Here is 1 {topic} for you:',
+    searchFoundMany: 'Here are {count} {topic} for you:',
     searchEmpty:
-      "I couldn't find any products matching that. Try a different search, or ask me to show categories.",
+      "Hmm, I couldn't find anything for that. Try different words, or ask me to show categories.",
     recommendIntro: "I'd recommend the first option — it best matches what you asked for.",
     compareIntro:
       "Between these two, the first is the better match for your request; the second is the better budget pick.",
@@ -485,7 +554,7 @@ const RESPONSES = {
     topPick: "I'd recommend **{title}** — {reason}.",
     recommendList: "Here are the best matches for you:",
     giftIntro: "Here are some thoughtful gift ideas:",
-    shoppingNoResult: "I couldn't find anything for \"{query}\" right now. {suggestion}",
+    shoppingNoResult: "I couldn't find anything for that right now. {suggestion}",
     noMoreOptions: "That's all the options I have. {suggestion}",
     cartAddDone: "Done! **{title}** has been added to your cart.",
     cartAddFailedNotFound: "I couldn't find that product.",
@@ -539,10 +608,10 @@ const RESPONSES = {
     offTopic:
       "Main abhi {topic} check nahi kar sakta, lekin main products, recommendations aur aapke cart mein help kar sakta hoon.",
     budgetQuestion: "Bilkul. Aapka budget kya hai?",
-    searchFoundOne: '"{query}" ke liye mujhe 1 matching option mila.',
-    searchFoundMany: '"{query}" ke liye mujhe {count} matching options mile hain.',
+    searchFoundOne: 'Aapke liye 1 {topic} mila hai:',
+    searchFoundMany: 'Aapke liye {count} {topic} mile hain:',
     searchEmpty:
-      "Mujhe is query ke liye koi product nahi mila. Koi aur search try karein, ya categories dekhne ke liye poochein.",
+      "Hmm, is baar kuch nahi mila. Koi aur words try karein, ya categories dekhne ke liye poochein.",
     recommendIntro: "Main pehla option recommend karunga — ye aapki requirement se sabse achha match karta hai.",
     compareIntro:
       "In dono mein se pehla aapke request ke liye behtar hai; doosra budget ke liye behtar option hai.",
@@ -559,7 +628,7 @@ const RESPONSES = {
     topPick: "Main **{title}** recommend karunga — {reason}.",
     recommendList: "Aapke liye ye best matches hain:",
     giftIntro: "Kuch acchi gift suggestions hain:",
-    shoppingNoResult: "\"{query}\" ke liye abhi koi product nahi mila. {suggestion}",
+    shoppingNoResult: "Iske liye abhi koi option nahi mila. {suggestion}",
     noMoreOptions: "Bas itne hi options hain. {suggestion}",
     cartAddDone: "Ho gaya! **{title}** aapke cart mein add ho gaya.",
     cartAddFailedNotFound: "Mujhe wo product nahi mila.",
@@ -613,10 +682,10 @@ const RESPONSES = {
     offTopic:
       "मैं अभी {topic} नहीं देख सकता, लेकिन मैं उत्पादों, सुझावों और आपके कार्ट में मदद कर सकता हूँ।",
     budgetQuestion: "बिल्कुल। आपका बजट क्या है?",
-    searchFoundOne: '"{query}" के लिए मुझे 1 मिलान विकल्प मिला।',
-    searchFoundMany: '"{query}" के लिए मुझे {count} मिलान विकल्प मिले।',
+    searchFoundOne: 'आपके लिए 1 {topic} मिला है:',
+    searchFoundMany: 'आपके लिए {count} {topic} विकल्प मिले हैं:',
     searchEmpty:
-      "मुझे इस खोज के लिए कोई उत्पाद नहीं मिला। कोई और खोज आज़माएँ, या श्रेणियाँ देखने के लिए पूछें।",
+      "हम्म, इस बार कुछ नहीं मिला। दूसरे शब्द आज़माएँ, या श्रेणियाँ देखने के लिए पूछें।",
     recommendIntro: "मैं पहला विकल्प सुझाऊँगा — यह आपकी ज़रूरत से सबसे अच्छा मेल खाता है।",
     compareIntro:
       "इन दोनों में से पहला आपकी माँग के लिए बेहतर है; दूसरा बजट के लिए बेहतर विकल्प है।",
@@ -633,7 +702,7 @@ const RESPONSES = {
     topPick: "मैं **{title}** सुझाऊँगा — {reason}।",
     recommendList: "आपके लिए ये सबसे अच्छे मैच हैं:",
     giftIntro: "कुछ अच्छे गिफ्ट सुझाव हैं:",
-    shoppingNoResult: "\"{query}\" के लिए अभी कोई उत्पाद नहीं मिला। {suggestion}",
+    shoppingNoResult: "इसके लिए अभी कोई option नहीं मिला। {suggestion}",
     noMoreOptions: "बस इतने ही विकल्प हैं। {suggestion}",
     cartAddDone: "हो गया! **{title}** आपके कार्ट में जोड़ दिया गया।",
     cartAddFailedNotFound: "मुझे वह उत्पाद नहीं मिला।",
@@ -687,10 +756,10 @@ const RESPONSES = {
     offTopic:
       "ਮੈਂ ਹੁਣ {topic} ਨਹੀਂ ਵੇਖ ਸਕਦਾ, ਪਰ ਮੈਂ ਉਤਪਾਦਾਂ, ਸੁਝਾਵਾਂ ਅਤੇ ਤੁਹਾਡੇ ਕਾਰਟ ਵਿੱਚ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ।",
     budgetQuestion: "ਬਿਲਕੁਲ। ਤੁਹਾਡਾ ਬਜਟ ਕਿੰਨਾ ਹੈ?",
-    searchFoundOne: '"{query}" ਲਈ ਮੈਨੂੰ 1 ਮਿਲਦਾ ਵਿਕਲਪ ਮਿਲਿਆ।',
-    searchFoundMany: '"{query}" ਲਈ ਮੈਨੂੰ {count} ਮਿਲਦੇ ਵਿਕਲਪ ਮਿਲੇ।',
+    searchFoundOne: 'ਤੁਹਾਡੇ ਲਈ 1 {topic} ਮਿਲਿਆ ਹੈ:',
+    searchFoundMany: 'ਤੁਹਾਡੇ ਲਈ {count} {topic} ਵਿਕਲਪ ਮਿਲੇ ਹਨ:',
     searchEmpty:
-      "ਮੈਨੂੰ ਇਸ ਖੋਜ ਲਈ ਕੋਈ ਉਤਪਾਦ ਨਹੀਂ ਮਿਲਿਆ। ਕੋਈ ਹੋਰ ਖੋਜ ਕਰੋ, ਜਾਂ ਸ਼੍ਰੇਣੀਆਂ ਦੇਖਣ ਲਈ ਪੁੱਛੋ।",
+      "ਹਮਮ, ਇਸ ਵਾਰ ਕੁਝ ਨਹੀਂ ਮਿਲਿਆ। ਦੂਜੇ ਸ਼ਬਦ ਅਜ਼ਮਾਓ, ਜਾਂ ਸ਼੍ਰੇਣੀਆਂ ਦੇਖਣ ਲਈ ਪੁੱਛੋ।",
     recommendIntro: "ਮੈਂ ਪਹਿਲਾ ਵਿਕਲਪ ਸੁਝਾਵਾਂਗਾ — ਇਹ ਤੁਹਾਡੀ ਲੋੜ ਨਾਲ ਸਭ ਤੋਂ ਚੰਗਾ ਮੇਲ ਖਾਂਦਾ ਹੈ।",
     compareIntro:
       "ਇਨ੍ਹਾਂ ਦੋਵਾਂ ਵਿੱਚੋਂ ਪਹਿਲਾ ਤੁਹਾਡੀ ਮੰਗ ਲਈ ਬਿਹਤਰ ਹੈ; ਦੂਜਾ ਬਜਟ ਲਈ ਵਧੀਆ ਵਿਕਲਪ ਹੈ।",
@@ -707,7 +776,7 @@ const RESPONSES = {
     topPick: "ਮੈਂ **{title}** ਸੁਝਾਵਾਂਗਾ — {reason}।",
     recommendList: "ਤੁਹਾਡੇ ਲਈ ਇਹ ਸਭ ਤੋਂ ਵਧੀਆ ਮੇਲ ਹਨ:",
     giftIntro: "ਕੁਝ ਚੰਗੇ ਗਿਫਟ ਸੁਝਾਅ ਹਨ:",
-    shoppingNoResult: "\"{query}\" ਲਈ ਫਿਲਹਾਲ ਕੋਈ ਉਤਪਾਦ ਨਹੀਂ ਮਿਲਿਆ। {suggestion}",
+    shoppingNoResult: "ਇਸ ਲਈ ਅਜੇ ਕੋਈ ਵਿਕਲਪ ਨਹੀਂ ਮਿਲਿਆ। {suggestion}",
     noMoreOptions: "Bas inne options ne. {suggestion}",
     cartAddDone: "ਹੋ ਗਿਆ! **{title}** ਤੁਹਾਡੇ ਕਾਰਟ ਵਿੱਚ ਜੋੜ ਦਿੱਤਾ ਗਿਆ।",
     cartAddFailedNotFound: "ਮੈਨੂੰ ਉਹ ਉਤਪਾਦ ਨਹੀਂ ਮਿਲਿਆ।",
@@ -759,10 +828,10 @@ const RESPONSES = {
     offTopic:
       "Main hun {topic} check nahi kar sakda, par main products, suggestions te tuhade cart vich madad kar sakda haan.",
     budgetQuestion: "Bilkul. Tuhada budget kitna hai?",
-    searchFoundOne: '"{query}" lai mainu 1 match hunda option mila.',
-    searchFoundMany: '"{query}" lai mainu {count} match hunde options mile ne.',
+    searchFoundOne: 'Tuhade lai 1 {topic} milia hai:',
+    searchFoundMany: 'Tuhade lai {count} {topic} options mile ne:',
     searchEmpty:
-      "Menu is search lai koi product nahi milia. Hor search karo, ya categories vekhan lai puchho.",
+      "Hmm, is vaar kuch nahi milia. Hor words try karo, ya categories vekhan lai puchho.",
     recommendIntro: "Main pehla option suggest karanga — eh tuhadi lod naal sab ton changa match karda hai.",
     compareIntro:
       "Ina dovana vicho pehla tuhadi mang lai behtar hai; dooja budget lai changa option hai.",
@@ -779,7 +848,7 @@ const RESPONSES = {
     topPick: "Main **{title}** suggest kardanga — {reason}.",
     recommendList: "Tuhade lai eh sab ton vadhiya matches ne:",
     giftIntro: "Kuj changiya gift suggestions ne:",
-    shoppingNoResult: "\"{query}\" lai filhal koi product nahi milia. {suggestion}",
+    shoppingNoResult: "Is lai hun koi option nahi milia. {suggestion}",
     noMoreOptions: "ਬੱਸ ਇੰਨੇ ਵਿਕਲਪ ਹਨ। {suggestion}",
     cartAddDone: "Ho gaya! **{title}** tuhade cart vich add ho gaya.",
     cartAddFailedNotFound: "Menu oha product nahi milia.",
@@ -831,10 +900,10 @@ const RESPONSES = {
     offTopic:
       "मी आत्ता {topic} तपासू शकत नाही, पण मी उत्पादने, सूचना आणि तुमच्या कार्टमध्ये मदत करू शकतो.",
     budgetQuestion: "ठीक आहे. तुमचा बजेट किती आहे?",
-    searchFoundOne: '"{query}" साठी मला 1 जुळणारा पर्याय मिळाला.',
-    searchFoundMany: '"{query}" साठी मला {count} जुळणारे पर्याय मिळाले.',
+    searchFoundOne: 'तुमच्यासाठी 1 {topic} मिळाला आहे:',
+    searchFoundMany: 'तुमच्यासाठी {count} {topic} पर्याय मिळाले आहेत:',
     searchEmpty:
-      "मला या शोधासाठी कोणतेही उत्पादन मिळाले नाही. वेगळा शोध करा किंवा श्रेणी पाहण्यासाठी विचारा.",
+      "हम्म, यावेळी काही मिळाले नाही. वेगळे शब्द वापरून पहा, किंवा श्रेणी पाहण्यासाठी विचारा.",
     recommendIntro: "मी पहिला पर्याय सुचवेन — तो तुमच्या गरजेशी सर्वात चांगला जुळतो.",
     compareIntro:
       "यांपैकी पहिला तुमच्या मागणीसाठी चांगला आहे; दुसरा बजेटसाठी चांगला पर्याय आहे.",
@@ -851,7 +920,7 @@ const RESPONSES = {
     topPick: "मी **{title}** सुचवतो — {reason}.",
     recommendList: "तुमच्यासाठी या सर्वोत्तम जुळण्या आहेत:",
     giftIntro: "काही चांगल्या भेटवस्तू सूचना आहेत:",
-    shoppingNoResult: "\"{query}\" साठी सध्या कोणतेही उत्पादन सापडले नाही. {suggestion}",
+    shoppingNoResult: "यासाठी सध्या कोणताही पर्याय मिळाला नाही. {suggestion}",
     noMoreOptions: "फक्त एवढेच पर्याय आहेत. {suggestion}",
     cartAddDone: "झाले! **{title}** तुमच्या कार्टमध्ये जोडले.",
     cartAddFailedNotFound: "मला ते उत्पादन सापडले नाही.",
@@ -903,10 +972,10 @@ const RESPONSES = {
     offTopic:
       "আমি এখন {topic} দেখতে পারছি না, তবে আমি পণ্য, পরামর্শ এবং আপনার কার্টে সাহায্য করতে পারি।",
     budgetQuestion: "ঠিক আছে। আপনার বাজেট কত?",
-    searchFoundOne: '"{query}" এর জন্য আমি 1টি মিলে যাওয়া বিকল্প পেয়েছি।',
-    searchFoundMany: '"{query}" এর জন্য আমি {count}টি মিলে যাওয়া বিকল্প পেয়েছি।',
+    searchFoundOne: 'আপনার জন্য 1টি {topic} পেয়েছি:',
+    searchFoundMany: 'আপনার জন্য {count}টি {topic} বিকল্প পেয়েছি:',
     searchEmpty:
-      "আমি এই অনুসন্ধানের জন্য কোনো পণ্য পাইনি। অন্য কিছু খুঁজুন, বা বিভাগ দেখতে বলুন।",
+      "হুম, এবার কিছু পাওয়া যায়নি। অন্য শব্দ চেষ্টা করুন, বা বিভাগ দেখতে বলুন।",
     recommendIntro: "আমি প্রথম বিকল্পটি সুপারিশ করব — এটি আপনার চাহিদার সঙ্গে সবচেয়ে ভালো মেলে।",
     compareIntro:
       "এই দুটির মধ্যে প্রথমটি আপনার জন্য ভালো; দ্বিতীয়টি বাজেটের জন্য ভালো বিকল্প।",
@@ -923,7 +992,7 @@ const RESPONSES = {
     topPick: "আমি **{title}** সুপারিশ করব — {reason}।",
     recommendList: "আপনার জন্য এই সেরা ম্যাচগুলো:",
     giftIntro: "কিছু ভালো উপহারের পরামর্শ:",
-    shoppingNoResult: "\"{query}\" এর জন্য এখন কোনো পণ্য পাওয়া যায়নি। {suggestion}",
+    shoppingNoResult: "এর জন্য এখন কোনো বিকল্প পাওয়া যায়নি। {suggestion}",
     noMoreOptions: "এতগুলোই শেষ বিকল্প। {suggestion}",
     cartAddDone: "হয়ে গেছে! **{title}** আপনার কার্টে যোগ হয়েছে।",
     cartAddFailedNotFound: "আমি সেই পণ্যটি পাইনি।",
@@ -975,10 +1044,10 @@ const RESPONSES = {
     offTopic:
       "હું હમણાં {topic} ચકાસી શકતો નથી, પણ હું ઉત્પાદનો, સૂચનો અને તમારા કાર્ટમાં મદદ કરી શકું છું.",
     budgetQuestion: "ઠીક છે. તમારું બજેટ કેટલું છે?",
-    searchFoundOne: '"{query}" માટે મને 1 મળતો વિકલ્પ મળ્યો.',
-    searchFoundMany: '"{query}" માટે મને {count} મળતા વિકલ્પ મળ્યા.',
+    searchFoundOne: 'તમારા માટે 1 {topic} મળ્યું છે:',
+    searchFoundMany: 'તમારા માટે {count} {topic} વિકલ્પો મળ્યા છે:',
     searchEmpty:
-      "મને આ શોધ માટે કોઈ ઉત્પાદન નથી મળ્યું. બીજી શોધ કરો, અથવા શ્રેણીઓ જોવા માટે પૂછો.",
+      "હમ્મ, આ વખતે કંઈ મળ્યું નથી. બીજા શબ્દો અજમાવો, અથવા શ્રેણીઓ જોવા માટે પૂછો.",
     recommendIntro: "હું પહેલો વિકલ્પ સૂચવીશ — તે તમારી જરૂરિયાત સાથે સૌથી સારો મેળ ખાય છે.",
     compareIntro:
       "આ બંનેમાંથી પહેલો તમારી માંગ માટે સારો છે; બીજો બજેટ માટે સારો વિકલ્પ છે.",
@@ -995,7 +1064,7 @@ const RESPONSES = {
     topPick: "હું **{title}** સૂચવીશ — {reason}.",
     recommendList: "તમારા માટે આ શ્રેષ્ઠ મેચો છે:",
     giftIntro: "કેટલાં સરસ ગિફ્ટ સૂચનો:",
-    shoppingNoResult: "\"{query}\" માટે હાલ કોઈ ઉત્પાદન મળ્યું નથી. {suggestion}",
+    shoppingNoResult: "આ માટે હાલ કોઈ વિકલ્પ મળ્યો નથી. {suggestion}",
     noMoreOptions: "ફક્ત આટલા વિકલ્પો છે. {suggestion}",
     cartAddDone: "થઈ ગયું! **{title}** તમારા કાર્ટમાં ઉમેરાયું.",
     cartAddFailedNotFound: "મને તે ઉત્પાદન નથી મળ્યું.",
@@ -1047,10 +1116,10 @@ const RESPONSES = {
     offTopic:
       "நான் இப்போது {topic} சரிபார்க்க முடியாது, ஆனால் பொருட்கள், பரிந்துரைகள் மற்றும் உங்கள் கார்ட்டில் உதவ முடியும்.",
     budgetQuestion: "சரி. உங்கள் பட்ஜெட் என்ன?",
-    searchFoundOne: '"{query}"க்கு 1 பொருந்தும் விருப்பம் கிடைத்தது.',
-    searchFoundMany: '"{query}"க்கு {count} பொருந்தும் விருப்பங்கள் கிடைத்தன.',
+    searchFoundOne: 'உங்களுக்காக 1 {topic} கிடைத்தது:',
+    searchFoundMany: 'உங்களுக்காக {count} {topic} விருப்பங்கள் கிடைத்தன:',
     searchEmpty:
-      "இந்தத் தேடலுக்கு எந்தப் பொருளும் கிடைக்கவில்லை. வேறு தேடலை முயற்சிக்கவும், அல்லது பிரிவுகளைப் பார்க்கக் கேளுங்கள்.",
+      "ம்ம், இந்த முறை எதுவும் கிடைக்கவில்லை. வேறு சொற்களை முயற்சிக்கவும், அல்லது பிரிவுகளைப் பார்க்கக் கேளுங்கள்.",
     recommendIntro: "நான் முதல் விருப்பத்தைப் பரிந்துரைக்கிறேன் — இது உங்கள் தேவைக்கு மிகவும் பொருந்துகிறது.",
     compareIntro:
       "இவற்றில் முதலாவது உங்கள் கோரிக்கைக்கு சிறந்தது; இரண்டாவது பட்ஜெட்டுக்கு நல்ல விருப்பம்.",
@@ -1067,7 +1136,7 @@ const RESPONSES = {
     topPick: "நான் **{title}** பரிந்துரைக்கிறேன் — {reason}.",
     recommendList: "உங்களுக்கான சிறந்த பொருத்தங்கள் இவை:",
     giftIntro: "சில நல்ல பரிசு பரிந்துரைகள்:",
-    shoppingNoResult: "\"{query}\"க்கு இப்போது எந்த தயாரிப்பும் கிடைக்கவில்லை. {suggestion}",
+    shoppingNoResult: "இதற்கு இப்போது எந்த விருப்பமும் கிடைக்கவில்லை. {suggestion}",
     noMoreOptions: "இவ்வளவுதான் விருப்பங்கள். {suggestion}",
     cartAddDone: "முடிந்தது! **{title}** உங்கள் கார்ட்டில் சேர்க்கப்பட்டது.",
     cartAddFailedNotFound: "அந்தப் பொருளை என்னால் கண்டுபிடிக்க முடியவில்லை.",
@@ -1119,10 +1188,10 @@ const RESPONSES = {
     offTopic:
       "నేను ప్రస్తుతం {topic} తనిఖీ చేయలేను, కానీ ఉత్పత్తులు, సూచనలు మరియు మీ కార్ట్లో సహాయం చేయగలను.",
     budgetQuestion: "సరే. మీ బడ్జెట్ ఎంత?",
-    searchFoundOne: '"{query}" కోసం 1 సరిపోయే ఎంపిక దొరికింది.',
-    searchFoundMany: '"{query}" కోసం {count} సరిపోయే ఎంపికలు దొరికాయి.',
+    searchFoundOne: 'మీ కోసం 1 {topic} దొరికింది:',
+    searchFoundMany: 'మీ కోసం {count} {topic} ఎంపికలు దొరికాయి:',
     searchEmpty:
-      "ఈ శోధనకు ఎలాంటి ఉత్పత్తి దొరకలేదు. వేరే శోధన ప్రయత్నించండి, లేదా వర్గాలను చూడమని అడగండి.",
+      "హ్మ్, ఈసారి ఏమీ దొరకలేదు. వేరే పదాలు ప్రయత్నించండి, లేదా వర్గాలను చూడమని అడగండి.",
     recommendIntro: "నేను మొదటి ఎంపికను సిఫార్సు చేస్తాను — ఇది మీ అవసరానికి బాగా సరిపోతుంది.",
     compareIntro:
       "వీటిలో మొదటిది మీ అభ్యర్థనకు మంచిది; రెండవది బడ్జెట్ కోసం మంచి ఎంపిక.",
@@ -1139,7 +1208,7 @@ const RESPONSES = {
     topPick: "నేను **{title}** సిఫార్సు చేస్తున్నాను — {reason}.",
     recommendList: "మీ కోసం ఈ ఉత్తమ మ్యాచ్లు ఉన్నాయి:",
     giftIntro: "కొన్ని మంచి బహుమతి సూచనలు:",
-    shoppingNoResult: "\"{query}\" కోసం ప్రస్తుతం ఏ ఉత్పత్తీ లేదు. {suggestion}",
+    shoppingNoResult: "దీని కోసం ప్రస్తుతం ఏ ఎంపిక లేదు. {suggestion}",
     noMoreOptions: "ఇన్నే ఎంపికలు ఉన్నాయి. {suggestion}",
     cartAddDone: "అయిపోయింది! **{title}** మీ కార్ట్కు జోడించబడింది.",
     cartAddFailedNotFound: "ఆ ఉత్పత్తి నాకు దొరకలేదు.",
@@ -1191,10 +1260,10 @@ const RESPONSES = {
     offTopic:
       "ನಾನು ಈಗ {topic} ಪರಿಶೀಲಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ, ಆದರೆ ಉತ್ಪನ್ನಗಳು, ಸಲಹೆಗಳು ಮತ್ತು ನಿಮ್ಮ ಕಾರ್ಟ್ನಲ್ಲಿ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ.",
     budgetQuestion: "ಸರಿ. ನಿಮ್ಮ ಬಜೆಟ್ ಎಷ್ಟು?",
-    searchFoundOne: '"{query}"ಗಾಗಿ 1 ಹೊಂದಾಣಿಕೆಯ ಆಯ್ಕೆ ಸಿಕ್ಕಿತು.',
-    searchFoundMany: '"{query}"ಗಾಗಿ {count} ಹೊಂದಾಣಿಕೆಯ ಆಯ್ಕೆಗಳು ಸಿಕ್ಕವು.',
+    searchFoundOne: 'ನಿಮಗಾಗಿ 1 {topic} ಸಿಕ್ಕಿದೆ:',
+    searchFoundMany: 'ನಿಮಗಾಗಿ {count} {topic} ಆಯ್ಕೆಗಳು ಸಿಕ್ಕಿವೆ:',
     searchEmpty:
-      "ಈ ಹುಡುಕಾಟಕ್ಕೆ ಯಾವುದೇ ಉತ್ಪನ್ನ ಸಿಗಲಿಲ್ಲ. ಬೇರೆ ಹುಡುಕಾಟ ಪ್ರಯತ್ನಿಸಿ, ಅಥವಾ ವರ್ಗಗಳನ್ನು ನೋಡಲು ಕೇಳಿ.",
+      "ಹ್ಮ್, ಈ ಬಾರಿ ಏನೂ ಸಿಗಲಿಲ್ಲ. ಬೇರೆ ಪದಗಳನ್ನು ಪ್ರಯತ್ನಿಸಿ, ಅಥವಾ ವರ್ಗಗಳನ್ನು ನೋಡಲು ಕೇಳಿ.",
     recommendIntro: "ನಾನು ಮೊದಲ ಆಯ್ಕೆಯನ್ನು ಶಿಫಾರಸು ಮಾಡುತ್ತೇನೆ — ಇದು ನಿಮ್ಮ ಅಗತ್ಯಕ್ಕೆ ಉತ್ತಮವಾಗಿ ಹೊಂದುತ್ತದೆ.",
     compareIntro:
       "ಇವುಗಳಲ್ಲಿ ಮೊದಲನೆಯದು ನಿಮ್ಮ ವಿನಂತಿಗೆ ಉತ್ತಮ; ಎರಡನೆಯದು ಬಜೆಟ್ಗೆ ಉತ್ತಮ ಆಯ್ಕೆ.",
@@ -1211,7 +1280,7 @@ const RESPONSES = {
     topPick: "ನಾನು **{title}** ಸಿಫಾರಸು ಮಾಡುತ್ತೇನೆ — {reason}.",
     recommendList: "ನಿಮಗಾಗಿ ಈ ಉತ್ತಮ ಹೊಂದಾಣಿಕೆಗಳು ಇವೆ:",
     giftIntro: "ಕೆಲವು ಒಳ್ಳೆಯ ಗಿಫ್ಟ್ ಸೂಚನೆಗಳು:",
-    shoppingNoResult: "\"{query}\" ಗಾಗಿ ಇದೀಗ ಯಾವುದೇ ಉತ್ಪನ್ನ ಸಿಗಲಿಲ್ಲ. {suggestion}",
+    shoppingNoResult: "ಇದಕ್ಕಾಗಿ ಇದೀಗ ಯಾವುದೇ ಆಯ್ಕೆ ಸಿಗಲಿಲ್ಲ. {suggestion}",
     noMoreOptions: "ಇಷ್ಟೇ ಆಯ್ಕೆಗಳಿವೆ. {suggestion}",
     cartAddDone: "ಆಯಿತು! **{title}** ನಿಮ್ಮ ಕಾರ್ಟ್ಗೆ ಸೇರಿಸಲಾಗಿದೆ.",
     cartAddFailedNotFound: "ಆ ಉತ್ಪನ್ನ ನನಗೆ ಸಿಗಲಿಲ್ಲ.",
@@ -1263,10 +1332,10 @@ const RESPONSES = {
     offTopic:
       "എനിക്ക് ഇപ്പോൾ {topic} പരിശോധിക്കാനാകില്ല, പക്ഷേ ഉൽപ്പന്നങ്ങൾ, നിർദ്ദേശങ്ങൾ, നിങ്ങളുടെ കാർട്ട് എന്നിവയിൽ സഹായിക്കാനാകും.",
     budgetQuestion: "ശരി. നിങ്ങളുടെ ബജറ്റ് എത്രയാണ്?",
-    searchFoundOne: '"{query}"ന് 1 യോജിക്കുന്ന ഓപ്ഷൻ ലഭിച്ചു.',
-    searchFoundMany: '"{query}"ന് {count} യോജിക്കുന്ന ഓപ്ഷനുകൾ ലഭിച്ചു.',
+    searchFoundOne: 'നിങ്ങൾക്കായി 1 {topic} ലഭിച്ചു:',
+    searchFoundMany: 'നിങ്ങൾക്കായി {count} {topic} ഓപ്ഷനുകൾ ലഭിച്ചു:',
     searchEmpty:
-      "ഈ തിരയലിന് ഒരു ഉൽപ്പന്നവും ലഭിച്ചില്ല. മറ്റ് തിരയൽ ശ്രമിക്കുക, അല്ലെങ്കിൽ വിഭാഗങ്ങൾ കാണാൻ ചോദിക്കുക.",
+      "ഹും, ഇത്തവണ ഒന്നും കാണാനായില്ല. മറ്റ് വാക്കുകൾ ശ്രമിക്കുക, അല്ലെങ്കിൽ വിഭാഗങ്ങൾ കാണാൻ ചോദിക്കുക.",
     recommendIntro: "ഞാൻ ആദ്യ ഓപ്ഷൻ ശുപാർശ ചെയ്യുന്നു — ഇത് നിങ്ങളുടെ ആവശ്യത്തിന് ഏറ്റവും അനുയോജ്യമാണ്.",
     compareIntro:
       "ഇവയിൽ ആദ്യത്തേത് നിങ്ങളുടെ അഭ്യർത്ഥനയ്ക്ക് നല്ലതാണ്; രണ്ടാമത്തേത് ബജറ്റിന് നല്ല ഓപ്ഷനാണ്.",
@@ -1283,7 +1352,7 @@ const RESPONSES = {
     topPick: "ഞാൻ **{title}** ശുപാർശ ചെയ്യുന്നു — {reason}.",
     recommendList: "നിങ്ങൾക്കായുള്ള മികച്ച യോജിപ്പുകൾ ഇവയാണ്:",
     giftIntro: "കുറച്ച് നല്ല സമ്മാന നിർദ്ദേശങ്ങൾ:",
-    shoppingNoResult: "\"{query}\"നായി ഇപ്പോൾ ഒരു ഉൽപ്പന്നവും കണ്ടെത്താനായില്ല. {suggestion}",
+    shoppingNoResult: "ഇതിനായി ഇപ്പോൾ ഒരു ഓപ്ഷനും കണ്ടെത്താനായില്ല. {suggestion}",
     noMoreOptions: "ഇത്രയും ഓപ്ഷനുകളേ ഉള്ളൂ. {suggestion}",
     cartAddDone: "കഴിഞ്ഞു! **{title}** നിങ്ങളുടെ കാർട്ടിലേക്ക് ചേർത്തു.",
     cartAddFailedNotFound: "ആ ഉൽപ്പന്നം എനിക്ക് കണ്ടെത്താനായില്ല.",
@@ -1335,10 +1404,10 @@ const RESPONSES = {
     offTopic:
       "میں ابھی {topic} چیک نہیں کر سکتا، لیکن میں مصنوعات، تجاویز اور آپ کے کارٹ میں مدد کر سکتا ہوں۔",
     budgetQuestion: "بالکل۔ آپ کا بجٹ کیا ہے؟",
-    searchFoundOne: '"{query}" کے لیے مجھے 1 ملتا جلتا آپشن ملا۔',
-    searchFoundMany: '"{query}" کے لیے مجھے {count} ملتے جلتے آپشن ملے۔',
+    searchFoundOne: 'آپ کے لیے 1 {topic} ملا ہے:',
+    searchFoundMany: 'آپ کے لیے {count} {topic} آپشن ملے ہیں:',
     searchEmpty:
-      "مجھے اس تلاش کے لیے کوئی مصنوعہ نہیں ملا۔ کوئی اور تلاش آزمائیں، یا کیٹیگریز دیکھنے کے لیے پوچھیں۔",
+      "ہمم، اس بار کچھ نہیں ملا۔ دوسرے الفاظ آزمائیں، یا کیٹیگریز دیکھنے کے لیے پوچھیں۔",
     recommendIntro: "میں پہلا آپشن تجویز کروں گا — یہ آپ کی ضرورت سے سب سے بہتر میل کھاتا ہے۔",
     compareIntro:
       "ان دونوں میں پہلا آپ کی درخواست کے لیے بہتر ہے؛ دوسرا بجٹ کے لیے اچھا آپشن ہے۔",
@@ -1355,7 +1424,7 @@ const RESPONSES = {
     topPick: "میں **{title}** تجویز کروں گا — {reason}۔",
     recommendList: "آپ کے لیے یہ بہترین میچز ہیں:",
     giftIntro: "کچھ اچھے گفٹ مشورے:",
-    shoppingNoResult: "\"{query}\" کے لیے ابھی کوئی پروڈکٹ نہیں ملا۔ {suggestion}",
+    shoppingNoResult: "اس کے لیے ابھی کوئی آپشن نہیں ملا۔ {suggestion}",
     noMoreOptions: "بس اتنے ہی اختیارات ہیں۔ {suggestion}",
     cartAddDone: "ہو گیا! **{title}** آپ کے کارٹ میں شامل ہو گیا۔",
     cartAddFailedNotFound: "مجھے وہ مصنوعہ نہیں ملا۔",

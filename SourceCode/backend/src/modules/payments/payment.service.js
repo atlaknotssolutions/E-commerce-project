@@ -36,6 +36,54 @@ export const createPaymentService = ({
     };
 
     /**
+     * Normalizes a stored mobile number into Razorpay E.164 contact format.
+     * Accepts raw 10-digit Indian numbers and numbers with a country code.
+     */
+    const normalizeRazorpayContact = (mobile) =>
+    {
+        if (!mobile) return undefined;
+        const digits = String(mobile).replace(/[^\d]/g, '');
+        if (digits.length === 10) return `+91${digits}`;
+        if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+        if (digits.length > 10) return `+${digits}`;
+        return undefined;
+    };
+
+    /**
+     * Builds the Razorpay `customer` object from the paying user's profile.
+     * Returns undefined when no usable data exists (gateway then skips notify).
+     */
+    const buildRazorpayCustomer = async (userId) =>
+    {
+        const user = userId
+            ? await userRepository.findById(userId).catch(() => null)
+            : null;
+
+        if (!user)
+        {
+            return undefined;
+        }
+
+        const customer = { name: user.fullName || undefined };
+        if (user.email)
+        {
+            customer.email = user.email;
+        }
+        const contact = normalizeRazorpayContact(user.mobile);
+        if (contact)
+        {
+            customer.contact = contact;
+        }
+
+        if (!customer.name && !customer.email && !customer.contact)
+        {
+            return undefined;
+        }
+
+        return customer;
+    };
+
+    /**
      * Creates the payment record in the database.
      * NOTE: In the new transactional checkout flow, this is called inside createOrdersFromCart's
      * MongoDB transaction. This method remains for backward compatibility (reissue flow).
@@ -63,9 +111,12 @@ export const createPaymentService = ({
         {
             try
             {
+                const customer = await buildRazorpayCustomer(userId);
+
                 const rzpResponse = await razorpayClient.createPaymentLink({
                     amount,
                     paymentOrderId: paymentOrder._id,
+                    customer,
                 });
 
                 paymentLinkUrl = rzpResponse.payment_link_url;
@@ -120,9 +171,15 @@ export const createPaymentService = ({
         {
             try
             {
+                const paymentOrder =
+                    await paymentOrderRepository.findById(paymentOrderId);
+                const customer =
+                    await buildRazorpayCustomer(paymentOrder?.user);
+
                 const rzpResponse = await razorpayClient.createPaymentLink({
                     amount,
                     paymentOrderId,
+                    customer,
                 });
 
                 paymentLinkUrl = rzpResponse.payment_link_url;

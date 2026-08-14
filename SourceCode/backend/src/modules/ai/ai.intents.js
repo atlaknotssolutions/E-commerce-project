@@ -70,6 +70,11 @@ export const STOP_WORDS = new Set([
   "ones", "only",
   "or", "other", "our", "ours", "ourselves", "out", "over", "own", "please",
   "price", "rate", "rates", "recommend", "quite", "same", "say", "search",
+  // Recommendation-frame words (W: "kuch stylish tshirts suggest karo" must
+  // reduce to product tokens only). "suggest"/"recommend"/"stylish"/"trendy"
+  // signal a recommendation, never a product identity.
+  "suggest", "suggestion", "recommendation", "recommendations", "recommended",
+  "stylish", "style", "trendy", "trending", "fashionable", "popular",
   "see", "she", "should", "show", "so", "some", "such", "tell", "than",
   "that", "the", "their", "theirs", "them", "themselves", "then", "there",
   "these", "they", "this", "those", "through", "to", "too", "top", "under",
@@ -303,6 +308,15 @@ const TOKEN_SYNONYMS = {
   pants: ["trouser", "trousers"],
   trouser: ["pant", "pants"],
   trousers: ["pant", "pants"],
+  mobile: ["phone", "phones"],
+  mobiles: ["phone", "phones"],
+  phone: ["mobile", "mobiles"],
+  phones: ["mobile", "mobiles"],
+  laptop: ["notebook", "notebooks"],
+  notebook: ["laptop", "laptops"],
+  notebooks: ["laptop", "laptops"],
+  headphone: ["earphone", "earphones"],
+  headphones: ["earphone", "earphones"],
 };
 
 /**
@@ -673,11 +687,13 @@ export const extractActionRequest = (query) =>
   const addVerb = /\b(add|put|include|place|drop|daal|daalo|daale|rakh|rakho|rakhe|paa|pao|pa)\b/.test(text);
   const addThis = /\badd\s+(this|that|it|them|the)\b/.test(text);
   const addCount = /\badd\b[^.]*\b\d+\b/.test(text);
+  const addOrdinal = /\badd\b/.test(text) && !!extractOrdinalIndex(text);
 
   if (
     (addVerb && hasCartWord) ||
     addThis ||
-    addCount
+    addCount ||
+    addOrdinal
   )
   {
     const quantity = extractQuantityNumber(text);

@@ -18,6 +18,7 @@ import {
   t,
   LANG,
   normalizeCommerceQuery,
+  deriveProductTopic,
 } from "./ai.language.js";
 import {
   detectShoppingIntent,
@@ -789,7 +790,7 @@ ${prompt}
     };
 
     const noResultText = () =>
-      t(lang, "shoppingNoResult", { query: prompt, suggestion: "" })
+      t(lang, "shoppingNoResult", { suggestion: "" })
         .replace(/\s*\.\s*$/, ".")
         .replace(/\s*$/, "");
 
@@ -1264,11 +1265,19 @@ ${prompt}
       const matchedProducts = await findMatchingProductsByQuery(prompt);
 
       if (matchedProducts.length > 0) {
+        const topicTokens = getSearchTokens(
+          normalizeCommerceQuery(prompt),
+        ).filter((token) => !/^₹?\s?\d[\d,]*$/.test(token));
+        const topic = deriveProductTopic(topicTokens);
+        const topicLabel =
+          topic?.[matchedProducts.length === 1 ? "singular" : "plural"] ??
+          (matchedProducts.length === 1 ? "option" : "options");
+
         return {
           text: t(
             lang,
             matchedProducts.length === 1 ? "searchFoundOne" : "searchFoundMany",
-            { count: matchedProducts.length, query: prompt },
+            { count: matchedProducts.length, topic: topicLabel },
           ),
           products: matchedProducts,
           intent: intent.type,

@@ -6,28 +6,45 @@ const razorpay = new Razorpay({
     key_secret: env.razorpay.keySecret,
 });
 
-const createPaymentLink = async ({ amount, paymentOrderId }) =>
+const createPaymentLink = async ({ amount, paymentOrderId, customer }) =>
 {
     try
     {
-        console.log("RAZORPAY KEY =>", process.env.RAZORPAY_KEY_ID);
+        // Razorpay requires a customer contact/email before SMS/email
+        // notifications can be enabled. Only enable a notify channel when we
+        // actually have the destination data, otherwise Razorpay rejects the
+        // request with a 4xx error.
+        const notify = {};
+        if (customer?.contact)
+        {
+            notify.sms = true;
+        }
+        if (customer?.email)
+        {
+            notify.email = true;
+        }
 
-        const response = await razorpay.paymentLink.create({
-            amount: amount * 100,
+        const payload = {
+            amount: Math.round(Number(amount) * 100),
             currency: "INR",
             description: `Order ${paymentOrderId}`,
             reference_id: paymentOrderId.toString(),
-            notify: {
-                sms: true,
-                email: true,
-            },
             reminder_enable: true,
 
             callback_url: `${env.frontendUrl}/payment-success`,
             callback_method: "get",
-        });
+        };
 
-        console.log("RAZORPAY RESPONSE =>", response);
+        if (customer)
+        {
+            payload.customer = customer;
+        }
+        if (Object.keys(notify).length > 0)
+        {
+            payload.notify = notify;
+        }
+
+        const response = await razorpay.paymentLink.create(payload);
 
         return {
             id: response.id,
