@@ -102,6 +102,21 @@ export const SOCIAL_WORDS = new Set([
   "work", "works", "working", "made", "created",
   "shukriya", "sukriya", "shukria", "shukar", "dhanyavad", "dhanyavaad",
   "sasriyakal", "alvida",
+  // Conversational address/recipient filler. These carry zero product-identity
+  // value, so stripping them keeps multi-token AND-semantics from zeroing out a
+  // valid search ("jeans bro" => ["jeans"], "hi bro" => greeting, "a shirt for
+  // my brother" => ["shirt"]). Deliberately excludes shopping attributes like
+  // black/men/women/kids.
+  "bro", "broo", "brooo", "dude", "brother", "buddy", "friend", "bhaiyya",
+  // "matlab" = "meaning/what do you mean" — conversational, never a product.
+  "matlab", "matlb", "mtlb", "mean", "meant",
+  // Romanized question words — conversational fillers, never product terms.
+  "kya", "kaise", "kese", "kis", "kiski", "kiska", "kiske", "kyun", "kab",
+  "kaun", "kahan", "kahaan", "kitna", "kitni", "kitne", "kyaa", "q",
+  // Hinglish copulas (is/are/am) — pure conversation glue, never product terms.
+  "hai", "hain", "ho", "hoon", "hona", "hoga", "haan", "nahi", "bhi", "bhiye",
+  // Romanized honorific / second-person particles.
+  "aap", "aapko", "aapke", "aapki", "tum", "tumko", "tu", "tere", "teri",
 ]);
 
 /** Words that route a query to the cart intent. */
@@ -109,9 +124,20 @@ export const CART_KEYWORDS = new Set(["cart", "basket", "bag"]);
 
 /** Words that route a query to the order/tracking intent. */
 export const ORDER_KEYWORDS = new Set([
-  "order", "orders", "purchase", "purchases", "track", "tracking", "delivery",
+  "order", "orders", "purchase", "purchases", "delivery",
   "deliveries", "shipped", "shipping", "return", "returns", "refund",
   "refunds", "cancel", "cancellation",
+]);
+
+/**
+ * "track"/"tracking" only signal an order request when the query also
+ * mentions order context. A bare "track pants" must stay a product search
+ * (real catalog category: "Men Track Pants & Joggers"), not a tracking reply.
+ */
+const ORDER_TRACK_WORDS = new Set(["track", "tracking"]);
+const ORDER_CONTEXT_WORDS = new Set([
+  "order", "orders", "package", "shipment", "shipments", "parcel",
+  "delivery", "deliveries", "status", "my",
 ]);
 
 /** Words that route a query to the category browser intent. */
@@ -201,6 +227,14 @@ export const detectIntent = (query, { productId = null } = {}) =>
     return { type: "order" };
   }
 
+  if (
+    tokens.some((token) => ORDER_TRACK_WORDS.has(token)) &&
+    tokens.some((token) => ORDER_CONTEXT_WORDS.has(token))
+  )
+  {
+    return { type: "order" };
+  }
+
   const categorySelector = parseCategorySelector(normalized);
   if (categorySelector)
   {
@@ -257,6 +291,21 @@ const SCORE_VARIANT_PARTIAL = 2;
 export const MIN_RELEVANCE_SCORE = 4;
 
 /**
+ * Minimal curated noun-synonym clusters. Used ONLY to broaden a single token's
+ * field variants (via the same per-token fold rule as singular/plural), never
+ * to add new AND-semantics tokens. Without this, "pant"/"pants" would match
+ * nothing when a catalog entry is titled "Trousers" — a pure vocabulary gap,
+ * not a relevance one. Deliberately tiny: expanding a whole dictionary would
+ * blur distinct products (jeans vs trousers must stay separate).
+ */
+const TOKEN_SYNONYMS = {
+  pant: ["trouser", "trousers"],
+  pants: ["trouser", "trousers"],
+  trouser: ["pant", "pants"],
+  trousers: ["pant", "pants"],
+};
+
+/**
  * Scores a single token against one text field.
  * Returns the exact weight when the token is a whole word of the field and
  * the partial weight when the token is a prefix/substring of length >= 3.
@@ -272,7 +321,7 @@ const matchField = (token, field, exactScore, partialScore) =>
   // title "Gaming Headphone" (and vice versa). Safe under AND semantics: a
   // fold can only raise ONE token's contribution, never bypass the
   // every-token-must-hit filter.
-  const variants = [token];
+  const variants = [token, ...(TOKEN_SYNONYMS[token] || [])];
   if (token.length > 3 && token.endsWith("s"))
   {
     variants.push(token.slice(0, -1));
@@ -295,9 +344,12 @@ const matchField = (token, field, exactScore, partialScore) =>
     }
     else if (
       variant.length >= 3 &&
-      (field.includes(variant) || words.some((word) => word.startsWith(variant)))
+      words.some((word) => word.startsWith(variant))
     )
     {
+      // Word-prefix partial match ONLY. A raw substring test (`field.includes`)
+      // would let "men" match "women" and bleed one gender's products into the
+      // other's results, so partials are anchored to whole-word prefixes.
       score = partialScore;
     }
 

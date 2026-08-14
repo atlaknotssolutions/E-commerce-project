@@ -326,6 +326,18 @@ const ROMAN_PARTICLES = new Set([
   "kaise", "kya", "ye", "yeh", "wo", "woh", "sab", "saare", "accha",
   "achha", "theek", "thik", "kripya", "please", "apni", "apna",
   "is", "us", "eh", "oh", "yehi",
+  // Conversational fillers for romanized Indic queries. These carry no
+  // product-identity value, so stripping them keeps AND-semantics intact:
+  // "jeans hai tumhare pss" => "jeans", "mujhe ek achhi jeans chahiye" =>
+  // "jeans", "mainu jeans chahidi" => "jeans". "pass" is listed here for the
+  // Hinglish path, but "pass" is excluded from the English-safe variant so a
+  // genuine English token is never dropped.
+  "tumhare", "tumhari", "tumhara", "tumhe", "tumko", "tujhe", "tujko",
+  "aapke", "aapki", "aapka", "apne", "unke", "unki", "unka", "inke",
+  "inki", "inka", "paas", "pass", "pss", "ke_paas", "ke_pss",
+  "ek", "acha", "achi", "achhi", "acchi", "achhe", "acche", "waise",
+  "chahidi", "chahindi", "chahinda", "chahinde", "chahinden",
+  "puchna", "pooch", "poocha", "liye", "ke_liye",
 ]);
 
 /**
@@ -336,7 +348,8 @@ const ROMAN_PARTICLES = new Set([
  */
 const ROMAN_PARTICLES_EN_SAFE = new Set(
   [...ROMAN_PARTICLES].filter(
-    (word) => !["me", "is", "us", "please", "under"].includes(word),
+    (word) =>
+      !["me", "is", "us", "please", "under", "pass"].includes(word),
   ),
 );
 
